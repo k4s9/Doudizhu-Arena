@@ -1,0 +1,23 @@
+# Agent definitions — loaded at backend startup.
+# Each entry creates one or more DB agent records (M4: DB persistence).
+#
+# api_key supports environment variable substitution: ${ENV_VAR}
+
+agent_definitions:
+  - name: "Aggressive-Claude"
+    provider: claude
+    model: claude-opus-4-7
+    api_key: "${ANTHROPIC_API_KEY}"
+    system_prompt_override: null
+
+  - name: "Balanced-Claude"
+    provider: claude
+    model: claude-opus-4-7
+    api_key: "${ANTHROPIC_API_KEY}"
+    system_prompt_override: null
+
+  - name: "Balanced-GPT"
+    provider: openai
+    model: gpt-4o
+    api_key: "${OPENAI_API_KEY}"
+    system_prompt_override: "你偏好稳健保守的打法。尽量保持牌型完整，避免冒进。"

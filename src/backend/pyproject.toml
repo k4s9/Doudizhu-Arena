@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arena"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "smoke: fast smoke tests for quick CI gating — run with -m smoke",
+    "slow: tests that take significant time to execute — run with -m slow",
+    "integration: integration tests that require external services or full environment — run with -m integration",
+]

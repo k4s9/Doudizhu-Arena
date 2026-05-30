@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: src/backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./src/backend/logs:/app/logs
+      - ./src/backend/arena/config/agents.yaml:/app/arena/config/agents.yaml:ro
+    environment:
+      - DATABASE_URL=sqlite:///app/data/arena.db
+      - LOG_DIR=/app/logs
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: src/frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

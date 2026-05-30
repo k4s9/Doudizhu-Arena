@@ -1,0 +1,8 @@
+.git
+tmp/
+logs/
+*.pyc
+__pycache__
+node_modules
+dist
+.claude/

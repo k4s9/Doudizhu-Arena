@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Smoke tests: quick gate that runs first ────────────────────────
+  smoke-test:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "pytest>=8.0"
+
+      - name: Run smoke tests
+        run: pytest tests/test_smoke.py -v -m smoke --tb=short
+
+  # ── Lint & syntax check ───────────────────────────────────────────
+  lint:
+    name: Lint & Syntax Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Python syntax (py_compile)
+        run: |
+          find . -name '*.py' -exec python -m py_compile {} +
+
+      - name: Check requirements are parseable
+        run: pip install --dry-run -r requirements.txt
+
+  # ── Full backend test suite (gated by smoke tests) ────────────────
+  backend-tests:
+    name: Backend Tests (Python ${{ matrix.python-version }})
+    needs: smoke-test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    defaults:
+      run:
+        working-directory: src/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "pytest>=8.0"
+
+      - name: Run all backend tests
+        run: pytest tests/ -v --tb=short
+
+  # ── Frontend build (Vue + Vite) ───────────────────────────────────
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+  # ── Docker build (main branch pushes only, placeholder) ───────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: |
+          if [ -f src/backend/Dockerfile ]; then
+            docker build -t doudizhu-backend src/backend/
+            echo "Backend Docker image built successfully."
+          else
+            echo "No backend Dockerfile found, skipping."
+          fi
+
+      - name: Build frontend Docker image
+        run: |
+          if [ -f src/frontend/Dockerfile ]; then
+            docker build -t doudizhu-frontend src/frontend/
+            echo "Frontend Docker image built successfully."
+          else
+            echo "No frontend Dockerfile found, skipping."
+          fi
+
+      - name: Verify Docker images
+        run: |
+          docker images | grep doudizhu || echo "No doudizhu images (expected if Dockerfiles do not exist yet)."

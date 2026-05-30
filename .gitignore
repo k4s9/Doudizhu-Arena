@@ -1,0 +1,8 @@
+tmp/
+src/backend/logs/
+# Environment file (keep .env.example in git)
+.env
+# SQLite database directory
+data/
+CLAUDE.md
+.claude/
