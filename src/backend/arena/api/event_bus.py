@@ -63,6 +63,7 @@ class MatchEventBus:
         dealer: str,
         seed: str,
         tables: dict[str, Any],
+        idle_seat: str = "",
     ) -> None:
         await self.put({
             "type": "hand_started",
@@ -71,6 +72,7 @@ class MatchEventBus:
                 "dealer": dealer,
                 "seed": seed,
                 "tables": tables,
+                "idle_seat": idle_seat,
             },
         })
 

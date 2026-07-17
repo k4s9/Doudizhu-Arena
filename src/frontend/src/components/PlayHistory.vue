@@ -28,10 +28,25 @@ function actionIcon(a) {
 }
 
 function actionSummary(a) {
-  if (a.action?.type === 'pass') return 'Pass';
+  if (a.action?.type === 'pass') return '不出';
   const cards = a.action?.cards || [];
-  return a.action?.display || cards.join('');
+  return cards.join('');
 }
+
+const PATTERN_NAMES = {
+  single: '单张',
+  pair: '对子',
+  triple: '三张',
+  triple_with_one: '三带一',
+  triple_with_pair: '三带二',
+  straight: '顺子',
+  straight_pairs: '连对',
+  airplane: '飞机',
+  airplane_with_wings: '飞机带翼',
+  bomb: '炸弹',
+  rocket: '火箭',
+  four_with_two: '四带二',
+};
 
 function suitColor(cards) {
   if (!cards?.length) return '';
@@ -46,9 +61,9 @@ function suitColor(cards) {
 
 <template>
   <div class="overflow-y-auto" :class="compact ? 'max-h-48' : 'max-h-96'">
-    <div v-if="!actions.length" class="text-slate-500 text-sm italic py-2">No plays yet</div>
+    <div v-if="!actions.length" class="text-slate-500 text-sm italic py-2">暂无出牌记录</div>
     <div v-for="group in groupedByRound" :key="group.round">
-      <div class="text-xs text-slate-600 font-mono mb-1 mt-2">Round {{ group.round }}</div>
+      <div class="text-xs text-slate-600 font-mono mb-1 mt-2">第 {{ group.round }} 轮</div>
       <div
         v-for="a in group.plays"
         :key="a.seat + a.timestamp_ms"
@@ -59,7 +74,7 @@ function suitColor(cards) {
         <span :class="[a.action?.type === 'pass' ? 'text-slate-500 italic' : suitColor(a.action?.cards), 'font-mono']">
           {{ actionSummary(a) }}
         </span>
-        <span v-if="a.action?.pattern" class="text-xs text-slate-500">({{ a.action.pattern }})</span>
+        <span v-if="a.action?.pattern" class="text-xs text-slate-500">({{ PATTERN_NAMES[a.action.pattern] || a.action.pattern }})</span>
       </div>
     </div>
   </div>

@@ -21,7 +21,7 @@ def _repo(request: Request):
 
 def _match_config_from_dict(d: dict) -> MatchConfig:
     """Build MatchConfig from request JSON, applying server defaults."""
-    from ....config.settings import settings
+    from ...config.settings import settings
 
     return MatchConfig(
         total_hands=d.get("total_hands", settings.total_hands),
@@ -75,12 +75,12 @@ def _match_row_to_detail(row: dict, participants: list[dict]) -> dict[str, Any]:
 
     for p in participants:
         team = p["team"]
-        agent_id = p["agent_id"]
-        teams[team]["agents"].append(agent_id)
+        player_id = p["player_id"]
+        teams[team]["agents"].append(player_id)
         if p.get("seat_table_a"):
-            seating["table_a"][p["seat_table_a"]] = agent_id
+            seating["table_a"][p["seat_table_a"]] = player_id
         if p.get("seat_table_b"):
-            seating["table_b"][p["seat_table_b"]] = agent_id
+            seating["table_b"][p["seat_table_b"]] = player_id
 
     # Build score history from hands
     score_history: list[dict[str, Any]] = []
@@ -155,10 +155,10 @@ async def create_match(request: Request):
             },
         )
 
-    # Verify all agents exist
-    for aid in red_agents + blue_agents:
-        if repo.get_agent(aid) is None:
-            raise HTTPException(404, detail={"error": {"code": "AGENT_NOT_FOUND", "message": f"Agent not found: {aid}"}})
+    # Verify all players exist
+    for pid in red_agents + blue_agents:
+        if repo.get_player(pid) is None:
+            raise HTTPException(404, detail={"error": {"code": "PLAYER_NOT_FOUND", "message": f"Player not found: {pid}"}})
 
     # Assign seating
     try:
@@ -244,44 +244,44 @@ async def start_match(match_id: str, request: Request, background_tasks: Backgro
     if match["status"] != "created":
         raise HTTPException(400, detail={"error": {"code": "MATCH_ALREADY_STARTED", "message": "Match already started"}})
 
-    # Load agents
-    from ...agent.loader import load_agents_from_yaml
-    agent_ids_in_match: set[str] = set()
+    # Load players — each participant references a player ID
+    from ...agent.llm_agent import LLMAgent
+    from ...agent.random_agent import RandomAgent
+    from ...llm.base import AbstractLLMProvider
+
+    player_ids_in_match: set[str] = set()
     for p in repo.get_participants(match_id):
-        agent_ids_in_match.add(p["agent_id"])
+        player_ids_in_match.add(p["player_id"])
 
-    # Build Agent instances dict — re-use existing agents from DB or create from yaml/random
+    # Build Agent instances — load player + config, create provider, instantiate agent
     agents_dict: dict[str, Any] = {}
-    for aid in agent_ids_in_match:
-        agent_row = repo.get_agent(aid)
-        if agent_row is None:
-            raise HTTPException(500, detail={"error": {"code": "INTERNAL_ERROR", "message": f"Agent row not found: {aid}"}})
+    for pid in player_ids_in_match:
+        player_row = repo.get_player_with_config(pid)
+        if player_row is None:
+            raise HTTPException(500, detail={"error": {"code": "INTERNAL_ERROR", "message": f"Player row not found: {pid}"}})
 
-        provider_name = agent_row["provider"]
+        provider_name = player_row["provider"]
         if provider_name == "random":
-            from ...agent.random_agent import RandomAgent
-            agents_dict[aid] = RandomAgent(agent_id=aid, name=agent_row["name"])
+            agents_dict[pid] = RandomAgent(agent_id=pid)
         else:
-            from ...agent.llm_agent import LLMAgent
-            from ...llm.base import AbstractLLMProvider
-            # Build provider from agent row
-            api_key = agent_row.get("api_key", "")
+            api_key = player_row.get("api_key", "")
+            base_url = player_row.get("base_url")
             if provider_name == "claude":
                 from ...llm.claude import ClaudeProvider
                 provider: AbstractLLMProvider = ClaudeProvider(
-                    model=agent_row["model"], api_key=api_key,
+                    model=player_row["model"], api_key=api_key,
                 )
             else:
                 from ...llm.openai import OpenAIProvider
                 provider = OpenAIProvider(
-                    model=agent_row["model"], api_key=api_key,
+                    model=player_row["model"], api_key=api_key,
+                    base_url=base_url,
                 )
-            agents_dict[aid] = LLMAgent(
-                agent_id=aid,
-                name=agent_row["name"],
+            agents_dict[pid] = LLMAgent(
+                agent_id=pid,
                 provider=provider,
-                long_term_memory=agent_row.get("long_term_memory", ""),
-                system_prompt_override=agent_row.get("system_prompt_override"),
+                long_term_memory=player_row.get("long_term_memory", ""),
+                system_prompt_override=player_row.get("system_prompt"),
             )
 
     # Build seating from DB participants
@@ -295,15 +295,15 @@ async def start_match(match_id: str, request: Request, background_tasks: Backgro
 
     for p in participants:
         if p.get("seat_table_a"):
-            table_a[p["seat_table_a"]] = p["agent_id"]
+            table_a[p["seat_table_a"]] = p["player_id"]
             table_a_teams[p["seat_table_a"]] = p["team"]
-            agent_seats[p["agent_id"]] = ("A", p["seat_table_a"])
-            agent_teams[p["agent_id"]] = p["team"]
+            agent_seats[p["player_id"]] = ("A", p["seat_table_a"])
+            agent_teams[p["player_id"]] = p["team"]
         if p.get("seat_table_b"):
-            table_b[p["seat_table_b"]] = p["agent_id"]
+            table_b[p["seat_table_b"]] = p["player_id"]
             table_b_teams[p["seat_table_b"]] = p["team"]
-            agent_seats[p["agent_id"]] = ("B", p["seat_table_b"])
-            agent_teams[p["agent_id"]] = p["team"]
+            agent_seats[p["player_id"]] = ("B", p["seat_table_b"])
+            agent_teams[p["player_id"]] = p["team"]
 
     seating = MatchSeating(
         table_a=table_a,
@@ -363,7 +363,7 @@ async def pause_match(match_id: str, request: Request):
     if runner is None:
         raise HTTPException(400, detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": "No active runner found — match may be running externally"}})
 
-    runner.pause.request_pause()
+    runner.request_pause()
     repo.update_match_status(match_id, "paused")
     return {
         "status": "paused",
@@ -387,7 +387,8 @@ async def resume_match(match_id: str, request: Request):
     if runner is None:
         raise HTTPException(400, detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": "No active runner found"}})
 
-    runner.pause.request_resume()
+    runner.pause.resume()
+    runner.resume_tables()
     repo.update_match_status(match_id, "running")
     return {
         "status": "running",
@@ -397,13 +398,13 @@ async def resume_match(match_id: str, request: Request):
 
 @router.delete("/{match_id}", status_code=204)
 async def delete_match(match_id: str, request: Request):
-    """Delete a match. Only matches in 'created' status can be deleted."""
+    """Delete a match. Running matches must be stopped first."""
     repo = _repo(request)
     match = repo.get_match(match_id)
     if not match:
         raise HTTPException(404, detail={"error": {"code": "MATCH_NOT_FOUND", "message": f"Match not found: {match_id}"}})
-    if match["status"] != "created":
-        raise HTTPException(400, detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": "Only created matches can be deleted"}})
+    if match["status"] == "running":
+        raise HTTPException(400, detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": "Cannot delete a running match — stop it first"}})
 
     if not repo.delete_match_from_db(match_id):
         raise HTTPException(500, detail={"error": {"code": "INTERNAL_ERROR", "message": "Failed to delete match"}})

@@ -8,7 +8,6 @@ for persistence during match execution.
 from __future__ import annotations
 
 import sqlite3
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +32,7 @@ class DatabaseRepository:
     # ── lifecycle ───────────────────────────────────────────────────────────────
 
     def init(self) -> None:
-        """Initialize the database — create tables if not exist."""
+        """Initialize the database — create tables and run migrations."""
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = models.init_db(self._db_path)
 
@@ -48,34 +47,90 @@ class DatabaseRepository:
             raise RuntimeError("DatabaseRepository not initialized. Call init() first.")
         return self._conn
 
-    # ── agents ───────────────────────────────────────────────────────────────────
+    # ── player_configs ──────────────────────────────────────────────────────────
 
-    def create_agent(
+    def create_player_config(
         self,
         name: str,
         provider: str,
         model: str,
         api_key: str,
-        system_prompt_override: str | None = None,
-        long_term_memory: str = "",
-        agent_id: str = "",
+        base_url: str | None = None,
+        system_prompt: str | None = None,
+        config_id: str = "",
     ) -> str:
-        return models.insert_agent(
+        return models.insert_player_config(
             self.conn, name, provider, model, api_key,
-            system_prompt_override, long_term_memory, agent_id=agent_id,
+            base_url=base_url, system_prompt=system_prompt, config_id=config_id,
         )
 
-    def get_agent(self, agent_id: str) -> dict | None:
-        return models.get_agent(self.conn, agent_id)
+    def get_player_config(self, config_id: str) -> dict | None:
+        return models.get_player_config(self.conn, config_id)
 
-    def get_agent_by_name(self, name: str) -> dict | None:
-        return models.get_agent_by_name(self.conn, name)
+    def get_player_config_by_name(self, name: str) -> dict | None:
+        return models.get_player_config_by_name(self.conn, name)
 
-    def list_agents(self) -> list[dict]:
-        return models.list_agents(self.conn)
+    def list_player_configs(self) -> list[dict]:
+        return models.list_player_configs(self.conn)
 
-    def update_agent_long_term_memory(self, agent_id: str, memory: str) -> None:
-        models.update_agent_long_term_memory(self.conn, agent_id, memory)
+    def update_player_config(self, config_id: str, **kwargs: Any) -> bool:
+        return models.update_player_config(self.conn, config_id, **kwargs)
+
+    def delete_player_config(self, config_id: str) -> bool:
+        return models.delete_player_config(self.conn, config_id)
+
+    def count_players_for_config(self, config_id: str) -> int:
+        return models.count_players_for_config(self.conn, config_id)
+
+    # ── players ─────────────────────────────────────────────────────────────────
+
+    def create_player(
+        self,
+        config_id: str,
+        display_name: str,
+        long_term_memory: str = "",
+        player_id: str = "",
+    ) -> str:
+        return models.insert_player(
+            self.conn, config_id, display_name,
+            long_term_memory=long_term_memory, player_id=player_id,
+        )
+
+    def get_player(self, player_id: str) -> dict | None:
+        return models.get_player(self.conn, player_id)
+
+    def get_player_with_config(self, player_id: str) -> dict | None:
+        return models.get_player_with_config(self.conn, player_id)
+
+    def list_players(self, config_id: str | None = None) -> list[dict]:
+        return models.list_players(self.conn, config_id=config_id)
+
+    def list_players_with_config(self, config_id: str | None = None) -> list[dict]:
+        return models.list_players_with_config(self.conn, config_id=config_id)
+
+    def update_player_long_term_memory(self, player_id: str, memory: str) -> None:
+        models.update_player_long_term_memory(self.conn, player_id, memory)
+
+    def update_player_stats(
+        self,
+        player_id: str,
+        *,
+        matches_played_delta: int = 0,
+        matches_won_delta: int = 0,
+        total_score_delta: int = 0,
+    ) -> None:
+        models.update_player_stats(
+            self.conn, player_id,
+            matches_played_delta=matches_played_delta,
+            matches_won_delta=matches_won_delta,
+            total_score_delta=total_score_delta,
+        )
+
+    def update_player_by_id(self, player_id: str, **kwargs: Any) -> bool:
+        return models.update_player_by_id(self.conn, player_id, **kwargs)
+
+    def delete_player(self, player_id: str) -> bool:
+        return models.delete_player(self.conn, player_id)
 
     # ── matches ──────────────────────────────────────────────────────────────────
 
@@ -103,13 +158,13 @@ class DatabaseRepository:
     def add_participant(
         self,
         match_id: str,
-        agent_id: str,
+        player_id: str,
         team: str,
         seat_table_a: str | None = None,
         seat_table_b: str | None = None,
     ) -> str:
         return models.insert_participant(
-            self.conn, match_id, agent_id, team, seat_table_a, seat_table_b,
+            self.conn, match_id, player_id, team, seat_table_a, seat_table_b,
         )
 
     def get_participants(self, match_id: str) -> list[dict]:
@@ -195,7 +250,7 @@ class DatabaseRepository:
     def add_agent_thought(
         self,
         table_hand_id: str,
-        agent_id: str,
+        player_id: str,
         seat: str,
         phase: str,
         reasoning: str,
@@ -203,7 +258,7 @@ class DatabaseRepository:
         **kwargs: Any,
     ) -> str:
         return models.insert_agent_thought(
-            self.conn, table_hand_id, agent_id, seat, phase,
+            self.conn, table_hand_id, player_id, seat, phase,
             reasoning, decision, **kwargs,
         )
 
@@ -212,14 +267,14 @@ class DatabaseRepository:
     def add_reflection(
         self,
         table_hand_id: str,
-        agent_id: str,
+        player_id: str,
         seat: str,
         actual_role: str,
         reflection: str,
         short_term_memory: str,
     ) -> str:
         return models.insert_reflection(
-            self.conn, table_hand_id, agent_id, seat,
+            self.conn, table_hand_id, player_id, seat,
             actual_role, reflection, short_term_memory,
         )
 
@@ -227,28 +282,28 @@ class DatabaseRepository:
 
     def add_agent_memory(
         self,
-        agent_id: str,
+        player_id: str,
         memory_type: str,
         content: str,
         match_id: str | None = None,
     ) -> str:
         return models.insert_agent_memory(
-            self.conn, agent_id, memory_type, content, match_id,
+            self.conn, player_id, memory_type, content, match_id,
         )
 
     def get_agent_memories(
         self,
-        agent_id: str,
+        player_id: str,
         match_id: str | None = None,
         memory_type: str | None = None,
     ) -> list[dict]:
-        return models.get_agent_memories(self.conn, agent_id, match_id, memory_type)
+        return models.get_agent_memories(self.conn, player_id, match_id, memory_type)
 
     # ── llm_call_logs ───────────────────────────────────────────────────────────
 
     def add_llm_call_log(
         self,
-        agent_id: str,
+        player_id: str,
         phase: str,
         provider: str,
         model: str,
@@ -256,7 +311,7 @@ class DatabaseRepository:
         **kwargs: Any,
     ) -> str:
         return models.insert_llm_call_log(
-            self.conn, agent_id, phase, provider, model, success, **kwargs,
+            self.conn, player_id, phase, provider, model, success, **kwargs,
         )
 
     # ── initial_hands / remaining_hands ──────────────────────────────────────────
@@ -302,12 +357,6 @@ class DatabaseRepository:
 
     def get_table_hand(self, table_hand_id: str) -> dict | None:
         return models.get_table_hand(self.conn, table_hand_id)
-
-    def update_agent_by_id(self, agent_id: str, **kwargs: str) -> bool:
-        return models.update_agent_by_id(self.conn, agent_id, **kwargs)
-
-    def delete_agent_from_db(self, agent_id: str) -> bool:
-        return models.delete_agent_from_db(self.conn, agent_id)
 
     def delete_match_from_db(self, match_id: str) -> bool:
         return models.delete_match_from_db(self.conn, match_id)

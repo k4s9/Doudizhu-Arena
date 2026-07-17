@@ -76,17 +76,21 @@ def _build_match_state(repo, match: dict, runner) -> dict[str, Any]:
         state = table_runner._state
         players: dict[str, dict[str, Any]] = {}
         for seat in ["S", "E", "N", "W"]:
-            agent_id = state.seat_agents.get(seat, "")
-            agent = repo.get_agent(agent_id) if agent_id else None
+            player_id = state.seat_agents.get(seat, "")
+            player = repo.get_player(player_id) if player_id else None
             team = state.seat_teams.get(seat, "")
             role = state.role_of(seat) if state.phase and state.phase.value not in ("dealing",) else ""
             hand = state.live_hands.get(seat)
             hand_size = hand.size if hand else 0
+            # Include hand cards for spectator view (god mode)
+            hand_cards = [str(c) for c in hand.cards] if hand else []
             players[seat] = {
-                "agent_name": agent["name"] if agent else "",
+                "agent_name": player["display_name"] if player else "",
+                "player_id": player_id,
                 "team": team,
                 "role": role,
                 "hand_size": hand_size,
+                "hand_cards": hand_cards,
             }
 
         play_history = []
@@ -112,16 +116,41 @@ def _build_match_state(repo, match: dict, runner) -> dict[str, Any]:
                 "max_rank": str(state.current_trick.main_rank) if state.current_trick.main_rank else None,
             }
 
+        # Build bidding_order from game state
+        bidding_order = list(state.bidding_order) if state.bidding_order else []
+        idle_seat = getattr(state, 'original_idle', '')
+        effective_idle = getattr(state, 'effective_idle', idle_seat)
+
+        # Build bidding_history from game state
+        bidding_history = [
+            {"seat": r.seat, "bid": r.bid}
+            for r in state.bidding_history
+        ]
+
+        # Determine current_seat for all phases
+        current_seat = ""
+        if state.phase:
+            if state.phase.value == "playing":
+                current_seat = state.current_player
+            elif state.phase.value == "bidding" and state.bidding_order and state.current_bidder_idx < len(state.bidding_order):
+                current_seat = state.bidding_order[state.current_bidder_idx]
+
         tables[table_key] = {
             "phase": state.phase.value if state.phase else "",
             "hand_num": state.hand_num,
-            "current_seat": state.current_player if state.phase and state.phase.value == "playing" else "",
+            "current_seat": current_seat,
             "current_pattern": current_pattern,
             "dealer": state.dealer,
             "landlord": state.landlord,
             "dizhu_cards": [str(c) for c in state.dizhu_cards] if state.dizhu_cards else [],
             "players": players,
             "play_history": play_history,
+            "bidding_order": bidding_order,
+            "idle_seat": idle_seat,
+            "effective_idle": effective_idle,
+            "bidding_history": bidding_history,
+            "current_high_bid": state.current_high_bid,
+            "current_high_bidder": state.current_high_bidder,
             "time_remaining": {
                 "red_team_ms": 0,
                 "blue_team_ms": 0,
@@ -207,7 +236,7 @@ async def match_ws(ws: WebSocket, match_id: str):
                 active_matches = _get_active_matches(ws)
                 r = active_matches.get(match_id)
                 if r:
-                    r.pause.request_pause()
+                    r.request_pause()
                     repo.update_match_status(match_id, "paused")
                     bus2 = r.event_bus if hasattr(r, 'event_bus') else None
                     if bus2:
@@ -217,7 +246,10 @@ async def match_ws(ws: WebSocket, match_id: str):
                 active_matches = _get_active_matches(ws)
                 r = active_matches.get(match_id)
                 if r:
-                    r.pause.request_resume()
+                    # Resume match-level pause (unblocks _check_pause in run() loop)
+                    r.pause.resume()
+                    # Resume table-level pauses (unblocks _check_pause in play/bid loops)
+                    r.resume_tables()
                     repo.update_match_status(match_id, "running")
                     bus2 = r.event_bus if hasattr(r, 'event_bus') else None
                     if bus2:

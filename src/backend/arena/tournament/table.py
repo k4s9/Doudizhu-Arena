@@ -6,6 +6,7 @@ Integrates TimeoutManager and PauseManager from the engine layer.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from dataclasses import dataclass, field
@@ -158,6 +159,17 @@ class TableRunner:
                     status="void",
                     void=True,
                 )
+            # Emit hand_ended for void tables too (so frontend knows this table is done)
+            if self.event_bus:
+                await self.event_bus.emit_hand_ended(
+                    table=self.table,
+                    hand_num=hand_num,
+                    winner_team="",
+                    winner_role="void",
+                    score={"base": 0, "multiplier": 0, "total": 0, "breakdown": {}},
+                    remaining_hands={s: [str(c) for c in self._state.initial_hands.get(s, ())] for s in SEATS},
+                    timestamp_ms=self._now_ms(),
+                )
             return HandResult(
                 table=self.table,
                 hand_num=hand_num,
@@ -284,10 +296,24 @@ class TableRunner:
                 reasoning = "[托管] auto-pass"
             else:
                 ctx = self._build_bidding_context(seat)
+                team = self.teams.get(seat, "")
+                timeout_seconds = self.timeout.bidding_limit(seat)
+                self.timeout.start_turn(seat)
                 try:
-                    bid = await agent.decide_bid(ctx)
+                    bid = await asyncio.wait_for(
+                        agent.decide_bid(ctx),
+                        timeout=timeout_seconds,
+                    )
+                    self.timeout.end_turn(seat, team, success=True)
+                    # Capture reasoning from agent after successful decision
+                    reasoning = agent.get_last_reasoning() if hasattr(agent, 'get_last_reasoning') else ""
+                except asyncio.TimeoutError:
+                    self.timeout.end_turn(seat, team, success=False)
+                    bid = 0
+                    reasoning = f"[超时] bidding timeout after {timeout_seconds}s"
                 except Exception:
                     # Agent error → treat as pass
+                    self.timeout.end_turn(seat, team, success=False)
                     bid = 0
                     reasoning = "[错误] agent error, fallback to pass"
 
@@ -308,11 +334,11 @@ class TableRunner:
                 )
                 self.db_repo.add_agent_thought(
                     self._current_table_hand_id,
-                    self.agents[seat].agent_id,
-                    seat,
-                    "bidding",
-                    reasoning,
-                    f'{{"bid": {bid}}}',
+                    player_id=self.agents[seat].agent_id,
+                    seat=seat,
+                    phase="bidding",
+                    reasoning=reasoning,
+                    decision=f'{{"bid": {bid}}}',
                     timestamp_ms=ts,
                 )
 
@@ -347,28 +373,50 @@ class TableRunner:
             if result.get("phase") == "bidding_done" or result.get("void"):
                 if self.event_bus:
                     is_void = bool(result.get("void"))
-                    dizhu_cards = []
-                    idle_detail = {
-                        "triggered": False,
-                        "idle_seat": self._state.original_idle,
-                        "reason": "同队地主无需参与" if not is_void else "流局",
-                    }
-                    if not is_void:
-                        # Finalize bidding early to get idle participation info
-                        temp_state = self._state
+                    # Compute idle_detail BEFORE finalize_bidding so we can send
+                    # the correct effective_idle to the frontend.
+                    # Replicating finalize_bidding logic inline for the event payload:
+                    landlord_seat = self._state.current_high_bidder if not is_void else ""
+                    if not is_void and landlord_seat:
+                        landlord_team = self._state.seat_teams[landlord_seat]
+                        idle_team = self._state.seat_teams[self._state.original_idle]
+                        idle_triggered = (landlord_team != idle_team)
+                        replaced = ""
+                        effective = self._state.original_idle
+                        if idle_triggered:
+                            for seat in SEATS:
+                                if (
+                                    seat != landlord_seat
+                                    and seat != self._state.original_idle
+                                    and self._state.seat_teams[seat] == landlord_team
+                                ):
+                                    replaced = seat
+                                    break
+                            effective = replaced
                         idle_detail = {
-                            "triggered": temp_state.idle_participation_triggered,
-                            "idle_seat": temp_state.original_idle,
+                            "triggered": idle_triggered,
+                            "idle_seat": self._state.original_idle,
+                            "effective_idle": effective,
+                            "replaced_farmer": replaced,
                             "reason": (
-                                f"地主({temp_state.landlord})非闲家({temp_state.original_idle})本队"
-                                if temp_state.idle_participation_triggered
+                                f"地主({landlord_seat})非闲家({self._state.original_idle})本队，"
+                                f"闲家替换{replaced}"
+                                if idle_triggered
                                 else "同队地主无需参与"
                             ),
                         }
+                    else:
+                        idle_detail = {
+                            "triggered": False,
+                            "idle_seat": self._state.original_idle,
+                            "effective_idle": self._state.original_idle,
+                            "reason": "流局" if is_void else "同队地主无需参与",
+                        }
+                    dizhu_cards = [str(c) for c in self._state.dizhu_cards] if self._state.dizhu_cards else []
                     await self.event_bus.emit_bidding_complete(
                         table=self.table,
                         hand_num=self._state.hand_num,
-                        landlord_seat=self._state.current_high_bidder if not is_void else "",
+                        landlord_seat=landlord_seat,
                         final_bid=self._state.current_high_bid if not is_void else 0,
                         dizhu_cards=dizhu_cards,
                         void=is_void,
@@ -425,16 +473,29 @@ class TableRunner:
                 reasoning = "[托管] auto-play" if cards else "[托管] auto-pass"
             else:
                 ctx = self._build_play_context(seat)
+                team = self.teams.get(seat, "")
+                is_leader = self._state.current_trick is None
+                timeout_seconds = self.timeout.effective_individual_limit(seat, team)
+                self.timeout.start_turn(seat)
                 try:
                     # try to get both reasoning and cards from agent
-                    play_result = await agent.decide_play(ctx)
+                    play_result = await asyncio.wait_for(
+                        agent.decide_play(ctx),
+                        timeout=timeout_seconds,
+                    )
+                    self.timeout.end_turn(seat, team, success=True)
                     if isinstance(play_result, tuple) and len(play_result) == 2:
                         cards_list, reasoning = play_result
                         cards = list(cards_list)
                     else:
                         cards = list(play_result)
                         reasoning = agent.get_last_reasoning() if hasattr(agent, 'get_last_reasoning') else ""
+                except asyncio.TimeoutError:
+                    self.timeout.end_turn(seat, team, success=False)
+                    cards = []  # timeout → pass
+                    reasoning = f"[超时] play timeout after {timeout_seconds}s"
                 except Exception:
+                    self.timeout.end_turn(seat, team, success=False)
                     cards = []  # error → pass
                     reasoning = "[错误] agent error, fallback to pass"
 
@@ -477,11 +538,11 @@ class TableRunner:
                 # Persist agent thought
                 self.db_repo.add_agent_thought(
                     self._current_table_hand_id,
-                    self.agents[seat].agent_id,
-                    seat,
-                    "playing",
-                    reasoning if not is_trusted else "[托管] auto-play",
-                    json.dumps({"type": play_record.action_type, "cards": [str(c) for c in play_record.cards] if play_record.cards else []}),
+                    player_id=self.agents[seat].agent_id,
+                    seat=seat,
+                    phase="playing",
+                    reasoning=reasoning if not is_trusted else "[托管] auto-play",
+                    decision=json.dumps({"type": play_record.action_type, "cards": [str(c) for c in play_record.cards] if play_record.cards else []}),
                     round_num=play_record.round_num,
                     sub_round=play_record.sub_round,
                     timestamp_ms=ts,
@@ -602,7 +663,7 @@ class TableRunner:
                     "seat": r.seat,
                     "action_type": r.action_type,
                     "cards": list(r.cards) if r.cards else None,
-                    "trick_display": r.trick.display() if r.trick else None,
+                    "trick_display": r.trick.rank_only_display() if r.trick else None,
                 }
                 for r in self._state.play_history
             ],
@@ -653,11 +714,11 @@ class TableRunner:
                 # Persist reflection
                 self.db_repo.add_reflection(
                     self._current_table_hand_id,
-                    agent.agent_id,
-                    seat,
-                    actual_role,
-                    reflection_text,
-                    short_term,
+                    player_id=agent.agent_id,
+                    seat=seat,
+                    actual_role=actual_role,
+                    reflection=reflection_text,
+                    short_term_memory=short_term,
                 )
                 if short_term:
                     self.db_repo.add_agent_memory(

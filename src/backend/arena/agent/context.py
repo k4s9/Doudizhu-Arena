@@ -104,11 +104,11 @@ class ContextBuilder:
                 current_line_parts.append(f"{seat}：Pass")
             else:
                 if seat == own_seat:
-                    # Own cards: full suit+rank
+                    # Own cards: full suit+rank from raw cards
                     cards_str = "".join(str(c) for c in cards)
                     current_line_parts.append(f"你：{cards_str}")
                 else:
-                    # Others: rank-only + pattern display
+                    # Others: rank-only display only (no suit!)
                     if trick_display:
                         current_line_parts.append(f"{seat}：{trick_display}")
                     else:
@@ -161,10 +161,17 @@ class ContextBuilder:
         """Format the current pattern to beat."""
         if trick is None:
             return "新一轮，自由出牌（场上无牌型需要跟）"
+        # Clarify comparison rule for structured patterns
+        comparison_hint = f"你需要出更大的{trick.pattern.value}"
+        if trick.pattern.value in ("三带一", "三带二"):
+            comparison_hint += f"（只需三条部分rank > {trick.main_rank.display if trick.main_rank else '?'}，带的牌任意）"
+        elif trick.pattern.value in ("四带二单", "四带二同单", "四带二对"):
+            comparison_hint += f"（只需四同rank部分rank > {trick.main_rank.display if trick.main_rank else '?'}，带的牌任意）"
+        comparison_hint += "，或者出炸弹/火箭来压"
         return (
             f"场上牌型：{trick.display()}（{trick.pattern.value}）\n"
             f"  领出者：{trick_leader}\n"
-            f"  你需要出更大的{trick.pattern.value}，或者出炸弹/火箭来压"
+            f"  {comparison_hint}"
         )
 
     # ── complete context builder methods ─────────────────────────────────────

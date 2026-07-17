@@ -1,8 +1,10 @@
-"""SQLite DDL + CRUD functions for all 13 tables.
+"""SQLite DDL + CRUD functions for all tables.
 
 Uses sqlite3 from stdlib — no ORM dependency.
 All primary keys are UUID strings. Timestamps are ISO 8601 strings.
 Composite data (cards, configs) stored as JSON TEXT.
+
+v2 schema: player_configs + players replace the old agents table.
 """
 
 from __future__ import annotations
@@ -15,17 +17,31 @@ from typing import Any
 # ── DDL ──────────────────────────────────────────────────────────────────────────
 
 SCHEMA_DDL = """
-CREATE TABLE IF NOT EXISTS agents (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL,
-    provider    TEXT NOT NULL,
-    model       TEXT NOT NULL,
-    api_key     TEXT NOT NULL,
-    system_prompt_override TEXT,
-    long_term_memory    TEXT DEFAULT '',
-    created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS player_configs (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL UNIQUE,
+    provider        TEXT NOT NULL,
+    model           TEXT NOT NULL,
+    api_key         TEXT NOT NULL,
+    base_url        TEXT,
+    system_prompt   TEXT,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS players (
+    id                  TEXT PRIMARY KEY,
+    config_id           TEXT NOT NULL REFERENCES player_configs(id),
+    display_name        TEXT NOT NULL,
+    long_term_memory    TEXT DEFAULT '',
+    matches_played      INTEGER DEFAULT 0,
+    matches_won         INTEGER DEFAULT 0,
+    total_score         INTEGER DEFAULT 0,
+    created_at          TEXT NOT NULL,
+    updated_at          TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_players_config ON players(config_id);
 
 CREATE TABLE IF NOT EXISTS matches (
     id              TEXT PRIMARY KEY,
@@ -46,7 +62,7 @@ CREATE TABLE IF NOT EXISTS matches (
 CREATE TABLE IF NOT EXISTS match_participants (
     id              TEXT PRIMARY KEY,
     match_id        TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    player_id       TEXT NOT NULL REFERENCES players(id),
     team            TEXT NOT NULL,
     seat_table_a    TEXT,
     seat_table_b    TEXT,
@@ -54,7 +70,7 @@ CREATE TABLE IF NOT EXISTS match_participants (
 );
 
 CREATE INDEX IF NOT EXISTS idx_participants_match ON match_participants(match_id);
-CREATE INDEX IF NOT EXISTS idx_participants_agent ON match_participants(agent_id);
+CREATE INDEX IF NOT EXISTS idx_participants_player ON match_participants(player_id);
 
 CREATE TABLE IF NOT EXISTS hands (
     id              TEXT PRIMARY KEY,
@@ -132,7 +148,7 @@ CREATE INDEX IF NOT EXISTS idx_play_hand_seq ON play_actions(table_hand_id, seq)
 CREATE TABLE IF NOT EXISTS agent_thoughts (
     id              TEXT PRIMARY KEY,
     table_hand_id   TEXT NOT NULL REFERENCES table_hands(id) ON DELETE CASCADE,
-    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    player_id       TEXT NOT NULL,
     seat            TEXT NOT NULL,
     phase           TEXT NOT NULL,
     round           INTEGER,
@@ -145,12 +161,12 @@ CREATE TABLE IF NOT EXISTS agent_thoughts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_thoughts_hand ON agent_thoughts(table_hand_id);
-CREATE INDEX IF NOT EXISTS idx_thoughts_agent ON agent_thoughts(agent_id);
+CREATE INDEX IF NOT EXISTS idx_thoughts_player ON agent_thoughts(player_id);
 
 CREATE TABLE IF NOT EXISTS reflections (
     id              TEXT PRIMARY KEY,
     table_hand_id   TEXT NOT NULL REFERENCES table_hands(id) ON DELETE CASCADE,
-    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    player_id       TEXT NOT NULL,
     seat            TEXT NOT NULL,
     actual_role     TEXT NOT NULL,
     reflection      TEXT NOT NULL,
@@ -159,24 +175,24 @@ CREATE TABLE IF NOT EXISTS reflections (
 );
 
 CREATE INDEX IF NOT EXISTS idx_reflections_hand ON reflections(table_hand_id);
-CREATE INDEX IF NOT EXISTS idx_reflections_agent ON reflections(agent_id);
+CREATE INDEX IF NOT EXISTS idx_reflections_player ON reflections(player_id);
 
 CREATE TABLE IF NOT EXISTS agent_memories (
     id              TEXT PRIMARY KEY,
-    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    player_id       TEXT NOT NULL,
     match_id        TEXT,
     memory_type     TEXT NOT NULL,
     content         TEXT NOT NULL,
     created_at      TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_memories_agent ON agent_memories(agent_id);
-CREATE INDEX IF NOT EXISTS idx_memories_agent_match ON agent_memories(agent_id, match_id);
+CREATE INDEX IF NOT EXISTS idx_memories_player ON agent_memories(player_id);
+CREATE INDEX IF NOT EXISTS idx_memories_player_match ON agent_memories(player_id, match_id);
 
 CREATE TABLE IF NOT EXISTS llm_call_logs (
     id              TEXT PRIMARY KEY,
     table_hand_id   TEXT REFERENCES table_hands(id) ON DELETE SET NULL,
-    agent_id        TEXT REFERENCES agents(id) ON DELETE SET NULL,
+    player_id       TEXT,
     phase           TEXT NOT NULL,
     provider        TEXT NOT NULL,
     model           TEXT NOT NULL,
@@ -190,7 +206,7 @@ CREATE TABLE IF NOT EXISTS llm_call_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_llm_logs_hand ON llm_call_logs(table_hand_id);
-CREATE INDEX IF NOT EXISTS idx_llm_logs_agent ON llm_call_logs(agent_id);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_player ON llm_call_logs(player_id);
 
 CREATE TABLE IF NOT EXISTS initial_hands (
     id              TEXT PRIMARY KEY,
@@ -230,78 +246,456 @@ def _cards_json(cards) -> str:
     return json.dumps([str(c) for c in cards], ensure_ascii=False)
 
 
-# ── initialization ──────────────────────────────────────────────────────────────
+# ── helpers: row → dict ──────────────────────────────────────────────────────────
+
+def _config_row_to_dict(row: tuple) -> dict:
+    cols = [
+        "id", "name", "provider", "model", "api_key", "base_url",
+        "system_prompt", "created_at", "updated_at",
+    ]
+    return dict(zip(cols, row))
+
+
+def _player_row_to_dict(row: tuple) -> dict:
+    cols = [
+        "id", "config_id", "display_name", "long_term_memory",
+        "matches_played", "matches_won", "total_score",
+        "created_at", "updated_at",
+    ]
+    return dict(zip(cols, row))
+
+
+# ── initialization + migration ───────────────────────────────────────────────────
 
 def init_db(path: str) -> sqlite3.Connection:
     """Create all tables and return a connection with WAL mode + foreign keys."""
     conn = sqlite3.connect(path)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA foreign_keys=OFF")
+
+    # Run migration first: renames agent_id → player_id on old tables,
+    # creates player_configs + players, drops agents.
+    _migrate_v1_to_v2(conn)
+
+    # Now create/update tables and indexes — safe because old columns are migrated.
+    # The SCHEMA_DDL handles both fresh DBs (all tables new) and migrated DBs
+    # (tables exist, CREATE IF NOT EXISTS is a no-op, but new indexes are created).
     conn.executescript(SCHEMA_DDL)
+
+    conn.execute("PRAGMA foreign_keys=ON")
     conn.commit()
     return conn
 
 
-# ── agents ───────────────────────────────────────────────────────────────────────
+def _migrate_v1_to_v2(conn: sqlite3.Connection) -> None:
+    """Migrate from v1 (agents table) to v2 (player_configs + players).
 
-def insert_agent(
+    Idempotent — checks PRAGMA user_version and skips if already migrated.
+    Preserves existing data: each agent row becomes one player_config + one player.
+    """
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    if version >= 2:
+        return
+
+    # Check if old agents table exists
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='agents'"
+    ).fetchone()
+    if row is None:
+        # No old agents table — mark as v2 and return
+        conn.execute("PRAGMA user_version = 2")
+        conn.commit()
+        return
+
+    # Create v2 tables first (they won't exist yet on a v1 DB)
+    conn.execute("""CREATE TABLE IF NOT EXISTS player_configs (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, provider TEXT NOT NULL,
+        model TEXT NOT NULL, api_key TEXT NOT NULL, base_url TEXT,
+        system_prompt TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS players (
+        id TEXT PRIMARY KEY, config_id TEXT NOT NULL REFERENCES player_configs(id),
+        display_name TEXT NOT NULL, long_term_memory TEXT DEFAULT '',
+        matches_played INTEGER DEFAULT 0, matches_won INTEGER DEFAULT 0,
+        total_score INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_players_config ON players(config_id)")
+
+    # Read all existing agents
+    agents = conn.execute("SELECT * FROM agents").fetchall()
+
+    # Build column index map for the agents row
+    cols = [c[1] for c in conn.execute("PRAGMA table_info(agents)")]
+    col_idx = {name: i for i, name in enumerate(cols)}
+
+    agent_to_player: dict[str, str] = {}  # old agent_id → new player_id
+
+    for agent in agents:
+        old_id = agent[col_idx["id"]]
+        name = agent[col_idx["name"]]
+        provider = agent[col_idx["provider"]]
+        model = agent[col_idx["model"]]
+        api_key = agent[col_idx["api_key"]]
+        base_url = agent[col_idx["base_url"]] if "base_url" in col_idx else None
+        system_prompt = (
+            agent[col_idx["system_prompt_override"]]
+            if "system_prompt_override" in col_idx
+            else None
+        )
+        long_term_memory = (
+            agent[col_idx["long_term_memory"]]
+            if "long_term_memory" in col_idx
+            else ""
+        )
+        created_at = agent[col_idx["created_at"]]
+        updated_at = agent[col_idx["updated_at"]]
+
+        # Insert config (the template part)
+        config_id = _uid()
+        now = _now()
+        existing = conn.execute(
+            "SELECT id FROM player_configs WHERE name = ?", (name,)
+        ).fetchone()
+        if existing:
+            config_id = existing[0]
+        else:
+            conn.execute(
+                """INSERT INTO player_configs (id, name, provider, model, api_key,
+                   base_url, system_prompt, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (config_id, name, provider, model, api_key,
+                 base_url, system_prompt, created_at, updated_at),
+            )
+
+        # Create one player instance per old agent (preserving its long_term_memory)
+        player_id = _uid()
+        existing_player = conn.execute(
+            "SELECT id FROM players WHERE display_name = ? AND config_id = ?",
+            (name, config_id),
+        ).fetchone()
+        if existing_player:
+            player_id = existing_player[0]
+        else:
+            conn.execute(
+                """INSERT INTO players (id, config_id, display_name, long_term_memory,
+                   matches_played, matches_won, total_score, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, 0, 0, 0, ?, ?)""",
+                (player_id, config_id, name, long_term_memory,
+                 created_at, now),
+            )
+        agent_to_player[old_id] = player_id
+
+    # Remap FK references in child tables
+    _remap_fk(conn, "match_participants", "agent_id", "player_id", agent_to_player)
+    _remap_fk(conn, "agent_thoughts", "agent_id", "player_id", agent_to_player)
+    _remap_fk(conn, "reflections", "agent_id", "player_id", agent_to_player)
+    _remap_fk(conn, "agent_memories", "agent_id", "player_id", agent_to_player)
+    _remap_fk(conn, "llm_call_logs", "agent_id", "player_id", agent_to_player)
+
+    # Drop old index on agent_id columns
+    for idx in [
+        "idx_participants_agent", "idx_thoughts_agent",
+        "idx_reflections_agent", "idx_memories_agent",
+        "idx_memories_agent_match", "idx_llm_logs_agent",
+    ]:
+        try:
+            conn.execute(f"DROP INDEX IF EXISTS {idx}")
+        except sqlite3.OperationalError:
+            pass
+
+    # Drop old agents table
+    conn.execute("DROP TABLE agents")
+
+    # Mark migration complete
+    conn.execute("PRAGMA user_version = 2")
+    conn.commit()
+
+
+def _remap_fk(
+    conn: sqlite3.Connection,
+    table: str,
+    old_col: str,
+    new_col: str,
+    mapping: dict[str, str],
+) -> None:
+    """Rename an FK column and update its values atomically."""
+    # Check if table exists and old_col exists
+    tbl_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)
+    ).fetchone()
+    if tbl_check is None:
+        return
+
+    existing_cols = {c[1] for c in conn.execute(f"PRAGMA table_info({table})")}
+    if old_col not in existing_cols:
+        return  # already migrated or column doesn't exist
+
+    # Rename the column
+    conn.execute(f"ALTER TABLE {table} RENAME COLUMN {old_col} TO {new_col}")
+
+    # Update values
+    for old_id, new_id in mapping.items():
+        conn.execute(
+            f"UPDATE {table} SET {new_col} = ? WHERE {new_col} = ?",
+            (new_id, old_id),
+        )
+
+
+# ── player_configs ───────────────────────────────────────────────────────────────
+
+def insert_player_config(
     conn: sqlite3.Connection,
     name: str,
     provider: str,
     model: str,
     api_key: str,
-    system_prompt_override: str | None = None,
-    long_term_memory: str = "",
-    agent_id: str = "",
+    base_url: str | None = None,
+    system_prompt: str | None = None,
+    config_id: str = "",
 ) -> str:
-    agent_id = agent_id or _uid()
+    config_id = config_id or _uid()
     now = _now()
     conn.execute(
-        """INSERT OR IGNORE INTO agents (id, name, provider, model, api_key,
-           system_prompt_override, long_term_memory, created_at, updated_at)
+        """INSERT OR IGNORE INTO player_configs (id, name, provider, model, api_key,
+           base_url, system_prompt, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (agent_id, name, provider, model, api_key,
-         system_prompt_override, long_term_memory, now, now),
+        (config_id, name, provider, model, api_key,
+         base_url, system_prompt, now, now),
     )
     conn.commit()
-    return agent_id
+    return config_id
 
 
-def get_agent(conn: sqlite3.Connection, agent_id: str) -> dict | None:
-    row = conn.execute("SELECT * FROM agents WHERE id = ?", (agent_id,)).fetchone()
+def get_player_config(conn: sqlite3.Connection, config_id: str) -> dict | None:
+    row = conn.execute(
+        "SELECT * FROM player_configs WHERE id = ?", (config_id,)
+    ).fetchone()
     if row is None:
         return None
-    return _agent_row_to_dict(row)
+    return _config_row_to_dict(row)
 
 
-def get_agent_by_name(conn: sqlite3.Connection, name: str) -> dict | None:
-    row = conn.execute("SELECT * FROM agents WHERE name = ?", (name,)).fetchone()
+def get_player_config_by_name(conn: sqlite3.Connection, name: str) -> dict | None:
+    row = conn.execute(
+        "SELECT * FROM player_configs WHERE name = ?", (name,)
+    ).fetchone()
     if row is None:
         return None
-    return _agent_row_to_dict(row)
+    return _config_row_to_dict(row)
 
 
-def list_agents(conn: sqlite3.Connection) -> list[dict]:
-    rows = conn.execute("SELECT * FROM agents ORDER BY created_at DESC").fetchall()
-    return [_agent_row_to_dict(r) for r in rows]
+def list_player_configs(conn: sqlite3.Connection) -> list[dict]:
+    rows = conn.execute(
+        "SELECT * FROM player_configs ORDER BY created_at DESC"
+    ).fetchall()
+    return [_config_row_to_dict(r) for r in rows]
 
 
-def update_agent_long_term_memory(
-    conn: sqlite3.Connection, agent_id: str, memory: str
-) -> None:
+def update_player_config(
+    conn: sqlite3.Connection,
+    config_id: str,
+    *,
+    name: str | None = None,
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    system_prompt: str | None = None,
+    provider: str | None = None,
+) -> bool:
+    """Update player_config fields. Returns True if found and updated."""
+    updates = []
+    params: list[Any] = []
+    for field, value in [
+        ("name", name), ("model", model), ("api_key", api_key),
+        ("base_url", base_url), ("system_prompt", system_prompt),
+        ("provider", provider),
+    ]:
+        if value is not None:
+            updates.append(f"{field} = ?")
+            params.append(value)
+    if not updates:
+        return False
+    updates.append("updated_at = ?")
+    params.append(_now())
+    params.append(config_id)
     conn.execute(
-        "UPDATE agents SET long_term_memory = ?, updated_at = ? WHERE id = ?",
-        (memory, _now(), agent_id),
+        f"UPDATE player_configs SET {', '.join(updates)} WHERE id = ?",
+        params,
     )
     conn.commit()
+    return conn.total_changes > 0
 
 
-def _agent_row_to_dict(row: tuple) -> dict:
+def delete_player_config(conn: sqlite3.Connection, config_id: str) -> bool:
+    conn.execute("DELETE FROM player_configs WHERE id = ?", (config_id,))
+    conn.commit()
+    return conn.total_changes > 0
+
+
+def count_players_for_config(conn: sqlite3.Connection, config_id: str) -> int:
+    return conn.execute(
+        "SELECT COUNT(*) FROM players WHERE config_id = ?", (config_id,)
+    ).fetchone()[0]
+
+
+# ── players ──────────────────────────────────────────────────────────────────────
+
+def insert_player(
+    conn: sqlite3.Connection,
+    config_id: str,
+    display_name: str,
+    long_term_memory: str = "",
+    player_id: str = "",
+) -> str:
+    player_id = player_id or _uid()
+    now = _now()
+    conn.execute(
+        """INSERT INTO players (id, config_id, display_name, long_term_memory,
+           matches_played, matches_won, total_score, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 0, 0, 0, ?, ?)""",
+        (player_id, config_id, display_name, long_term_memory, now, now),
+    )
+    conn.commit()
+    return player_id
+
+
+def get_player(conn: sqlite3.Connection, player_id: str) -> dict | None:
+    row = conn.execute(
+        "SELECT * FROM players WHERE id = ?", (player_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    return _player_row_to_dict(row)
+
+
+def get_player_with_config(conn: sqlite3.Connection, player_id: str) -> dict | None:
+    """Return player merged with its config fields (provider, model, api_key, etc.)."""
+    row = conn.execute(
+        """SELECT p.*, c.name AS config_name, c.provider, c.model, c.api_key,
+                  c.base_url, c.system_prompt
+           FROM players p
+           JOIN player_configs c ON p.config_id = c.id
+           WHERE p.id = ?""",
+        (player_id,),
+    ).fetchone()
+    if row is None:
+        return None
     cols = [
-        "id", "name", "provider", "model", "api_key",
-        "system_prompt_override", "long_term_memory", "created_at", "updated_at",
+        "id", "config_id", "display_name", "long_term_memory",
+        "matches_played", "matches_won", "total_score",
+        "created_at", "updated_at",
+        "config_name", "provider", "model", "api_key", "base_url", "system_prompt",
     ]
     return dict(zip(cols, row))
+
+
+def list_players(
+    conn: sqlite3.Connection,
+    config_id: str | None = None,
+) -> list[dict]:
+    """List players, optionally filtered by config_id."""
+    if config_id:
+        rows = conn.execute(
+            "SELECT * FROM players WHERE config_id = ? ORDER BY created_at DESC",
+            (config_id,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM players ORDER BY created_at DESC"
+        ).fetchall()
+    return [_player_row_to_dict(r) for r in rows]
+
+
+def list_players_with_config(
+    conn: sqlite3.Connection,
+    config_id: str | None = None,
+) -> list[dict]:
+    """List players with their config fields joined in."""
+    base = """SELECT p.*, c.name AS config_name, c.provider, c.model
+              FROM players p
+              JOIN player_configs c ON p.config_id = c.id"""
+    if config_id:
+        rows = conn.execute(
+            f"{base} WHERE p.config_id = ? ORDER BY p.created_at DESC",
+            (config_id,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            f"{base} ORDER BY p.created_at DESC"
+        ).fetchall()
+    results = []
+    for r in rows:
+        d = _player_row_to_dict(r)
+        d["config_name"] = r[9] if len(r) > 9 else ""
+        d["provider"] = r[10] if len(r) > 10 else ""
+        d["model"] = r[11] if len(r) > 11 else ""
+        results.append(d)
+    return results
+
+
+def update_player_long_term_memory(
+    conn: sqlite3.Connection, player_id: str, memory: str
+) -> None:
+    conn.execute(
+        "UPDATE players SET long_term_memory = ?, updated_at = ? WHERE id = ?",
+        (memory, _now(), player_id),
+    )
+    conn.commit()
+
+
+def update_player_stats(
+    conn: sqlite3.Connection,
+    player_id: str,
+    *,
+    matches_played_delta: int = 0,
+    matches_won_delta: int = 0,
+    total_score_delta: int = 0,
+) -> None:
+    conn.execute(
+        """UPDATE players SET
+           matches_played = matches_played + ?,
+           matches_won = matches_won + ?,
+           total_score = total_score + ?,
+           updated_at = ?
+           WHERE id = ?""",
+        (matches_played_delta, matches_won_delta, total_score_delta,
+         _now(), player_id),
+    )
+    conn.commit()
+
+
+def update_player_by_id(
+    conn: sqlite3.Connection,
+    player_id: str,
+    *,
+    display_name: str | None = None,
+    long_term_memory: str | None = None,
+) -> bool:
+    """Update player fields. Returns True if found and updated."""
+    updates = []
+    params: list[Any] = []
+    for field, value in [
+        ("display_name", display_name),
+        ("long_term_memory", long_term_memory),
+    ]:
+        if value is not None:
+            updates.append(f"{field} = ?")
+            params.append(value)
+    if not updates:
+        return False
+    updates.append("updated_at = ?")
+    params.append(_now())
+    params.append(player_id)
+    conn.execute(
+        f"UPDATE players SET {', '.join(updates)} WHERE id = ?",
+        params,
+    )
+    conn.commit()
+    return conn.total_changes > 0
+
+
+def delete_player(conn: sqlite3.Connection, player_id: str) -> bool:
+    conn.execute("DELETE FROM players WHERE id = ?", (player_id,))
+    conn.commit()
+    return conn.total_changes > 0
 
 
 # ── matches ──────────────────────────────────────────────────────────────────────
@@ -399,17 +793,17 @@ def _match_row_to_dict(row: tuple) -> dict:
 def insert_participant(
     conn: sqlite3.Connection,
     match_id: str,
-    agent_id: str,
+    player_id: str,
     team: str,
     seat_table_a: str | None = None,
     seat_table_b: str | None = None,
 ) -> str:
     pid = _uid()
     conn.execute(
-        """INSERT INTO match_participants (id, match_id, agent_id, team,
+        """INSERT INTO match_participants (id, match_id, player_id, team,
            seat_table_a, seat_table_b, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (pid, match_id, agent_id, team, seat_table_a, seat_table_b, _now()),
+        (pid, match_id, player_id, team, seat_table_a, seat_table_b, _now()),
     )
     conn.commit()
     return pid
@@ -419,7 +813,8 @@ def get_participants(conn: sqlite3.Connection, match_id: str) -> list[dict]:
     rows = conn.execute(
         "SELECT * FROM match_participants WHERE match_id = ?", (match_id,)
     ).fetchall()
-    cols = ["id", "match_id", "agent_id", "team", "seat_table_a", "seat_table_b", "created_at"]
+    cols = ["id", "match_id", "player_id", "team",
+            "seat_table_a", "seat_table_b", "created_at"]
     return [dict(zip(cols, r)) for r in rows]
 
 
@@ -611,7 +1006,7 @@ def insert_play_action(
 def insert_agent_thought(
     conn: sqlite3.Connection,
     table_hand_id: str,
-    agent_id: str,
+    player_id: str,
     seat: str,
     phase: str,
     reasoning: str,
@@ -625,10 +1020,10 @@ def insert_agent_thought(
 ) -> str:
     tid = _uid()
     conn.execute(
-        """INSERT INTO agent_thoughts (id, table_hand_id, agent_id, seat, phase,
+        """INSERT INTO agent_thoughts (id, table_hand_id, player_id, seat, phase,
            round, sub_round, reasoning, decision, llm_call_ms, retry_count, timestamp_ms)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (tid, table_hand_id, agent_id, seat, phase,
+        (tid, table_hand_id, player_id, seat, phase,
          round_num, sub_round, reasoning, decision,
          llm_call_ms, retry_count, timestamp_ms),
     )
@@ -641,7 +1036,7 @@ def insert_agent_thought(
 def insert_reflection(
     conn: sqlite3.Connection,
     table_hand_id: str,
-    agent_id: str,
+    player_id: str,
     seat: str,
     actual_role: str,
     reflection: str,
@@ -649,10 +1044,10 @@ def insert_reflection(
 ) -> str:
     rid = _uid()
     conn.execute(
-        """INSERT INTO reflections (id, table_hand_id, agent_id, seat,
+        """INSERT INTO reflections (id, table_hand_id, player_id, seat,
            actual_role, reflection, short_term_memory, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (rid, table_hand_id, agent_id, seat, actual_role,
+        (rid, table_hand_id, player_id, seat, actual_role,
          reflection, short_term_memory, _now()),
     )
     conn.commit()
@@ -663,16 +1058,16 @@ def insert_reflection(
 
 def insert_agent_memory(
     conn: sqlite3.Connection,
-    agent_id: str,
+    player_id: str,
     memory_type: str,
     content: str,
     match_id: str | None = None,
 ) -> str:
     mid = _uid()
     conn.execute(
-        """INSERT INTO agent_memories (id, agent_id, match_id, memory_type, content, created_at)
+        """INSERT INTO agent_memories (id, player_id, match_id, memory_type, content, created_at)
            VALUES (?, ?, ?, ?, ?, ?)""",
-        (mid, agent_id, match_id, memory_type, content, _now()),
+        (mid, player_id, match_id, memory_type, content, _now()),
     )
     conn.commit()
     return mid
@@ -680,12 +1075,12 @@ def insert_agent_memory(
 
 def get_agent_memories(
     conn: sqlite3.Connection,
-    agent_id: str,
+    player_id: str,
     match_id: str | None = None,
     memory_type: str | None = None,
 ) -> list[dict]:
-    conditions = ["agent_id = ?"]
-    params: list[Any] = [agent_id]
+    conditions = ["player_id = ?"]
+    params: list[Any] = [player_id]
     if match_id is not None:
         conditions.append("match_id = ?")
         params.append(match_id)
@@ -697,7 +1092,7 @@ def get_agent_memories(
         f"SELECT * FROM agent_memories WHERE {where} ORDER BY created_at DESC",
         params,
     ).fetchall()
-    cols = ["id", "agent_id", "match_id", "memory_type", "content", "created_at"]
+    cols = ["id", "player_id", "match_id", "memory_type", "content", "created_at"]
     return [dict(zip(cols, r)) for r in rows]
 
 
@@ -705,7 +1100,7 @@ def get_agent_memories(
 
 def insert_llm_call_log(
     conn: sqlite3.Connection,
-    agent_id: str,
+    player_id: str,
     phase: str,
     provider: str,
     model: str,
@@ -720,11 +1115,11 @@ def insert_llm_call_log(
 ) -> str:
     lid = _uid()
     conn.execute(
-        """INSERT INTO llm_call_logs (id, table_hand_id, agent_id, phase,
+        """INSERT INTO llm_call_logs (id, table_hand_id, player_id, phase,
            provider, model, prompt_tokens, completion_tokens, total_tokens,
            latency_ms, success, error_message, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (lid, table_hand_id, agent_id, phase,
+        (lid, table_hand_id, player_id, phase,
          provider, model, prompt_tokens, completion_tokens, total_tokens,
          latency_ms, int(success), error_message, _now()),
     )
@@ -807,7 +1202,7 @@ def get_agent_thoughts_for_table(
         (table_hand_id,),
     ).fetchall()
     cols = [
-        "id", "table_hand_id", "agent_id", "seat", "phase",
+        "id", "table_hand_id", "player_id", "seat", "phase",
         "round", "sub_round", "reasoning", "decision",
         "llm_call_ms", "retry_count", "timestamp_ms",
     ]
@@ -822,7 +1217,7 @@ def get_reflections_for_table(
         (table_hand_id,),
     ).fetchall()
     cols = [
-        "id", "table_hand_id", "agent_id", "seat",
+        "id", "table_hand_id", "player_id", "seat",
         "actual_role", "reflection", "short_term_memory", "created_at",
     ]
     return [dict(zip(cols, r)) for r in rows]
@@ -883,45 +1278,7 @@ def get_hand_by_num(
     return dict(zip(cols, row))
 
 
-def update_agent_by_id(
-    conn: sqlite3.Connection,
-    agent_id: str,
-    *,
-    name: str | None = None,
-    model: str | None = None,
-    system_prompt_override: str | None = None,
-    provider: str | None = None,
-) -> bool:
-    """Update agent fields. Returns True if agent was found and updated."""
-    updates = []
-    params: list[Any] = []
-    for field, value in [("name", name), ("model", model),
-                          ("system_prompt_override", system_prompt_override),
-                          ("provider", provider)]:
-        if value is not None:
-            updates.append(f"{field} = ?")
-            params.append(value)
-    if not updates:
-        return False
-    params.append(agent_id)
-    params.append(_now())
-    # Don't coalesce updated_at — always update it
-    updates.append("updated_at = ?")
-    conn.execute(
-        f"UPDATE agents SET {', '.join(updates)} WHERE id = ?",
-        params,
-    )
-    conn.commit()
-    return conn.total_changes > 0
-
-
-def delete_agent_from_db(conn: sqlite3.Connection, agent_id: str) -> bool:
-    conn.execute("DELETE FROM agents WHERE id = ?", (agent_id,))
-    conn.commit()
-    return conn.total_changes > 0
-
-
 def delete_match_from_db(conn: sqlite3.Connection, match_id: str) -> bool:
-    conn.execute("DELETE FROM matches WHERE id = ? AND status = 'created'", (match_id,))
+    conn.execute("DELETE FROM matches WHERE id = ?", (match_id,))
     conn.commit()
     return conn.total_changes > 0

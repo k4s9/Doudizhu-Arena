@@ -76,7 +76,7 @@ function setSpeed(s) {
         ⏮
       </button>
       <button @click="togglePlay" class="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-medium">
-        {{ playing ? '⏸ Pause' : '▶ Play' }}
+        {{ playing ? '⏸ 暂停' : '▶ 播放' }}
       </button>
       <button @click="stepForward" class="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
         ⏭

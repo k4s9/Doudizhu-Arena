@@ -158,41 +158,11 @@ class MatchRunner:
             self.db_repo.update_match_status(
                 self.match_id, "running", started_at=started_at,
             )
-            # If newly created, also ensure agents and participants are persisted
-            # For pre-existing matches (created via API), these already exist
+            # If newly created (not via API), skip participant persistence
+            # since we don't have corresponding player rows in the DB.
+            # (API-created matches set _db_initialized=True and already have participants.)
+            # Mark as initialized so summary still runs.
             if not getattr(self, '_db_initialized', False):
-                from ..agent.llm_agent import LLMAgent
-                for aid, agent in self.agents.items():
-                    if self.db_repo.get_agent(aid) is None:
-                        if isinstance(agent, LLMAgent):
-                            self.db_repo.create_agent(
-                                name=aid,
-                                provider=agent._provider.provider_name,
-                                model=agent._provider.model,
-                                api_key="",
-                                agent_id=aid,
-                            )
-                        else:
-                            self.db_repo.create_agent(
-                                name=aid,
-                                provider="random",
-                                model="random",
-                                api_key="",
-                                agent_id=aid,
-                            )
-                # Persist participants
-                for seat, aid in self.seating.table_a.items():
-                    self.db_repo.add_participant(
-                        self.match_id, aid,
-                        self.seating.table_a_teams[seat],
-                        seat_table_a=seat,
-                    )
-                for seat, aid in self.seating.table_b.items():
-                    self.db_repo.add_participant(
-                        self.match_id, aid,
-                        self.seating.table_b_teams[seat],
-                        seat_table_b=seat,
-                    )
                 self._db_initialized = True
 
         # Initialize per-match short-term memory
@@ -266,6 +236,18 @@ class MatchRunner:
 
         finished_at = self._now_iso()
 
+        # Emit match_ended FIRST (before potentially slow summary/DB operations)
+        ko_triggered = self.scoreboard.ko_status is not None and self.scoreboard.ko_status.triggered
+        if self.event_bus:
+            await self.event_bus.emit_match_ended(
+                winner_team=winner_team,
+                final_score={"red": self.scoreboard.red_total, "blue": self.scoreboard.blue_total},
+                total_hands_played=self.scoreboard.total_hands_played,
+                ko_triggered=ko_triggered,
+                tiebreaker_hands=tiebreaker_num,
+                finished_at=finished_at,
+            )
+
         # Finalize match in DB
         if self.db_repo and self.match_id:
             ko_json = None
@@ -285,20 +267,15 @@ class MatchRunner:
                 ko_result=ko_json,
             )
 
-            # Run match summary for all agents (updates long-term memory)
+        # Run match summary for all agents (updates long-term memory)
+        # This can be slow (LLM calls) — does NOT block match_ended emission above
+        try:
             await self._run_match_summary(winner_team, finished_at)
+        except Exception:
+            pass  # Summary failure should not affect match completion
 
-        # Emit match_ended
+        # Close event bus after everything is done
         if self.event_bus:
-            ko_triggered = self.scoreboard.ko_status is not None and self.scoreboard.ko_status.triggered
-            await self.event_bus.emit_match_ended(
-                winner_team=winner_team,
-                final_score={"red": self.scoreboard.red_total, "blue": self.scoreboard.blue_total},
-                total_hands_played=self.scoreboard.total_hands_played,
-                ko_triggered=ko_triggered,
-                tiebreaker_hands=tiebreaker_num,
-                finished_at=finished_at,
-            )
             self.event_bus.close()
 
         return MatchResult(
@@ -354,7 +331,7 @@ class MatchRunner:
         if self.event_bus:
             tables_payload = self._build_hand_started_tables(hand_num, dealer, idle_seat, deal)
             await self.event_bus.emit_hand_started(
-                hand_num, dealer, hand_seed, tables_payload,
+                hand_num, dealer, hand_seed, tables_payload, idle_seat=idle_seat,
             )
 
         async def run_a():
@@ -437,36 +414,96 @@ class MatchRunner:
     ) -> dict[str, Any]:
         """Build the per-table payload for hand_started WS event."""
         tables: dict[str, Any] = {}
+        # Build seat → cards mapping same way GameEngine.init_hand does
+        TURN_CYCLE = ["S", "E", "N", "W"]
+        active_seats = [s for s in TURN_CYCLE if s != idle_seat]
+        dealer_idx = active_seats.index(dealer)
+        # Sort cards in display order: rank desc (大王→3), suit ♠→♥→♣→♦
+        cards_by_seat: dict[str, tuple] = {}
+        cards_by_seat[active_seats[dealer_idx]] = tuple(sorted(deal.dealer_hand, key=lambda c: c._sort_key()))
+        cards_by_seat[active_seats[(dealer_idx + 1) % 3]] = tuple(sorted(deal.second_hand, key=lambda c: c._sort_key()))
+        cards_by_seat[active_seats[(dealer_idx + 2) % 3]] = tuple(sorted(deal.third_hand, key=lambda c: c._sort_key()))
+        cards_by_seat[idle_seat] = ()
+
+        # Bidding order: only the 3 active players (match state.bidding_order)
+        bidding_order = list(active_seats)
+
+        # Format dizhu cards as strings for the frontend
+        dizhu_cards = [str(c) for c in sorted(deal.dizhu_cards, key=lambda c: c._sort_key())]
+
         for table_key in ("A", "B"):
             table_runner = self.table_a if table_key == "A" else self.table_b
             players: dict[str, dict[str, Any]] = {}
-            hands = deal.hands if hasattr(deal, 'hands') else {}
             for seat in ["S", "E", "N", "W"]:
-                agent_id = table_runner._state.seat_agents.get(seat, "")
+                player_id = table_runner._state.seat_agents.get(seat, "")
                 team = table_runner.teams.get(seat, "")
-                cards = hands.get(seat, [])
+                cards = cards_by_seat.get(seat, ())
+                # Look up display_name from DB repo (same as _build_match_state does)
+                display_name = ""
+                if self.db_repo and player_id:
+                    player = self.db_repo.get_player(player_id)
+                    if player:
+                        display_name = player.get("display_name", "")
+                if not display_name:
+                    display_name = player_id
+                # Include hand cards for spectator view (except idle seat)
+                hand_cards = [str(c) for c in cards] if seat != idle_seat else []
                 players[seat] = {
-                    "agent_name": agent_id,  # agent_id serves as display name for now
+                    "agent_name": display_name,
+                    "player_id": player_id,
                     "team": team,
-                    "hand_size": len(cards),
+                    "role": "idle" if seat == idle_seat else "",
+                    "hand_size": len(cards) if seat != idle_seat else 0,
+                    "hand_cards": hand_cards,
                 }
             tables[table_key] = {
+                "phase": "bidding",
+                "hand_num": hand_num,
+                "current_seat": dealer,
+                "dealer": dealer,
+                "landlord": "",
+                "dizhu_cards": dizhu_cards,
                 "players": players,
+                "play_history": [],
+                "current_pattern": None,
+                "bidding_order": bidding_order,
                 "idle_seat": idle_seat,
+                "effective_idle": idle_seat,
+                "bidding_history": [],
+                "current_high_bid": 0,
+                "current_high_bidder": "",
             }
         return tables
 
     # ── match summary ─────────────────────────────────────────────────────
 
     async def _run_match_summary(self, winner_team: str, finished_at: str) -> None:
-        """Run post-match summary for all agents, updating long-term memory."""
+        """Run post-match summary for all agents, updating long-term memory and stats."""
         if not self.db_repo or not self.match_id:
             return
 
         from ..agent.base import AgentContext
         from ..engine.card import SEATS
 
-        # Build match summary context
+        # ── Update player stats ──────────────────────────────────────────────
+        # Increment matches_played for every participant, and matches_won for
+        # players on the winning team.  Also update total_score from the
+        # cumulative match score (red vs blue).
+        for agent_id, team in self.seating.agent_teams.items():
+            won = (team == winner_team)
+            self.db_repo.update_player_stats(
+                agent_id,
+                matches_played_delta=1,
+                matches_won_delta=1 if won else 0,
+                # Per-player total_score: signed contribution to their team's score
+                # Each team has 4 players — divide team total evenly.
+                total_score_delta=(
+                    self.scoreboard.red_total if team == "red"
+                    else self.scoreboard.blue_total
+                ),
+            )
+
+        # ── Build match summary context ──────────────────────────────────────
         match_summary: dict[int, dict[str, str]] = {}
         for record in self._hand_records:
             for seat in SEATS:
@@ -476,7 +513,7 @@ class MatchRunner:
                         seat
                     ] = record.table_a.remaining_hands.get(seat, ())
 
-        # Summarize for each unique agent
+        # ── Summarize for each unique agent ──────────────────────────────────
         seen_agents: set[str] = set()
         for agent in self.agents.values():
             if agent.agent_id in seen_agents:
@@ -501,24 +538,46 @@ class MatchRunner:
 
                 if long_term:
                     agent.memory.update_long_term(long_term)
-                    self.db_repo.update_agent_long_term_memory(
+                    self.db_repo.update_player_long_term_memory(
                         agent.agent_id, long_term,
                     )
                     self.db_repo.add_agent_memory(
                         agent.agent_id,
                         "long_term",
                         long_term,
-                        match_id=None,
+                        match_id=self.match_id or None,
                     )
             except Exception:
                 pass  # Summary failure shouldn't crash
 
+    def request_pause(self, reason: str = "user_requested") -> None:
+        """Request pause at match level AND both tables."""
+        self.pause.request_pause(reason)
+        if hasattr(self, 'table_a'):
+            self.table_a.pause.request_pause(reason)
+        if hasattr(self, 'table_b'):
+            self.table_b.pause.request_pause(reason)
+
+    def resume_tables(self) -> None:
+        """Resume both tables."""
+        if hasattr(self, 'table_a'):
+            self.table_a.pause.resume()
+        if hasattr(self, 'table_b'):
+            self.table_b.pause.resume()
+
     async def _check_pause(self) -> None:
-        """Check match-level pause."""
+        """Check match-level pause and propagate to table runners."""
         if self.pause.check_pause():
+            # Also pause table runners
+            if hasattr(self, 'table_a'):
+                self.table_a.pause.request_pause("match_paused")
+            if hasattr(self, 'table_b'):
+                self.table_b.pause.request_pause("match_paused")
             from ..engine.pause import PauseState
             while self.pause.state == PauseState.PAUSED:
                 await asyncio.sleep(0.1)
+            # Resume tables when match resumes
+            self.resume_tables()
 
     @staticmethod
     def _now_iso() -> str:

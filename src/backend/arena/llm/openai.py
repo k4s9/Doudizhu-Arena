@@ -6,11 +6,15 @@ from .base import AbstractLLMProvider, LLMError, LLMUsage
 
 
 class OpenAIProvider(AbstractLLMProvider):
-    """Provider for OpenAI models (GPT-4o, etc.)."""
+    """Provider for OpenAI-compatible models (GPT-4o, Qwen, Minimax, etc.).
 
-    def __init__(self, model: str, api_key: str) -> None:
+    Pass base_url to use a non-OpenAI endpoint (e.g. Qwen, Minimax, DeepSeek).
+    """
+
+    def __init__(self, model: str, api_key: str, base_url: str | None = None) -> None:
         self._model = model
         self._api_key = api_key
+        self._base_url = base_url
         self._client = None
         self.last_usage: LLMUsage | None = None
 
@@ -26,7 +30,10 @@ class OpenAIProvider(AbstractLLMProvider):
         if self._client is None:
             try:
                 from openai import AsyncOpenAI
-                self._client = AsyncOpenAI(api_key=self._api_key)
+                kwargs = {"api_key": self._api_key}
+                if self._base_url:
+                    kwargs["base_url"] = self._base_url
+                self._client = AsyncOpenAI(**kwargs)
             except ImportError:
                 raise LLMError(
                     "openai package not installed. "
@@ -50,6 +57,7 @@ class OpenAIProvider(AbstractLLMProvider):
                 model=self._model,
                 messages=messages,
                 max_tokens=4096,
+                timeout=1800.0,
             )
             # Capture usage if available
             if hasattr(response, 'usage') and response.usage:

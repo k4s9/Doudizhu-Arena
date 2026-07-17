@@ -1,23 +1,110 @@
-# Agent definitions — loaded at backend startup.
-# Each entry creates one or more DB agent records (M4: DB persistence).
+# Player config templates — loaded at backend startup.
+# Each config defines a reusable LLM profile (provider, model, api_key, etc.).
+# Players are instances of these configs with independent long-term memory.
 #
-# api_key supports environment variable substitution: ${ENV_VAR}
+# Fields:
+#   name          — Unique display name for this config template.
+#   provider      — "openai", "claude", or "random".
+#   model         — Model name passed to the provider API.
+#   api_key       — API key; supports ${ENV_VAR} substitution.
+#   base_url      — Optional. Override the API base URL (OpenAI-compatible providers).
+
+# ── Default players ──────────────────────────────────────────────────────────────
+# Players created from configs at startup if they don't already exist.
+# Each player becomes a row in the `players` table with independent experience.
+# Remove or comment out to prevent auto-creation.
+default_players:
+  # Red Team
+  - config: "Qwen-Balanced"
+    display_name: "Qwen-Balanced R1"
+  - config: "Qwen-Aggressive"
+    display_name: "Qwen-Aggressive R2"
+  - config: "Qwen-Conservative"
+    display_name: "Qwen-Conservative R3"
+  - config: "Qwen-Flexible"
+    display_name: "Qwen-Flexible R4"
+
+  # Blue Team
+  - config: "Minimax-Balanced"
+    display_name: "Minimax-Balanced B1"
+  - config: "Minimax-Aggressive"
+    display_name: "Minimax-Aggressive B2"
+  - config: "Minimax-Conservative"
+    display_name: "Minimax-Conservative B3"
+  - config: "Minimax-Flexible"
+    display_name: "Minimax-Flexible B4"
+
+# ── Config templates ─────────────────────────────────────────────────────────────
 
 agent_definitions:
-  - name: "Aggressive-Claude"
-    provider: claude
-    model: claude-opus-4-7
-    api_key: "${ANTHROPIC_API_KEY}"
-    system_prompt_override: null
+  # ── Red Team: Qwen (5 configs with different play styles) ──
 
-  - name: "Balanced-Claude"
-    provider: claude
-    model: claude-opus-4-7
-    api_key: "${ANTHROPIC_API_KEY}"
-    system_prompt_override: null
-
-  - name: "Balanced-GPT"
+  - name: "Qwen-Balanced"
     provider: openai
-    model: gpt-4o
-    api_key: "${OPENAI_API_KEY}"
-    system_prompt_override: "你偏好稳健保守的打法。尽量保持牌型完整，避免冒进。"
+    model: qwen3.5
+    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+
+  - name: "Qwen-Aggressive"
+    provider: openai
+    model: qwen3.5
+    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+    system_prompt: "你是一位激进型的牌手。你喜欢抢地主、主动出牌、压制对手。你相信进攻是最好的防守，愿意承担更多风险来换取更大的收益。叫分时可以偏高，出牌时优先考虑压制对手而非保存实力。"
+
+  - name: "Qwen-Conservative"
+    provider: openai
+    model: qwen3.5
+    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+    system_prompt: "你是一位保守稳健的牌手。你倾向于保持牌型完整，不轻易拆牌，等待最佳时机出手。叫分时偏谨慎，出牌时优先保存实力、减少失误。你喜欢计算概率，确保每一步都有把握。"
+
+  - name: "Qwen-Flexible"
+    provider: openai
+    model: qwen3.5
+    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+    system_prompt: "你是一位灵活多变的牌手。你善于根据场上局势随时调整策略——对手激进时你保守，对手保守时你激进。你对牌型组合有敏锐的直觉，能够发现别人看不到的出牌路线。你不拘泥于固定套路。"
+
+  - name: "Qwen-TeamPlayer"
+    provider: openai
+    model: qwen3.5
+    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+    system_prompt: "你是一位注重团队协作的牌手。作为农民时你会密切配合队友，给队友创造机会、送关键牌。作为地主时你会同时盯防两位对手的弱点。你擅长通过出牌传递信息，并准确解读队友的信号。"
+
+  # ── Blue Team: Minimax (4 configs with different play styles) ──
+
+  - name: "Minimax-Balanced"
+    provider: openai
+    model: minimax-m27
+    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+
+  - name: "Minimax-Aggressive"
+    provider: openai
+    model: minimax-m27
+    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+    system_prompt: "你是一位激进型的牌手。你喜欢抢地主、主动出牌、压制对手。你相信进攻是最好的防守，愿意承担更多风险来换取更大的收益。叫分时可以偏高，出牌时优先考虑压制对手而非保存实力。"
+
+  - name: "Minimax-Conservative"
+    provider: openai
+    model: minimax-m27
+    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+    system_prompt: "你是一位保守稳健的牌手。你倾向于保持牌型完整，不轻易拆牌，等待最佳时机出手。叫分时偏谨慎，出牌时优先保存实力、减少失误。你喜欢计算概率，确保每一步都有把握。"
+
+  - name: "Minimax-Flexible"
+    provider: openai
+    model: minimax-m27
+    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+    system_prompt: "你是一位灵活多变的牌手。你善于根据场上局势随时调整策略——对手激进时你保守，对手保守时你激进。你对牌型组合有敏锐的直觉，能够发现别人看不到的出牌路线。你不拘泥于固定套路。"
+
+  - name: "Minimax-TeamPlayer"
+    provider: openai
+    model: minimax-m27
+    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    base_url: "https://uni-api.cstcloud.cn/v1"
+    system_prompt: "你是一位注重团队协作的牌手。作为农民时你会密切配合队友，给队友创造机会、送关键牌。作为地主时你会同时盯防两位对手的弱点。你擅长通过出牌传递信息，并准确解读队友的信号。"

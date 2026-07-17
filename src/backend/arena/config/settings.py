@@ -1,4 +1,8 @@
-"""Global configuration with defaults for timeout values, retry limits, etc."""
+"""Global configuration with defaults for timeout values, retry limits, etc.
+
+All values can be overridden via environment variables (with DOUDIZHU_ prefix)
+or a .env file placed at the project root or src/backend/.
+"""
 
 from __future__ import annotations
 
@@ -6,24 +10,77 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+# Load .env before reading any settings
+_ENV_FILES = [
+    Path(__file__).resolve().parent.parent.parent / ".env",       # src/backend/.env
+    Path(__file__).resolve().parent.parent.parent.parent.parent / ".env",  # project root
+]
+for _ef in _ENV_FILES:
+    if _ef.exists():
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(_ef)
+        except ImportError:
+            pass  # python-dotenv not installed, skip silently
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 CONFIG_DIR = Path(__file__).resolve().parent
+
+
+def _int_env(key: str, default: int) -> int:
+    """Read int from env var, return default if unset or invalid."""
+    val = os.getenv(key)
+    if val is None:
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
+
+def _float_env(key: str, default: float) -> float:
+    """Read float from env var, return default if unset or invalid."""
+    val = os.getenv(key)
+    if val is None:
+        return default
+    try:
+        return float(val)
+    except ValueError:
+        return default
+
+
+def _bool_env(key: str, default: bool) -> bool:
+    """Read bool from env var ('true'/'1' = True)."""
+    val = os.getenv(key)
+    if val is None:
+        return default
+    return val.lower() in ("true", "1", "yes")
 
 
 @dataclass
 class Settings:
     # ── timeout defaults ────────────────────────────────────────────────
-    bidding_timeout_seconds: float = 60.0
-    individual_play_timeout_seconds: float = 360.0
-    team_pool_timeout_seconds: float = 3600.0  # 60 min
-    exhausted_individual_timeout_seconds: float = 60.0
-    max_consecutive_llm_failures: int = 3
-    llm_retry_limit: int = 3
+    #  All settable via env vars: DOUDIZHU_BIDDING_TIMEOUT, etc.
+    bidding_timeout_seconds: float = field(default_factory=lambda: _float_env(
+        "DOUDIZHU_BIDDING_TIMEOUT", 60.0))
+    individual_play_timeout_seconds: float = field(default_factory=lambda: _float_env(
+        "DOUDIZHU_PLAY_TIMEOUT", 360.0))
+    team_pool_timeout_seconds: float = field(default_factory=lambda: _float_env(
+        "DOUDIZHU_TEAM_POOL_TIMEOUT", 3600.0))
+    exhausted_individual_timeout_seconds: float = field(default_factory=lambda: _float_env(
+        "DOUDIZHU_EXHAUSTED_TIMEOUT", 60.0))
+    max_consecutive_llm_failures: int = field(default_factory=lambda: _int_env(
+        "DOUDIZHU_MAX_LLM_FAILURES", 3))
+    llm_retry_limit: int = field(default_factory=lambda: _int_env(
+        "DOUDIZHU_LLM_RETRY_LIMIT", 3))
 
     # ── match defaults ──────────────────────────────────────────────────
-    total_hands: int = 20
-    ko_enabled: bool = True
-    diff_cap: int = 12
+    total_hands: int = field(default_factory=lambda: _int_env(
+        "DOUDIZHU_TOTAL_HANDS", 20))
+    ko_enabled: bool = field(default_factory=lambda: _bool_env(
+        "DOUDIZHU_KO_ENABLED", True))
+    diff_cap: int = field(default_factory=lambda: _int_env(
+        "DOUDIZHU_DIFF_CAP", 12))
 
     # ── agent ───────────────────────────────────────────────────────────
     agents_yaml_path: str = field(default_factory=lambda: os.getenv(
@@ -50,9 +107,11 @@ class Settings:
     ))
 
     # ── server ──────────────────────────────────────────────────────────
-    host: str = "0.0.0.0"
-    port: int = 8000
-    cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:5173"])
+    host: str = field(default_factory=lambda: os.getenv("DOUDIZHU_HOST", "0.0.0.0"))
+    port: int = field(default_factory=lambda: _int_env("DOUDIZHU_PORT", 8000))
+    cors_origins: list[str] = field(default_factory=lambda: os.getenv(
+        "DOUDIZHU_CORS_ORIGINS", "http://localhost:5173",
+    ).split(","))
 
 
 settings = Settings()

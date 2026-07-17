@@ -56,9 +56,12 @@ export const api = {
     return request(`/matches/${matchId}/hands/${handNum}/table/${table.toLowerCase()}`);
   },
 
-  // ── agents ──
+  // ── agents (backward compatible — returns players) ──
   listAgents() {
     return request('/agents');
+  },
+  reloadAgents() {
+    return request('/agents/reload', { method: 'POST' });
   },
   createAgent(body) {
     return request('/agents', { method: 'POST', body: JSON.stringify(body) });
@@ -68,6 +71,41 @@ export const api = {
   },
   deleteAgent(id) {
     return request(`/agents/${id}`, { method: 'DELETE' });
+  },
+
+  // ── player configs ──
+  listConfigs() {
+    return request('/configs');
+  },
+  createConfig(body) {
+    return request('/configs', { method: 'POST', body: JSON.stringify(body) });
+  },
+  updateConfig(id, body) {
+    return request(`/configs/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+  },
+  deleteConfig(id) {
+    return request(`/configs/${id}`, { method: 'DELETE' });
+  },
+  reloadConfigs() {
+    return request('/configs/reload', { method: 'POST' });
+  },
+
+  // ── players ──
+  listPlayers(configId) {
+    const qs = configId ? `?config_id=${encodeURIComponent(configId)}` : '';
+    return request(`/players${qs}`);
+  },
+  createPlayer(body) {
+    return request('/players', { method: 'POST', body: JSON.stringify(body) });
+  },
+  getPlayer(id) {
+    return request(`/players/${id}`);
+  },
+  updatePlayer(id, body) {
+    return request(`/players/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+  },
+  deletePlayer(id) {
+    return request(`/players/${id}`, { method: 'DELETE' });
   },
 };
 

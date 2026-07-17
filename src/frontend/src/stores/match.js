@@ -61,6 +61,10 @@ export const useMatchStore = defineStore('match', () => {
     return api.resumeMatch(id);
   }
 
+  async function deleteMatch(id) {
+    return api.deleteMatch(id);
+  }
+
   return {
     matches,
     currentMatch,
@@ -72,5 +76,6 @@ export const useMatchStore = defineStore('match', () => {
     startMatch,
     pauseMatch,
     resumeMatch,
+    deleteMatch,
   };
 });

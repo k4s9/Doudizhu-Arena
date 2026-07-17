@@ -31,9 +31,9 @@ def _build_table_detail(
     participants = repo.get_participants(match_id)
     agent_map: dict[str, dict] = {}
     for p in participants:
-        agent = repo.get_agent(p["agent_id"])
-        if agent:
-            agent_map[p["agent_id"]] = agent
+        player = repo.get_player(p["player_id"])
+        if player:
+            agent_map[p["player_id"]] = player
         # Determine seat on this table
     seat_agent: dict[str, str] = {}
     seat_team: dict[str, str] = {}
@@ -41,14 +41,25 @@ def _build_table_detail(
         seat_key = f"seat_table_{table.lower()}"
         seat = p.get(seat_key)
         if seat:
-            seat_agent[seat] = p["agent_id"]
+            seat_agent[seat] = p["player_id"]
             seat_team[seat] = p["team"]
 
     # Determine roles
     landlord_seat = table_hand.get("landlord_seat")
     idle_participation = table_hand.get("idle_participation")
     if isinstance(idle_participation, str) and idle_participation:
-        idle_participation = json.loads(idle_participation)
+        try:
+            idle_participation = json.loads(idle_participation)
+        except json.JSONDecodeError:
+            idle_participation = {}
+    # Double-encoded JSON edge case (e.g. '"{}"' becomes the string '{}')
+    if isinstance(idle_participation, str):
+        try:
+            idle_participation = json.loads(idle_participation)
+        except json.JSONDecodeError:
+            idle_participation = {}
+    if not isinstance(idle_participation, dict):
+        idle_participation = {}
 
     # Build players dict
     players: dict[str, dict[str, str]] = {}
@@ -140,7 +151,7 @@ def _build_table_detail(
     reflections = []
     for r in reflection_rows:
         reflections.append({
-            "agent_id": r["agent_id"],
+            "player_id": r["player_id"],
             "seat": r["seat"],
             "actual_role": r["actual_role"],
             "reflection": r["reflection"],
@@ -166,6 +177,7 @@ def _build_table_detail(
         "players": players,
         "bidding": bidding,
         "landlord": landlord_seat,
+        "final_bid": table_hand.get("final_bid", 0),
         "dizhu_cards": _parse_cards_str(table_hand.get("dizhu_cards", "[]")),
         "initial_hands": initial_hands,
         "play_history": play_history,
@@ -198,11 +210,11 @@ async def list_hand_summaries(match_id: str, request: Request):
     hands = repo.get_hands_for_match(match_id)
     participants = repo.get_participants(match_id)
 
-    # Build agent_id → name map
+    # Build player_id → name map
     agent_names: dict[str, str] = {}
     for p in participants:
-        agent = repo.get_agent(p["agent_id"])
-        agent_names[p["agent_id"]] = agent["name"] if agent else p["agent_id"]
+        player = repo.get_player(p["player_id"])
+        agent_names[p["player_id"]] = player["display_name"] if player else p["player_id"]
 
     total_hands = len(hands)
     hand_summaries = []
@@ -260,12 +272,12 @@ def _build_table_summary(
     th_id = table_hand["id"]
     table = table_hand["table"]
 
-    # Find landlord agent
+    # Find landlord player
     landlord_seat = table_hand.get("landlord_seat", "")
     landlord_agent = ""
     for p in participants:
         if p.get(f"seat_table_{table.lower()}") == landlord_seat:
-            landlord_agent = p["agent_id"]
+            landlord_agent = p["player_id"]
             break
 
     return {

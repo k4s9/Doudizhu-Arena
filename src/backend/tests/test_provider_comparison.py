@@ -526,7 +526,7 @@ class TestAgentsYamlLoading:
     """Verify agents.yaml configuration loads correctly."""
 
     def test_load_agents_yaml_parses_all_providers(self):
-        """Load agents.yaml and verify all 3 agent definitions parse correctly."""
+        """Load agents.yaml and verify configs and default players load correctly."""
         from arena.agent.loader import load_agents_from_yaml
         from arena.config.settings import settings
         from arena.db.repository import DatabaseRepository
@@ -541,46 +541,41 @@ class TestAgentsYamlLoading:
             repo.init()
 
             try:
-                agent_ids = load_agents_from_yaml(repo, yaml_path=yaml_path)
+                player_ids = load_agents_from_yaml(repo, yaml_path=yaml_path)
 
-                assert len(agent_ids) == 3, (
-                    f"Expected 3 agent definitions, got {len(agent_ids)}"
+                # 8 default players are created
+                assert len(player_ids) == 8, (
+                    f"Expected 8 default players, got {len(player_ids)}"
                 )
 
-                # Fetch each agent record and build name-keyed lookups
-                agents = {}
-                for aid in agent_ids:
-                    record = repo.get_agent(aid)
-                    assert record is not None, f"Agent {aid} not found in DB"
-                    assert "name" in record
-                    assert "provider" in record
-                    assert "model" in record
-                    agents[record["name"]] = record
-
-                # Verify all 3 expected agent names are present
-                expected_names = {"Aggressive-Claude", "Balanced-Claude", "Balanced-GPT"}
-                assert set(agents.keys()) == expected_names, (
-                    f"Expected agents {expected_names}, got {set(agents.keys())}"
+                # Configs should be loaded
+                configs = repo.list_player_configs()
+                assert len(configs) == 10, (
+                    f"Expected 10 configs, got {len(configs)}"
                 )
+
+                # Build name-keyed configs
+                configs_by_name = {c["name"]: c for c in configs}
+
+                # Verify key configs exist
+                assert "Qwen-Balanced" in configs_by_name
+                assert "Qwen-Aggressive" in configs_by_name
+                assert "Minimax-Balanced" in configs_by_name
+                assert "Minimax-Aggressive" in configs_by_name
 
                 # Verify provider assignments
-                assert agents["Aggressive-Claude"]["provider"] == "claude"
-                assert agents["Balanced-Claude"]["provider"] == "claude"
-                assert agents["Balanced-GPT"]["provider"] == "openai"
+                assert configs_by_name["Qwen-Balanced"]["provider"] == "openai"
+                assert configs_by_name["Minimax-Balanced"]["provider"] == "openai"
 
                 # Verify model assignments
-                assert agents["Aggressive-Claude"]["model"] == "claude-opus-4-7"
-                assert agents["Balanced-Claude"]["model"] == "claude-opus-4-7"
-                assert agents["Balanced-GPT"]["model"] == "gpt-4o"
+                assert configs_by_name["Qwen-Balanced"]["model"] == "qwen3.5"
+                assert configs_by_name["Minimax-Balanced"]["model"] == "minimax-m27"
 
-                # Verify that Balanced-GPT has a system prompt override (conservative play)
-                gpt_agent = agents["Balanced-GPT"]
-                assert gpt_agent["system_prompt_override"] is not None
-                assert len(gpt_agent["system_prompt_override"]) > 0
-
-                # Verify that Claude agents have no system prompt override
-                assert agents["Aggressive-Claude"]["system_prompt_override"] is None
-                assert agents["Balanced-Claude"]["system_prompt_override"] is None
+                # Verify default players have correct display names
+                players = repo.list_players()
+                player_names = {p["display_name"] for p in players}
+                assert "Qwen-Balanced R1" in player_names
+                assert "Minimax-Balanced B1" in player_names
 
             finally:
                 repo.close()

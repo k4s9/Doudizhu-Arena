@@ -34,13 +34,26 @@ async def lifespan(app: FastAPI):
     app.state.db_repo = repo
     logger.info("Database initialized at %s", settings.database_url)
 
-    # Load agents from YAML
+    # Load configs + default players from YAML
     try:
         from arena.agent.loader import load_agents_from_yaml
-        agent_ids = load_agents_from_yaml(repo)
-        logger.info("Loaded %d agents from YAML", len(agent_ids))
+        player_ids = load_agents_from_yaml(repo)
+        logger.info("Loaded %d configs and %d default players from YAML",
+                     len(repo.list_player_configs()), len(player_ids))
     except FileNotFoundError:
-        logger.warning("agents.yaml not found — no agents loaded")
+        logger.warning("agents.yaml not found — no configs loaded")
+
+    # Mark orphaned matches as finished — server restart loses the in-memory
+    # MatchRunner, so these matches can never resume. Preserve all hand data
+    # for replay rather than destroying it.
+    orphaned_statuses = ("running", "paused")
+    for status in orphaned_statuses:
+        for m in repo.list_matches(status=status, page=1, page_size=1000)[0]:
+            logger.warning(
+                "Orphaned %s match '%s' (%s) — marking as 'finished' (server restarted)",
+                status, m["name"], m["id"],
+            )
+            repo.update_match_status(m["id"], "finished")
 
     yield
 
@@ -77,10 +90,12 @@ def create_app() -> FastAPI:
         }
 
     # M5: REST API routes
-    from arena.api.routes import match, replay, agent
+    from arena.api.routes import match, replay, agent, config, player
     app.include_router(match.router, prefix="/api/v1")
     app.include_router(replay.router, prefix="/api/v1")
     app.include_router(agent.router, prefix="/api/v1")
+    app.include_router(config.router, prefix="/api/v1")
+    app.include_router(player.router, prefix="/api/v1")
 
     # M5: WebSocket handler
     from arena.api.ws import router as ws_router

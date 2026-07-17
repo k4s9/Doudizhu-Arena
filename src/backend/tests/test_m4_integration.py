@@ -28,11 +28,7 @@ from arena.tournament.table import TableRunner
 
 
 class M4MockProvider(AbstractLLMProvider):
-    """Mock provider for M4 integration testing.
-
-    Returns reasonable responses for bidding and playing.
-    Tracks call count for verification.
-    """
+    """Mock provider for M4 integration testing."""
 
     def __init__(self, seed: int = 42) -> None:
         import random
@@ -162,18 +158,19 @@ class TestDBInit:
 
     def test_schema_creation(self, db_path):
         conn = init_db(db_path)
-        # Verify all tables exist
         tables = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
         ).fetchall()
         table_names = {t[0] for t in tables}
         expected = {
-            "agents", "matches", "match_participants", "hands",
+            "player_configs", "players", "matches", "match_participants", "hands",
             "table_hands", "bidding_records", "play_actions",
             "agent_thoughts", "reflections", "agent_memories",
             "llm_call_logs", "initial_hands", "remaining_hands",
         }
         assert expected.issubset(table_names), f"Missing tables: {expected - table_names}"
+        # Old agents table must NOT exist
+        assert "agents" not in table_names, "agents table should have been removed"
         conn.close()
 
     def test_foreign_keys_enabled(self, db_path):
@@ -183,34 +180,74 @@ class TestDBInit:
         conn.close()
 
 
-class TestAgentCRUD:
-    """Tests for agent persistence."""
+class TestPlayerConfigCRUD:
+    """Tests for player config persistence."""
 
-    def test_create_and_get_agent(self, db_repo):
-        aid = db_repo.create_agent("Test-Agent", "claude", "claude-opus-4-7", "sk-test")
-        assert aid
-        agent = db_repo.get_agent(aid)
-        assert agent is not None
-        assert agent["name"] == "Test-Agent"
-        assert agent["provider"] == "claude"
+    def test_create_and_get_config(self, db_repo):
+        cid = db_repo.create_player_config("Test-Config", "claude", "claude-opus-4-7", "sk-test")
+        assert cid
+        config = db_repo.get_player_config(cid)
+        assert config is not None
+        assert config["name"] == "Test-Config"
+        assert config["provider"] == "claude"
 
-    def test_get_agent_by_name(self, db_repo):
-        db_repo.create_agent("ByName", "openai", "gpt-4o", "sk-test")
-        agent = db_repo.get_agent_by_name("ByName")
-        assert agent is not None
-        assert agent["model"] == "gpt-4o"
+    def test_get_config_by_name(self, db_repo):
+        db_repo.create_player_config("ByName", "openai", "gpt-4o", "sk-test")
+        config = db_repo.get_player_config_by_name("ByName")
+        assert config is not None
+        assert config["model"] == "gpt-4o"
 
-    def test_list_agents(self, db_repo):
-        db_repo.create_agent("A1", "claude", "m1", "k1")
-        db_repo.create_agent("A2", "openai", "m2", "k2")
-        agents = db_repo.list_agents()
-        assert len(agents) == 2
+    def test_list_configs(self, db_repo):
+        db_repo.create_player_config("C1", "claude", "m1", "k1")
+        db_repo.create_player_config("C2", "openai", "m2", "k2")
+        configs = db_repo.list_player_configs()
+        assert len(configs) == 2
+
+
+class TestPlayerCRUD:
+    """Tests for player persistence."""
+
+    def test_create_and_get_player(self, db_repo):
+        cid = db_repo.create_player_config("PC", "openai", "gpt-4o", "sk-test")
+        pid = db_repo.create_player(cid, "Player One")
+        player = db_repo.get_player(pid)
+        assert player is not None
+        assert player["display_name"] == "Player One"
+        assert player["config_id"] == cid
+
+    def test_get_player_with_config(self, db_repo):
+        cid = db_repo.create_player_config("PC2", "openai", "gpt-4o", "sk-test",
+                                           base_url="https://test.api.com")
+        pid = db_repo.create_player(cid, "Player Two")
+        player = db_repo.get_player_with_config(pid)
+        assert player is not None
+        assert player["display_name"] == "Player Two"
+        assert player["provider"] == "openai"
+        assert player["model"] == "gpt-4o"
+        assert player["base_url"] == "https://test.api.com"
 
     def test_update_long_term_memory(self, db_repo):
-        aid = db_repo.create_agent("Memory-Agent", "claude", "m1", "k1")
-        db_repo.update_agent_long_term_memory(aid, "Updated memory")
-        agent = db_repo.get_agent(aid)
-        assert agent["long_term_memory"] == "Updated memory"
+        cid = db_repo.create_player_config("PC3", "claude", "m1", "k1")
+        pid = db_repo.create_player(cid, "Memory Player")
+        db_repo.update_player_long_term_memory(pid, "Updated memory")
+        player = db_repo.get_player(pid)
+        assert player["long_term_memory"] == "Updated memory"
+
+    def test_list_players(self, db_repo):
+        cid = db_repo.create_player_config("PC4", "openai", "m1", "k1")
+        db_repo.create_player(cid, "P1")
+        db_repo.create_player(cid, "P2")
+        players = db_repo.list_players()
+        assert len(players) == 2
+
+    def test_player_stats_update(self, db_repo):
+        cid = db_repo.create_player_config("PC5", "openai", "m", "k")
+        pid = db_repo.create_player(cid, "Stats Player")
+        db_repo.update_player_stats(pid, matches_played_delta=1, matches_won_delta=1, total_score_delta=5)
+        player = db_repo.get_player(pid)
+        assert player["matches_played"] == 1
+        assert player["matches_won"] == 1
+        assert player["total_score"] == 5
 
 
 class TestMatchCRUD:
@@ -243,11 +280,12 @@ class TestMatchCRUD:
 
     def test_participants(self, db_repo):
         mid = db_repo.create_match("PTest", {}, "s")
-        # Create agents first for FK constraint
-        aid1 = db_repo.create_agent("agent-1", "claude", "m", "k")
-        aid2 = db_repo.create_agent("agent-2", "openai", "m", "k")
-        db_repo.add_participant(mid, aid1, "red", seat_table_a="S")
-        db_repo.add_participant(mid, aid2, "blue", seat_table_a="E")
+        # Create config + players for FK constraint
+        cid = db_repo.create_player_config("conf", "claude", "m", "k")
+        pid1 = db_repo.create_player(cid, "player-1")
+        pid2 = db_repo.create_player(cid, "player-2")
+        db_repo.add_participant(mid, pid1, "red", seat_table_a="S")
+        db_repo.add_participant(mid, pid2, "blue", seat_table_a="E")
         participants = db_repo.get_participants(mid)
         assert len(participants) == 2
 
@@ -275,16 +313,9 @@ class TestHandCRUD:
         assert th["status"] == "dealing"
 
         db_repo.update_table_hand_result(
-            thid,
-            status="finished",
-            landlord_seat="S",
-            final_bid=2,
-            winner_team="red",
-            winner_role="landlord",
-            base_score=2,
-            multiplier=2,
-            final_score=4,
-            bombs_played=1,
+            thid, status="finished", landlord_seat="S", final_bid=2,
+            winner_team="red", winner_role="landlord",
+            base_score=2, multiplier=2, final_score=4, bombs_played=1,
         )
         th = db_repo.get_table_hand(thid)
         assert th["status"] == "finished"
@@ -298,7 +329,6 @@ class TestPlayRecords:
         mid = db_repo.create_match("BTest", {}, "s")
         hid = db_repo.create_hand(mid, 1, "S", "W", "s1")
         thid = db_repo.create_table_hand(hid, "A")
-
         db_repo.add_bidding_record(thid, 1, "S", 0, 1000)
         db_repo.add_bidding_record(thid, 2, "E", 2, 2000)
         db_repo.add_bidding_record(thid, 3, "N", 0, 3000)
@@ -307,7 +337,6 @@ class TestPlayRecords:
         mid = db_repo.create_match("PATest", {}, "s")
         hid = db_repo.create_hand(mid, 1, "S", "W", "s1")
         thid = db_repo.create_table_hand(hid, "A")
-
         db_repo.add_play_action(thid, 1, 1, 1, "S", "play",
                                 cards=["♠A"], pattern="单张", display="♠A")
         db_repo.add_play_action(thid, 1, 2, 2, "E", "pass")
@@ -320,26 +349,24 @@ class TestMemoriesAndReflections:
         mid = db_repo.create_match("RTest", {}, "s")
         hid = db_repo.create_hand(mid, 1, "S", "W", "s1")
         thid = db_repo.create_table_hand(hid, "A")
-        # Create agent first for FK constraint
-        aid = db_repo.create_agent("agent-1", "claude", "m", "k")
-
+        cid = db_repo.create_player_config("conf", "claude", "m", "k")
+        pid = db_repo.create_player(cid, "player-1")
         db_repo.add_reflection(
-            thid, aid, "S", "landlord",
-            "Should have played differently",
-            "Opponent is aggressive",
+            thid, pid, "S", "landlord",
+            "Should have played differently", "Opponent is aggressive",
         )
 
     def test_agent_memories(self, db_repo):
-        # Create agent first for FK constraint
-        aid = db_repo.create_agent("agent-1", "claude", "m", "k")
-        db_repo.add_agent_memory(aid, "short_term", "Game 1 memory", match_id="m1")
-        db_repo.add_agent_memory(aid, "short_term", "Game 2 memory", match_id="m1")
-        db_repo.add_agent_memory(aid, "long_term", "Global strategy")
+        cid = db_repo.create_player_config("conf", "claude", "m", "k")
+        pid = db_repo.create_player(cid, "player-1")
+        db_repo.add_agent_memory(pid, "short_term", "Game 1 memory", match_id="m1")
+        db_repo.add_agent_memory(pid, "short_term", "Game 2 memory", match_id="m1")
+        db_repo.add_agent_memory(pid, "long_term", "Global strategy")
 
-        short = db_repo.get_agent_memories(aid, match_id="m1")
+        short = db_repo.get_agent_memories(pid, match_id="m1")
         assert len(short) == 2
 
-        long = db_repo.get_agent_memories(aid, memory_type="long_term")
+        long = db_repo.get_agent_memories(pid, memory_type="long_term")
         assert len(long) == 1
         assert long[0]["content"] == "Global strategy"
 
@@ -351,7 +378,6 @@ class TestInitialAndRemainingHands:
         mid = db_repo.create_match("IRTest", {}, "s")
         hid = db_repo.create_hand(mid, 1, "S", "W", "s1")
         thid = db_repo.create_table_hand(hid, "A")
-
         db_repo.add_initial_hand(thid, "S", ["♠A", "♥K"])
         db_repo.add_remaining_hand(thid, "S", ["♠A"])
 
@@ -379,28 +405,25 @@ class TestFullMatchWithDB:
 
         result = asyncio.run(runner.run())
 
-        # Basic match assertions
         assert result.total_hands_played >= 5
         assert result.red_score >= 0
         assert result.blue_score >= 0
 
-        # Verify DB state
         match = db_repo.get_match(runner.match_id)
         assert match is not None
         assert match["name"] == "M4 Test Match"
         assert match["status"] == "finished"
 
-        # Verify participants
+        # Participants are not auto-created for direct MatchRunner use;
+        # they're only persisted via API routes which validate player IDs.
         participants = db_repo.get_participants(runner.match_id)
-        assert len(participants) == 8
+        assert len(participants) == 0
 
-        # Verify hands
         hands = db_repo.get_hands_for_match(runner.match_id)
         assert len(hands) >= 5
         for h in hands:
             assert h["status"] == "finished"
 
-            # Each hand should have 2 table_hands (A and B)
             from arena.db.models import get_table_hands_for_hand
             ths = get_table_hands_for_hand(db_repo.conn, h["id"])
             assert len(ths) == 2, f"Hand {h['hand_num']} should have 2 table_hands"
@@ -422,7 +445,6 @@ class TestReflectionFlow:
         result = asyncio.run(runner.run())
         assert result.total_hands_played >= 2
 
-        # Check that short-term memories were created for agents
         for aid in red_ids + blue_ids:
             memories = db_repo.get_agent_memories(aid, memory_type="short_term")
             assert len(memories) > 0, f"Agent {aid} should have short-term memories"
@@ -443,8 +465,7 @@ class TestSummaryFlow:
 
         result = asyncio.run(runner.run())
 
-        # Check agent long-term memories were created
-        for aid in red_ids[:1] + blue_ids[:1]:  # sample a few
+        for aid in red_ids[:1] + blue_ids[:1]:
             memories = db_repo.get_agent_memories(aid, memory_type="long_term")
             assert len(memories) > 0, f"Agent {aid} should have long-term memory"
             assert "aggressive" in memories[0]["content"].lower()
@@ -460,9 +481,12 @@ class TestDBModelsModule:
         ).fetchall()
         table_names = {t[0] for t in tables}
         assert "matches" in table_names
-        assert "agents" in table_names
+        assert "player_configs" in table_names
+        assert "players" in table_names
         assert "play_actions" in table_names
         assert "agent_thoughts" in table_names
         assert "reflections" in table_names
         assert "agent_memories" in table_names
         assert "llm_call_logs" in table_names
+        # Old agents table should not exist
+        assert "agents" not in table_names
