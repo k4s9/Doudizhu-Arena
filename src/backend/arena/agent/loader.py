@@ -30,6 +30,10 @@ def _resolve_env(value: str) -> str:
     return _ENV_VAR_RE.sub(replacer, value)
 
 
+def _has_unresolved_env(value: str) -> bool:
+    return bool(_ENV_VAR_RE.search(value))
+
+
 def load_agents_from_yaml(
     repo: DatabaseRepository,
     yaml_path: str | None = None,
@@ -73,10 +77,17 @@ def load_agents_from_yaml(
 
             existing = repo.get_player_config_by_name(name)
             if existing:
+                # A missing environment variable must not erase a token that was
+                # configured and encrypted through the Web UI.
+                effective_api_key = (
+                    existing.get("api_key", "")
+                    if _has_unresolved_env(api_key)
+                    else api_key
+                )
                 changed = (
                     existing["provider"] != provider
                     or existing["model"] != model
-                    or existing.get("api_key", "") != api_key
+                    or existing.get("api_key", "") != effective_api_key
                     or existing.get("base_url") != base_url
                     or existing.get("system_prompt") != system_prompt
                 )
@@ -86,7 +97,7 @@ def load_agents_from_yaml(
                         name=name,
                         provider=provider,
                         model=model,
-                        api_key=api_key,
+                        api_key=effective_api_key,
                         base_url=base_url,
                         system_prompt=system_prompt,
                     )

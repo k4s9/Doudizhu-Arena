@@ -86,6 +86,35 @@ function connectWS() {
   });
 }
 
+function nextBiddingSeat(tableData, biddingHistory) {
+  const completedSeats = new Set((biddingHistory || []).map(entry => entry.seat));
+  return (tableData?.bidding_order || []).find(seat => !completedSeats.has(seat)) || '';
+}
+
+function clearTurnTimer(table) {
+  const tableRef = table === 'A' ? tableA : tableB;
+  if (tableRef.value?.turn_timer) {
+    tableRef.value = { ...tableRef.value, turn_timer: null };
+  }
+}
+
+function clearAllTurnTimers() {
+  clearTurnTimer('A');
+  clearTurnTimer('B');
+}
+
+function persistActionThought(table, seat, thought) {
+  const lastThoughts = table === 'A' ? lastThoughtsA : lastThoughtsB;
+  const liveThoughts = table === 'A' ? thoughtsA : thoughtsB;
+  const attachedThought = thought || liveThoughts.value[seat];
+  if (attachedThought) {
+    lastThoughts.value = { ...lastThoughts.value, [seat]: attachedThought };
+  }
+  const updated = { ...liveThoughts.value };
+  delete updated[seat];
+  liveThoughts.value = updated;
+}
+
 function handleEvent(event) {
   const { type, payload } = event;
 
@@ -114,7 +143,8 @@ function handleEvent(event) {
       if (payload.table === 'A' && tableA.value) {
         tableA.value = {
           ...tableA.value,
-          current_seat: payload.seat,
+          // The event seat has just bid. Highlight the next unfinished bidder.
+          current_seat: nextBiddingSeat(tableA.value, payload.bidding_history),
           phase: 'bidding',
           current_high_bid: payload.current_high_bid,
           current_high_bidder: payload.current_high_seat,
@@ -124,7 +154,7 @@ function handleEvent(event) {
       if (payload.table === 'B' && tableB.value) {
         tableB.value = {
           ...tableB.value,
-          current_seat: payload.seat,
+          current_seat: nextBiddingSeat(tableB.value, payload.bidding_history),
           phase: 'bidding',
           current_high_bid: payload.current_high_bid,
           current_high_bidder: payload.current_high_seat,
@@ -232,6 +262,22 @@ function handleEvent(event) {
       }
       break;
 
+    case 'play_turn_started': {
+      const tableRef = payload.table === 'A' ? tableA : tableB;
+      if (tableRef.value) {
+        tableRef.value = {
+          ...tableRef.value,
+          current_seat: payload.seat,
+          turn_timer: {
+            seat: payload.seat,
+            timeout_ms: payload.timeout_ms,
+            deadline_ms: payload.deadline_ms,
+          },
+        };
+      }
+      break;
+    }
+
     case 'card_played': {
       const tableRef = payload.table === 'A' ? tableA : tableB;
       if (tableRef.value) {
@@ -263,26 +309,10 @@ function handleEvent(event) {
           current_pattern: payload.current_pattern,
           play_history: history,
           players,
+          turn_timer: null,
         };
       }
-      // Move live thought to lastThoughts (persist alongside last play), then clear live
-      if (payload.table === 'A') {
-        const liveThought = thoughtsA.value[payload.seat];
-        if (liveThought) {
-          lastThoughtsA.value = { ...lastThoughtsA.value, [payload.seat]: liveThought };
-        }
-        const updated = { ...thoughtsA.value };
-        delete updated[payload.seat];
-        thoughtsA.value = updated;
-      } else {
-        const liveThought = thoughtsB.value[payload.seat];
-        if (liveThought) {
-          lastThoughtsB.value = { ...lastThoughtsB.value, [payload.seat]: liveThought };
-        }
-        const updated = { ...thoughtsB.value };
-        delete updated[payload.seat];
-        thoughtsB.value = updated;
-      }
+      persistActionThought(payload.table, payload.seat, payload.thought);
       break;
     }
 
@@ -301,26 +331,10 @@ function handleEvent(event) {
           ...tableRef.value,
           current_seat: payload.next_seat,
           play_history: history,
+          turn_timer: null,
         };
       }
-      // Move live thought to lastThoughts, then clear live
-      if (payload.table === 'A') {
-        const liveThought = thoughtsA.value[payload.seat];
-        if (liveThought) {
-          lastThoughtsA.value = { ...lastThoughtsA.value, [payload.seat]: liveThought };
-        }
-        const updated = { ...thoughtsA.value };
-        delete updated[payload.seat];
-        thoughtsA.value = updated;
-      } else {
-        const liveThought = thoughtsB.value[payload.seat];
-        if (liveThought) {
-          lastThoughtsB.value = { ...lastThoughtsB.value, [payload.seat]: liveThought };
-        }
-        const updated = { ...thoughtsB.value };
-        delete updated[payload.seat];
-        thoughtsB.value = updated;
-      }
+      persistActionThought(payload.table, payload.seat, payload.thought);
       break;
     }
 
@@ -343,7 +357,9 @@ function handleEvent(event) {
       break;
 
     case 'thought_update':
-      // Route thought to the correct table and seat
+      // Playing thoughts arrive with card_played/pass so they render with the
+      // action. This branch remains for live bidding analysis.
+      if (payload.phase === 'playing') break;
       if (payload.table === 'A') {
         thoughtsA.value = {
           ...thoughtsA.value,
@@ -380,6 +396,7 @@ function handleEvent(event) {
 
     case 'match_paused':
       status.value = 'paused';
+      clearAllTurnTimers();
       break;
 
     case 'match_resumed':
@@ -388,6 +405,7 @@ function handleEvent(event) {
 
     case 'match_ended':
       status.value = 'finished';
+      clearAllTurnTimers();
       score.value = payload.final_score || { red: 0, blue: 0 };
       // Transition both tables to finished so they don't show "playing" state
       if (tableA.value) {

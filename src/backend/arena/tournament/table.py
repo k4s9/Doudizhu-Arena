@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -81,6 +82,7 @@ class TableRunner:
         timeout_manager: TimeoutManager | None = None,
         db_repo: DatabaseRepository | None = None,
         match_id: str = "",
+        enable_reflection: bool = True,
     ) -> None:
         if table not in ("A", "B"):
             raise ValueError(f"Table must be 'A' or 'B', got {table!r}")
@@ -91,11 +93,13 @@ class TableRunner:
         self.timeout = timeout_manager or TimeoutManager()
         self.db_repo = db_repo
         self.match_id = match_id
+        self.enable_reflection = enable_reflection
         self.event_bus = None  # type: MatchEventBus | None — set by MatchRunner
         self._state = TableState(table=table)
         self._timeout_initialized = False
         self._current_hand_id = ""  # DB hand ID
         self._current_table_hand_id = ""  # DB table_hand ID
+        self.active_turn: dict[str, int | str] | None = None
 
     # ── public API ────────────────────────────────────────────────────────
 
@@ -119,6 +123,7 @@ class TableRunner:
         Returns HandResult with all play data and scores.
         """
         self._current_hand_id = hand_id
+        self.active_turn = None
 
         # 1. Initialize
         GameEngine.init_hand(
@@ -141,6 +146,19 @@ class TableRunner:
         self._current_table_hand_id = ""
         if self.db_repo and hand_id:
             self._current_table_hand_id = self.db_repo.create_table_hand(hand_id, self.table)
+            for agent in self.agents.values():
+                if hasattr(agent, "set_observability_context"):
+                    agent.set_observability_context(
+                        self.db_repo,
+                        match_id=self.match_id,
+                        table_hand_id=self._current_table_hand_id,
+                    )
+                provider = getattr(agent, "_provider", None)
+                if hasattr(provider, "set_context"):
+                    provider.set_context(
+                        agent_id=agent.agent_id,
+                        table_hand_id=self._current_table_hand_id,
+                    )
             # Write initial hands
             for seat, cards in self._state.initial_hands.items():
                 self.db_repo.add_initial_hand(
@@ -249,7 +267,8 @@ class TableRunner:
                 )
 
             # Trigger reflection for all participating agents
-            await self._run_reflections(hand_num, idle_seat, dealer, remaining)
+            if self.enable_reflection:
+                await self._run_reflections(hand_num, idle_seat, dealer, remaining)
 
         return HandResult(
             table=self.table,
@@ -294,6 +313,7 @@ class TableRunner:
             if self.timeout.is_auto_play_enabled(seat):
                 bid = 0  # auto-pass
                 reasoning = "[托管] auto-pass"
+                self._record_resolution_event(seat, "bidding", "autoplay")
             else:
                 ctx = self._build_bidding_context(seat)
                 team = self.teams.get(seat, "")
@@ -311,11 +331,13 @@ class TableRunner:
                     self.timeout.end_turn(seat, team, success=False)
                     bid = 0
                     reasoning = f"[超时] bidding timeout after {timeout_seconds}s"
+                    self._record_resolution_event(seat, "bidding", "timeout")
                 except Exception:
                     # Agent error → treat as pass
                     self.timeout.end_turn(seat, team, success=False)
                     bid = 0
                     reasoning = "[错误] agent error, fallback to pass"
+                    self._record_resolution_event(seat, "bidding", "agent_error")
 
                 # Validate bid
                 if bid not in (0, 1, 2, 3):
@@ -339,6 +361,8 @@ class TableRunner:
                     phase="bidding",
                     reasoning=reasoning,
                     decision=f'{{"bid": {bid}}}',
+                    llm_call_ms=(agent.get_last_decision_meta().get("latency_ms") if hasattr(agent, "get_last_decision_meta") else None),
+                    retry_count=(agent.get_last_decision_meta().get("retry_count", 0) if hasattr(agent, "get_last_decision_meta") else 0),
                     timestamp_ms=ts,
                 )
 
@@ -471,12 +495,28 @@ class TableRunner:
                 hand = self._state.live_hands[seat]
                 cards = self.timeout.auto_play(hand, is_leader)
                 reasoning = "[托管] auto-play" if cards else "[托管] auto-pass"
+                self._record_resolution_event(seat, "playing", "autoplay")
             else:
                 ctx = self._build_play_context(seat)
                 team = self.teams.get(seat, "")
                 is_leader = self._state.current_trick is None
                 timeout_seconds = self.timeout.effective_individual_limit(seat, team)
                 self.timeout.start_turn(seat)
+                timeout_ms = int(timeout_seconds * 1000)
+                deadline_ms = self._now_ms() + timeout_ms
+                self.active_turn = {
+                    "seat": seat,
+                    "timeout_ms": timeout_ms,
+                    "deadline_ms": deadline_ms,
+                }
+                if self.event_bus:
+                    await self.event_bus.emit_play_turn_started(
+                        table=self.table,
+                        hand_num=self._state.hand_num,
+                        seat=seat,
+                        timeout_ms=timeout_ms,
+                        deadline_ms=deadline_ms,
+                    )
                 try:
                     # try to get both reasoning and cards from agent
                     play_result = await asyncio.wait_for(
@@ -494,10 +534,14 @@ class TableRunner:
                     self.timeout.end_turn(seat, team, success=False)
                     cards = []  # timeout → pass
                     reasoning = f"[超时] play timeout after {timeout_seconds}s"
+                    self._record_resolution_event(seat, "playing", "timeout")
                 except Exception:
                     self.timeout.end_turn(seat, team, success=False)
                     cards = []  # error → pass
                     reasoning = "[错误] agent error, fallback to pass"
+                    self._record_resolution_event(seat, "playing", "agent_error")
+                finally:
+                    self.active_turn = None
 
                 # Validate: cards must be in hand and form a legal play
                 try:
@@ -543,6 +587,8 @@ class TableRunner:
                     phase="playing",
                     reasoning=reasoning if not is_trusted else "[托管] auto-play",
                     decision=json.dumps({"type": play_record.action_type, "cards": [str(c) for c in play_record.cards] if play_record.cards else []}),
+                    llm_call_ms=(agent.get_last_decision_meta().get("latency_ms") if hasattr(agent, "get_last_decision_meta") else None),
+                    retry_count=(agent.get_last_decision_meta().get("retry_count", 0) if hasattr(agent, "get_last_decision_meta") else 0),
                     round_num=play_record.round_num,
                     sub_round=play_record.sub_round,
                     timestamp_ms=ts,
@@ -550,6 +596,18 @@ class TableRunner:
 
             # Emit WS events
             if self.event_bus and play_record:
+                thought = {
+                    "phase": "playing",
+                    "seat": seat,
+                    "round": play_record.round_num,
+                    "sub_round": play_record.sub_round,
+                    "reasoning": reasoning if not is_trusted else "[托管] auto-play",
+                    "decision": {
+                        "type": play_record.action_type,
+                        "cards": [str(c) for c in play_record.cards] if play_record.cards else [],
+                    },
+                    "timestamp_ms": ts,
+                }
                 if play_record.action_type == "play":
                     trick = play_record.trick
                     current_pattern = None
@@ -571,6 +629,7 @@ class TableRunner:
                         current_pattern=current_pattern,
                         next_seat=self._state.current_player,
                         timestamp_ms=ts,
+                        thought=thought,
                     )
                 else:
                     await self.event_bus.emit_pass(
@@ -582,20 +641,8 @@ class TableRunner:
                         pass_count_in_round=1,  # simplified
                         next_seat=self._state.current_player,
                         timestamp_ms=ts,
+                        thought=thought,
                     )
-
-                await self.event_bus.emit_thought_update(
-                    table=self.table,
-                    hand_num=self._state.hand_num,
-                    phase="playing",
-                    agent_id=self.agents[seat].agent_id,
-                    seat=seat,
-                    reasoning=reasoning if not is_trusted else "[托管] auto-play",
-                    decision={"type": play_record.action_type, "cards": [str(c) for c in play_record.cards] if play_record.cards else []},
-                    round_num=play_record.round_num,
-                    sub_round=play_record.sub_round,
-                    timestamp_ms=ts,
-                )
 
                 # Emit trick_won if round ended
                 if result.get("status") == "round_end" and result.get("new_leader"):
@@ -787,6 +834,34 @@ class TableRunner:
             while self.pause.state == PauseState.PAUSED:
                 import asyncio
                 await asyncio.sleep(0.1)
+
+    def _record_resolution_event(self, seat: str, phase: str, reason: str) -> None:
+        """Persist table-level fallback and autoplayer decisions for evaluation."""
+        if not self.db_repo or not self._current_table_hand_id:
+            return
+        try:
+            agent = self.agents[seat]
+            context = (
+                agent.get_observability_context()
+                if hasattr(agent, "get_observability_context") else {}
+            )
+            self.db_repo.add_decision_event(
+                phase=phase,
+                attempt=0,
+                decision_id=uuid.uuid4().hex,
+                player_id=agent.agent_id,
+                seat=seat,
+                match_id=self.match_id,
+                table_hand_id=self._current_table_hand_id,
+                error_code=reason if reason in ("timeout", "agent_error") else None,
+                is_fallback=reason != "autoplay",
+                is_autoplay=reason == "autoplay",
+                fallback_reason=reason,
+                final_action="pass",
+                **{key: value for key, value in context.items() if key not in {"match_id", "table_hand_id"}},
+            )
+        except Exception:
+            logger.exception("Failed to persist %s resolution event", reason)
 
     @staticmethod
     def _now_ms() -> int:

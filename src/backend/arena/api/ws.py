@@ -155,6 +155,7 @@ def _build_match_state(repo, match: dict, runner) -> dict[str, Any]:
                 "red_team_ms": 0,
                 "blue_team_ms": 0,
             },
+            "turn_timer": getattr(table_runner, "active_turn", None),
         }
 
     return {

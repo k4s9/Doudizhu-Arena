@@ -90,6 +90,29 @@ export const api = {
     return request('/configs/reload', { method: 'POST' });
   },
 
+  // ── reliability evaluations ──
+  listEvaluations() {
+    return request('/evaluations');
+  },
+  getEvaluation(id) {
+    return request(`/evaluations/${id}`);
+  },
+  preflightEvaluation(body) {
+    return request('/evaluations/preflight', { method: 'POST', body: JSON.stringify(body) });
+  },
+  createEvaluation(body) {
+    return request('/evaluations', { method: 'POST', body: JSON.stringify(body) });
+  },
+  startEvaluation(id) {
+    return request(`/evaluations/${id}/start`, { method: 'POST', body: JSON.stringify({ confirm_real_models: true }) });
+  },
+  resumeEvaluation(id) {
+    return request(`/evaluations/${id}/resume`, { method: 'POST', body: JSON.stringify({ confirm_real_models: true }) });
+  },
+  cancelEvaluation(id) {
+    return request(`/evaluations/${id}/cancel`, { method: 'POST' });
+  },
+
   // ── players ──
   listPlayers(configId) {
     const qs = configId ? `?config_id=${encodeURIComponent(configId)}` : '';
@@ -100,6 +123,9 @@ export const api = {
   },
   getPlayer(id) {
     return request(`/players/${id}`);
+  },
+  getPlayerLeaderboard(sort = 'win_rate') {
+    return request(`/players/leaderboard?sort=${encodeURIComponent(sort)}`);
   },
   updatePlayer(id, body) {
     return request(`/players/${id}`, { method: 'PUT', body: JSON.stringify(body) });

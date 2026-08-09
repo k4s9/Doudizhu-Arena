@@ -1,0 +1,9 @@
+{
+  "seed_set_id": "train-v1",
+  "seeds": [
+    "train-v1-001", "train-v1-002", "train-v1-003", "train-v1-004", "train-v1-005",
+    "train-v1-006", "train-v1-007", "train-v1-008", "train-v1-009", "train-v1-010",
+    "train-v1-011", "train-v1-012", "train-v1-013", "train-v1-014", "train-v1-015",
+    "train-v1-016", "train-v1-017", "train-v1-018", "train-v1-019", "train-v1-020"
+  ]
+}

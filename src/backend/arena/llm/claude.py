@@ -8,11 +8,16 @@ from .base import AbstractLLMProvider, LLMError, LLMUsage
 class ClaudeProvider(AbstractLLMProvider):
     """Provider for Anthropic Claude models."""
 
-    def __init__(self, model: str, api_key: str) -> None:
+    def __init__(self, model: str, api_key: str, max_tokens: int = 4096, temperature: float | None = None, top_p: float | None = None) -> None:
         self._model = model
         self._api_key = api_key
+        self._max_tokens = max_tokens
+        self._temperature = temperature
+        self._top_p = top_p
         self._client = None
         self.last_usage: LLMUsage | None = None
+        self.last_response_model: str | None = None
+        self.last_system_fingerprint: str | None = None
 
     @property
     def provider_name(self) -> str:
@@ -41,13 +46,21 @@ class ClaudeProvider(AbstractLLMProvider):
     ) -> str:
         client = self._get_client()
         self.last_usage = None
+        self.last_response_model = None
+        self.last_system_fingerprint = None
         try:
-            response = await client.messages.create(
+            request = dict(
                 model=self._model,
-                max_tokens=4096,
+                max_tokens=self._max_tokens,
                 system=system_prompt or "You are a Doudizhu AI player.",
                 messages=[{"role": "user", "content": user_prompt}],
             )
+            if self._temperature is not None:
+                request["temperature"] = self._temperature
+            if self._top_p is not None:
+                request["top_p"] = self._top_p
+            response = await client.messages.create(**request)
+            self.last_response_model = getattr(response, "model", None)
             # Capture usage if available
             if hasattr(response, 'usage') and response.usage:
                 self.last_usage = LLMUsage(

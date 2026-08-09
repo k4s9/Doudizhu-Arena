@@ -191,11 +191,18 @@ CREATE INDEX IF NOT EXISTS idx_memories_player_match ON agent_memories(player_id
 
 CREATE TABLE IF NOT EXISTS llm_call_logs (
     id              TEXT PRIMARY KEY,
+    run_id          TEXT,
+    variant_id      TEXT,
+    match_id        TEXT,
+    decision_id     TEXT,
+    attempt         INTEGER,
     table_hand_id   TEXT REFERENCES table_hands(id) ON DELETE SET NULL,
     player_id       TEXT,
     phase           TEXT NOT NULL,
     provider        TEXT NOT NULL,
     model           TEXT NOT NULL,
+    response_model  TEXT,
+    system_fingerprint TEXT,
     prompt_tokens   INTEGER,
     completion_tokens INTEGER,
     total_tokens    INTEGER,
@@ -207,6 +214,8 @@ CREATE TABLE IF NOT EXISTS llm_call_logs (
 
 CREATE INDEX IF NOT EXISTS idx_llm_logs_hand ON llm_call_logs(table_hand_id);
 CREATE INDEX IF NOT EXISTS idx_llm_logs_player ON llm_call_logs(player_id);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_run_variant ON llm_call_logs(run_id, variant_id, phase);
+CREATE INDEX IF NOT EXISTS idx_llm_logs_decision ON llm_call_logs(decision_id, attempt);
 
 CREATE TABLE IF NOT EXISTS initial_hands (
     id              TEXT PRIMARY KEY,
@@ -225,6 +234,101 @@ CREATE TABLE IF NOT EXISTS remaining_hands (
 );
 
 CREATE INDEX IF NOT EXISTS idx_remaining_hands_hand ON remaining_hands(table_hand_id);
+
+CREATE TABLE IF NOT EXISTS experiments (
+    id TEXT PRIMARY KEY,
+    experiment_id TEXT NOT NULL UNIQUE,
+    spec_json TEXT NOT NULL,
+    spec_sha256 TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS experiment_variants (
+    id TEXT PRIMARY KEY,
+    experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+    variant_id TEXT NOT NULL,
+    config_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(experiment_id, variant_id)
+);
+
+CREATE TABLE IF NOT EXISTS evaluation_runs (
+    id TEXT PRIMARY KEY,
+    experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE RESTRICT,
+    status TEXT NOT NULL DEFAULT 'planned',
+    manifest_json TEXT NOT NULL,
+    manifest_sha256 TEXT NOT NULL UNIQUE,
+    started_at TEXT,
+    finished_at TEXT,
+    failure_reason TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evaluation_tasks (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL REFERENCES evaluation_runs(id) ON DELETE CASCADE,
+    variant_id TEXT NOT NULL,
+    seed TEXT NOT NULL,
+    seat_rotation INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'planned',
+    match_id TEXT REFERENCES matches(id) ON DELETE SET NULL,
+    started_at TEXT,
+    finished_at TEXT,
+    failure_reason TEXT,
+    UNIQUE(run_id, variant_id, seed, seat_rotation)
+);
+
+CREATE INDEX IF NOT EXISTS idx_evaluation_tasks_run_status ON evaluation_tasks(run_id, status);
+
+CREATE TABLE IF NOT EXISTS memory_training_checkpoints (
+    run_id TEXT PRIMARY KEY REFERENCES evaluation_runs(id) ON DELETE CASCADE,
+    completed_task_id TEXT,
+    memories_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS model_snapshots (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL REFERENCES evaluation_runs(id) ON DELETE CASCADE,
+    config_name TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    base_url TEXT,
+    parameters_json TEXT NOT NULL,
+    prompt_sha256 TEXT NOT NULL,
+    source_revision TEXT NOT NULL,
+    sdk_version TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS decision_events (
+    id TEXT PRIMARY KEY,
+    decision_id TEXT,
+    run_id TEXT REFERENCES evaluation_runs(id) ON DELETE SET NULL,
+    variant_id TEXT,
+    match_id TEXT REFERENCES matches(id) ON DELETE SET NULL,
+    table_hand_id TEXT REFERENCES table_hands(id) ON DELETE SET NULL,
+    player_id TEXT,
+    seat TEXT,
+    phase TEXT NOT NULL,
+    attempt INTEGER NOT NULL,
+    output_sha256 TEXT,
+    error_code TEXT,
+    is_illegal INTEGER NOT NULL DEFAULT 0,
+    is_retry INTEGER NOT NULL DEFAULT 0,
+    is_fallback INTEGER NOT NULL DEFAULT 0,
+    is_autoplay INTEGER NOT NULL DEFAULT 0,
+    fallback_reason TEXT,
+    latency_ms INTEGER,
+    final_action TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_decision_events_run_variant_phase ON decision_events(run_id, variant_id, phase);
+CREATE INDEX IF NOT EXISTS idx_decision_events_match ON decision_events(match_id);
+CREATE INDEX IF NOT EXISTS idx_decision_events_error ON decision_events(error_code);
+CREATE INDEX IF NOT EXISTS idx_decision_events_fallback ON decision_events(is_fallback, is_autoplay);
+CREATE INDEX IF NOT EXISTS idx_decision_events_decision ON decision_events(decision_id, attempt);
 """
 
 
@@ -270,12 +374,15 @@ def _player_row_to_dict(row: tuple) -> dict:
 def init_db(path: str) -> sqlite3.Connection:
     """Create all tables and return a connection with WAL mode + foreign keys."""
     conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=OFF")
 
     # Run migration first: renames agent_id → player_id on old tables,
     # creates player_configs + players, drops agents.
     _migrate_v1_to_v2(conn)
+    _migrate_v2_to_v3(conn)
+    _migrate_v3_to_v4(conn)
 
     # Now create/update tables and indexes — safe because old columns are migrated.
     # The SCHEMA_DDL handles both fresh DBs (all tables new) and migrated DBs
@@ -285,6 +392,46 @@ def init_db(path: str) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys=ON")
     conn.commit()
     return conn
+
+
+def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
+    """Advance legacy databases without rewriting existing match data."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    if version < 3:
+        conn.execute("PRAGMA user_version = 3")
+        conn.commit()
+
+
+def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
+    """Add evaluation correlation fields without rewriting existing observations."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    if version >= 4:
+        return
+    additions = {
+        "llm_call_logs": {
+            "run_id": "TEXT", "variant_id": "TEXT", "match_id": "TEXT",
+            "decision_id": "TEXT", "attempt": "INTEGER",
+            "response_model": "TEXT", "system_fingerprint": "TEXT",
+        },
+        "decision_events": {
+            "decision_id": "TEXT", "seat": "TEXT",
+        },
+        "model_snapshots": {
+            "sdk_version": "TEXT",
+        },
+    }
+    for table, columns in additions.items():
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        if not exists:
+            continue
+        existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for column, sql_type in columns.items():
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
+    conn.execute("PRAGMA user_version = 4")
+    conn.commit()
 
 
 def _migrate_v1_to_v2(conn: sqlite3.Connection) -> None:
@@ -951,6 +1098,56 @@ def get_table_hands_for_hand(conn: sqlite3.Connection, hand_id: str) -> list[dic
     return [dict(zip(cols, r)) for r in rows]
 
 
+def get_player_hand_records(
+    conn: sqlite3.Connection, player_id: str | None = None,
+) -> list[dict]:
+    """Return completed per-hand records for one or all player instances.
+
+    Every player occupies exactly one table in a duplicate-deal hand. The
+    result includes both that table's role/outcome data and the hand-pair's
+    team differential score, which is used by the match scoreboard.
+    """
+    where = ""
+    params: tuple[str, ...] = ()
+    if player_id:
+        where = "AND p.id = ?"
+        params = (player_id,)
+
+    rows = conn.execute(
+        f"""SELECT p.id AS player_id, p.display_name,
+                   h.id AS hand_id, h.match_id, h.hand_num, h.idle_seat,
+                   h.is_tiebreaker, h.diff_score_red, h.diff_score_blue,
+                   h.finished_at AS hand_finished_at,
+                   m.name AS match_name,
+                   mp.team,
+                   CASE WHEN th."table" = 'A' THEN mp.seat_table_a
+                        ELSE mp.seat_table_b END AS seat,
+                   th."table" AS table_id, th.landlord_seat,
+                   th.idle_participation, th.void, th.winner_team,
+                   th.winner_role, th.final_score
+            FROM match_participants mp
+            JOIN players p ON p.id = mp.player_id
+            JOIN matches m ON m.id = mp.match_id
+            JOIN hands h ON h.match_id = mp.match_id
+            JOIN table_hands th ON th.hand_id = h.id
+            WHERE h.status = 'finished'
+              AND th.status = 'finished'
+              AND ((th."table" = 'A' AND mp.seat_table_a IS NOT NULL)
+                   OR (th."table" = 'B' AND mp.seat_table_b IS NOT NULL))
+              {where}
+            ORDER BY h.finished_at, h.created_at, h.hand_num, th.id""",
+        params,
+    ).fetchall()
+    cols = [
+        "player_id", "display_name", "hand_id", "match_id", "hand_num",
+        "idle_seat", "is_tiebreaker", "diff_score_red", "diff_score_blue",
+        "hand_finished_at", "match_name", "team", "seat", "table_id",
+        "landlord_seat", "idle_participation", "void", "winner_team",
+        "winner_role", "final_score",
+    ]
+    return [dict(zip(cols, row)) for row in rows]
+
+
 # ── bidding_records ─────────────────────────────────────────────────────────────
 
 def insert_bidding_record(
@@ -1106,7 +1303,14 @@ def insert_llm_call_log(
     model: str,
     success: bool,
     *,
+    run_id: str | None = None,
+    variant_id: str | None = None,
+    match_id: str | None = None,
+    decision_id: str | None = None,
+    attempt: int | None = None,
     table_hand_id: str | None = None,
+    response_model: str | None = None,
+    system_fingerprint: str | None = None,
     prompt_tokens: int | None = None,
     completion_tokens: int | None = None,
     total_tokens: int | None = None,
@@ -1115,16 +1319,174 @@ def insert_llm_call_log(
 ) -> str:
     lid = _uid()
     conn.execute(
-        """INSERT INTO llm_call_logs (id, table_hand_id, player_id, phase,
-           provider, model, prompt_tokens, completion_tokens, total_tokens,
-           latency_ms, success, error_message, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (lid, table_hand_id, player_id, phase,
-         provider, model, prompt_tokens, completion_tokens, total_tokens,
+        """INSERT INTO llm_call_logs
+           (id, run_id, variant_id, match_id, decision_id, attempt,
+            table_hand_id, player_id, phase, provider, model, response_model,
+            system_fingerprint, prompt_tokens, completion_tokens, total_tokens,
+            latency_ms, success, error_message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (lid, run_id, variant_id, match_id, decision_id, attempt,
+         table_hand_id, player_id, phase, provider, model, response_model,
+         system_fingerprint, prompt_tokens, completion_tokens, total_tokens,
          latency_ms, int(success), error_message, _now()),
     )
     conn.commit()
     return lid
+
+
+# ── evaluation entities ─────────────────────────────────────────────────────────
+
+def insert_experiment(conn: sqlite3.Connection, experiment_id: str, spec: dict, spec_sha256: str) -> str:
+    eid = _uid()
+    conn.execute(
+        "INSERT OR IGNORE INTO experiments (id, experiment_id, spec_json, spec_sha256, created_at) VALUES (?, ?, ?, ?, ?)",
+        (eid, experiment_id, json.dumps(spec, ensure_ascii=False, sort_keys=True), spec_sha256, _now()),
+    )
+    conn.commit()
+    return conn.execute("SELECT id FROM experiments WHERE experiment_id = ?", (experiment_id,)).fetchone()[0]
+
+
+def insert_evaluation_run(conn: sqlite3.Connection, experiment_id: str, manifest: dict, manifest_sha256: str) -> str:
+    rid = _uid()
+    conn.execute(
+        "INSERT OR IGNORE INTO evaluation_runs (id, experiment_id, manifest_json, manifest_sha256, created_at) VALUES (?, ?, ?, ?, ?)",
+        (rid, experiment_id, json.dumps(manifest, ensure_ascii=False, sort_keys=True), manifest_sha256, _now()),
+    )
+    conn.commit()
+    return conn.execute("SELECT id FROM evaluation_runs WHERE manifest_sha256 = ?", (manifest_sha256,)).fetchone()[0]
+
+
+def insert_evaluation_task(conn: sqlite3.Connection, run_id: str, variant_id: str, seed: str, seat_rotation: int) -> str:
+    task_id = _uid()
+    conn.execute(
+        """INSERT OR IGNORE INTO evaluation_tasks
+           (id, run_id, variant_id, seed, seat_rotation)
+           VALUES (?, ?, ?, ?, ?)""",
+        (task_id, run_id, variant_id, seed, seat_rotation),
+    )
+    conn.commit()
+    return conn.execute(
+        "SELECT id FROM evaluation_tasks WHERE run_id = ? AND variant_id = ? AND seed = ? AND seat_rotation = ?",
+        (run_id, variant_id, seed, seat_rotation),
+    ).fetchone()[0]
+
+
+def update_evaluation_task(conn: sqlite3.Connection, task_id: str, status: str, *, match_id: str | None = None, failure_reason: str | None = None) -> None:
+    fields = ["status = ?"]
+    values: list[Any] = [status]
+    if status == "running":
+        fields.append("started_at = ?"); values.append(_now())
+    if status in ("finished", "failed", "cancelled"):
+        fields.append("finished_at = ?"); values.append(_now())
+    if match_id is not None:
+        fields.append("match_id = ?"); values.append(match_id)
+    if failure_reason is not None:
+        fields.append("failure_reason = ?"); values.append(failure_reason)
+    values.append(task_id)
+    conn.execute(f"UPDATE evaluation_tasks SET {', '.join(fields)} WHERE id = ?", values)
+    conn.commit()
+
+
+def get_evaluation_run(conn: sqlite3.Connection, run_id: str) -> dict | None:
+    row = conn.execute("SELECT * FROM evaluation_runs WHERE id = ?", (run_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def get_evaluation_tasks(conn: sqlite3.Connection, run_id: str) -> list[dict]:
+    return [dict(row) for row in conn.execute(
+        "SELECT * FROM evaluation_tasks WHERE run_id = ? ORDER BY variant_id, seed, seat_rotation",
+        (run_id,),
+    ).fetchall()]
+
+
+def upsert_memory_training_checkpoint(
+    conn: sqlite3.Connection, run_id: str, memories: dict[str, str],
+    completed_task_id: str | None = None,
+) -> None:
+    conn.execute(
+        """INSERT INTO memory_training_checkpoints
+           (run_id, completed_task_id, memories_json, updated_at)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(run_id) DO UPDATE SET
+             completed_task_id=excluded.completed_task_id,
+             memories_json=excluded.memories_json,
+             updated_at=excluded.updated_at""",
+        (run_id, completed_task_id, json.dumps(memories, ensure_ascii=False, sort_keys=True), _now()),
+    )
+    conn.commit()
+
+
+def get_memory_training_checkpoint(conn: sqlite3.Connection, run_id: str) -> dict | None:
+    row = conn.execute(
+        "SELECT * FROM memory_training_checkpoints WHERE run_id = ?", (run_id,)
+    ).fetchone()
+    if not row:
+        return None
+    result = dict(row)
+    result["memories"] = json.loads(result.pop("memories_json"))
+    return result
+
+
+def update_evaluation_run_status(conn: sqlite3.Connection, run_id: str, status: str, failure_reason: str | None = None) -> None:
+    fields = ["status = ?"]
+    values: list[Any] = [status]
+    if status == "running":
+        fields.append("started_at = COALESCE(started_at, ?)"); values.append(_now())
+    if status in ("finished", "failed", "cancelled"):
+        fields.append("finished_at = ?"); values.append(_now())
+    if failure_reason is not None:
+        fields.append("failure_reason = ?"); values.append(failure_reason)
+    values.append(run_id)
+    conn.execute(f"UPDATE evaluation_runs SET {', '.join(fields)} WHERE id = ?", values)
+    conn.commit()
+
+
+def list_evaluation_runs(conn: sqlite3.Connection) -> list[dict]:
+    return [dict(row) for row in conn.execute(
+        """SELECT r.*, e.experiment_id AS experiment_name,
+                  COUNT(t.id) AS task_count,
+                  SUM(CASE WHEN t.status = 'finished' THEN 1 ELSE 0 END) AS finished_count,
+                  SUM(CASE WHEN t.status = 'failed' THEN 1 ELSE 0 END) AS failed_count
+           FROM evaluation_runs r JOIN experiments e ON e.id = r.experiment_id
+           LEFT JOIN evaluation_tasks t ON t.run_id = r.id
+           GROUP BY r.id ORDER BY r.created_at DESC"""
+    ).fetchall()]
+
+
+def get_experiment(conn: sqlite3.Connection, experiment_db_id: str) -> dict | None:
+    row = conn.execute("SELECT * FROM experiments WHERE id = ?", (experiment_db_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def insert_model_snapshot(conn: sqlite3.Connection, run_id: str, snapshot: dict) -> str:
+    sid = _uid()
+    conn.execute(
+        """INSERT INTO model_snapshots (id, run_id, config_name, provider, model, base_url, parameters_json, prompt_sha256, source_revision, sdk_version, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (sid, run_id, snapshot["config_name"], snapshot["provider"], snapshot["model"], snapshot.get("base_url"),
+         json.dumps(snapshot["parameters"], ensure_ascii=False, sort_keys=True), snapshot["prompt_sha256"], snapshot["revision"], snapshot.get("sdk_version"), _now()),
+    )
+    conn.commit()
+    return sid
+
+
+def insert_decision_event(conn: sqlite3.Connection, *, phase: str, attempt: int, **kwargs: Any) -> str:
+    eid = _uid()
+    columns = ["id", "decision_id", "run_id", "variant_id", "match_id", "table_hand_id", "player_id", "seat", "phase", "attempt", "output_sha256", "error_code", "is_illegal", "is_retry", "is_fallback", "is_autoplay", "fallback_reason", "latency_ms", "final_action", "created_at"]
+    values = [eid, kwargs.get("decision_id"), kwargs.get("run_id"), kwargs.get("variant_id"), kwargs.get("match_id"), kwargs.get("table_hand_id"), kwargs.get("player_id"), kwargs.get("seat"), phase, attempt, kwargs.get("output_sha256"), kwargs.get("error_code"), int(kwargs.get("is_illegal", False)), int(kwargs.get("is_retry", False)), int(kwargs.get("is_fallback", False)), int(kwargs.get("is_autoplay", False)), kwargs.get("fallback_reason"), kwargs.get("latency_ms"), kwargs.get("final_action"), _now()]
+    conn.execute(f"INSERT INTO decision_events ({', '.join(columns)}) VALUES ({', '.join('?' for _ in columns)})", values)
+    conn.commit()
+    return eid
+
+
+def get_decision_events(conn: sqlite3.Connection, run_id: str | None = None, match_id: str | None = None) -> list[dict]:
+    conditions, params = [], []
+    if run_id is not None:
+        conditions.append("run_id = ?"); params.append(run_id)
+    if match_id is not None:
+        conditions.append("match_id = ?"); params.append(match_id)
+    where = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+    return [dict(row) for row in conn.execute(f"SELECT * FROM decision_events{where} ORDER BY created_at, attempt", params).fetchall()]
 
 
 # ── initial_hands ───────────────────────────────────────────────────────────────

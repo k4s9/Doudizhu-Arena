@@ -3,7 +3,7 @@ import { ref, watch, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useReplayStore } from '../stores/replay.js';
 import { api } from '../api/index.js';
-import { useReplayState } from '../composables/useReplayState.js';
+import { buildReplayTimeline, useReplayState } from '../composables/useReplayState.js';
 import GameTable from '../components/GameTable.vue';
 import PlayHistory from '../components/PlayHistory.vue';
 import PlaybackControls from '../components/PlaybackControls.vue';
@@ -18,6 +18,11 @@ const activeTable = ref('A');
 const currentStep = ref(0);
 const allSteps = ref([]);
 const matchInfo = ref(null);
+
+const SEAT_NAMES = { S: '南', E: '东', N: '北', W: '西' };
+const TEAM_NAMES = { red: '红队', blue: '蓝队' };
+const ROLE_NAMES = { landlord: '地主', farmer: '农民', idle: '闲家' };
+const TABLE_NAMES = { A: 'A', B: 'B' };
 
 onMounted(async () => {
   try {
@@ -41,21 +46,7 @@ async function loadHand() {
   if (store.handDetail) {
     const h = store.handDetail;
     const tableData = h[`table_${activeTable.value.toLowerCase()}`] || h.table_a;
-    const steps = [];
-    // Add bidding steps
-    const bidding = tableData?.bidding || [];
-    bidding.forEach(b => steps.push({ type: 'bid', data: b }));
-
-    // Add play steps
-    const plays = tableData?.play_history || [];
-    plays.forEach(p => steps.push({ type: 'play', data: p }));
-
-    // Add thoughts
-    const thoughts = tableData?.agent_thoughts || [];
-    thoughts.forEach(t => steps.push({ type: 'thought', data: t }));
-
-    steps.sort((a, b) => (a.data.timestamp_ms || 0) - (b.data.timestamp_ms || 0));
-    allSteps.value = steps;
+    allSteps.value = buildReplayTimeline(tableData);
   }
 }
 
@@ -92,18 +83,27 @@ const replayState = useReplayState({
   currentStep: currentStep,
 });
 
-const currentAction = computed(() => {
-  if (currentStep.value > 0 && currentStep.value <= allSteps.value.length) {
-    return allSteps.value[currentStep.value - 1];
-  }
-  return null;
-});
-
 const handList = computed(() => {
   return store.hands || [];
 });
 
 const replayTableData = computed(() => replayState.value?.tableData || null);
+
+function seatLabel(seat) {
+  return SEAT_NAMES[seat] || '未知席位';
+}
+
+function teamLabel(team) {
+  return TEAM_NAMES[team] || '未知队伍';
+}
+
+function roleLabel(role) {
+  return ROLE_NAMES[role] || '未知身份';
+}
+
+function tableLabel(table) {
+  return `${TABLE_NAMES[table] || '未知'}桌`;
+}
 </script>
 
 <template>
@@ -131,7 +131,7 @@ const replayTableData = computed(() => replayState.value?.tableData || null);
         class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white"
       >
         <option v-for="h in handList" :key="h.hand_num" :value="h.hand_num">
-          第 {{ h.hand_num }} 副 ({{ h.dealer }} 发牌)
+          第 {{ h.hand_num }} 副（{{ seatLabel(h.dealer) }}位发牌）
           <template v-if="h.diff_result?.red_diff">— 红队 +{{ h.diff_result.red_diff }}</template>
           <template v-if="h.diff_result?.blue_diff">— 蓝队 +{{ h.diff_result.blue_diff }}</template>
         </option>
@@ -142,11 +142,11 @@ const replayTableData = computed(() => replayState.value?.tableData || null);
         <button
           @click="activeTable = 'A'"
           :class="['px-3 py-1 text-xs font-medium transition-colors', activeTable === 'A' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white']"
-        >A 桌</button>
+        >A桌</button>
         <button
           @click="activeTable = 'B'"
           :class="['px-3 py-1 text-xs font-medium transition-colors', activeTable === 'B' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white']"
-        >B 桌</button>
+        >B桌</button>
       </div>
     </div>
 
@@ -167,20 +167,6 @@ const replayTableData = computed(() => replayState.value?.tableData || null);
       :last-thoughts="replayState.lastThoughts"
     />
 
-    <!-- Current thought -->
-    <div v-if="currentAction?.type === 'thought'" class="mt-4 bg-amber-900/30 border border-amber-700/50 rounded-lg p-3">
-      <div class="flex items-center gap-2 mb-1">
-        <span class="text-xs font-semibold text-amber-400">{{ currentAction.data.seat }} — {{ currentAction.data.phase }}</span>
-        <span v-if="currentAction.data.round" class="text-xs text-slate-500">第{{ currentAction.data.round }}轮</span>
-      </div>
-      <p class="text-slate-300 leading-relaxed whitespace-pre-wrap text-xs">
-        {{ currentAction.data.reasoning }}
-      </p>
-      <div v-if="currentAction.data.decision" class="mt-1 text-xs text-slate-500 font-mono">
-        决策: {{ JSON.stringify(currentAction.data.decision) }}
-      </div>
-    </div>
-
     <!-- Playback controls -->
     <PlaybackControls
       v-if="allSteps.length > 0"
@@ -192,7 +178,7 @@ const replayTableData = computed(() => replayState.value?.tableData || null);
     <!-- Play History -->
     <div class="mt-4 bg-slate-800 rounded-xl border border-slate-700 p-4">
       <h3 class="text-sm font-semibold text-slate-400 mb-2">
-        出牌历史 — {{ activeTable }} 桌
+        出牌历史 — {{ tableLabel(activeTable) }}
       </h3>
       <PlayHistory :actions="replayState.visiblePlayHistory" show-cards />
     </div>
@@ -203,7 +189,7 @@ const replayTableData = computed(() => replayState.value?.tableData || null);
       <div class="grid grid-cols-2 gap-4 text-sm">
         <div>
           <div class="text-slate-400">获胜方</div>
-          <div class="text-white">{{ currentTableDetail.result.winner_team }} / {{ currentTableDetail.result.winner_role }}</div>
+          <div class="text-white">{{ teamLabel(currentTableDetail.result.winner_team) }}胜（{{ roleLabel(currentTableDetail.result.winner_role) }}）</div>
         </div>
         <div>
           <div class="text-slate-400">得分</div>
@@ -224,7 +210,7 @@ const replayTableData = computed(() => replayState.value?.tableData || null);
       <div class="mt-3">
         <div class="text-sm text-slate-400 mb-1">剩余手牌</div>
         <div v-for="(cards, seat) in currentTableDetail.remaining_hands || {}" :key="seat" class="text-xs mb-1">
-          <span class="text-slate-500 font-mono w-6 inline-block">{{ seat }}:</span>
+          <span class="text-slate-500 w-10 inline-block">{{ seatLabel(seat) }}位：</span>
           <span class="text-white font-mono">{{ cards?.join(' ') || '(无)' }}</span>
         </div>
       </div>
@@ -235,7 +221,7 @@ const replayTableData = computed(() => replayState.value?.tableData || null);
       <h3 class="text-sm font-semibold text-slate-400 mb-2">复盘反思</h3>
       <div v-for="(r, i) in currentTableDetail.reflections" :key="i" class="mb-3 border-b border-slate-700 pb-2 last:border-0">
         <div class="text-xs text-amber-400 font-semibold">
-          {{ r.seat }} ({{ r.actual_role }})
+          {{ seatLabel(r.seat) }}位（{{ roleLabel(r.actual_role) }}）
         </div>
         <p class="text-xs text-slate-300 mt-1 whitespace-pre-wrap">{{ r.reflection }}</p>
       </div>

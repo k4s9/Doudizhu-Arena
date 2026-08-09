@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from . import models
+from ..security.credentials import decrypt_secret, encrypt_secret, master_key_configured
 
 
 class DatabaseRepository:
@@ -35,6 +36,14 @@ class DatabaseRepository:
         """Initialize the database — create tables and run migrations."""
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = models.init_db(self._db_path)
+        # Upgrade legacy plaintext rows when the deployment has a master key.
+        if master_key_configured():
+            rows = self.conn.execute("SELECT id, api_key FROM player_configs").fetchall()
+            for row in rows:
+                value = row[1] or ""
+                if value and not value.startswith("enc:v1:") and not value.startswith("${"):
+                    self.conn.execute("UPDATE player_configs SET api_key = ?, updated_at = updated_at WHERE id = ?", (encrypt_secret(value), row[0]))
+            self.conn.commit()
 
     def close(self) -> None:
         if self._conn:
@@ -60,20 +69,22 @@ class DatabaseRepository:
         config_id: str = "",
     ) -> str:
         return models.insert_player_config(
-            self.conn, name, provider, model, api_key,
+            self.conn, name, provider, model, encrypt_secret(api_key),
             base_url=base_url, system_prompt=system_prompt, config_id=config_id,
         )
 
     def get_player_config(self, config_id: str) -> dict | None:
-        return models.get_player_config(self.conn, config_id)
+        return self._decrypt_config(models.get_player_config(self.conn, config_id))
 
     def get_player_config_by_name(self, name: str) -> dict | None:
-        return models.get_player_config_by_name(self.conn, name)
+        return self._decrypt_config(models.get_player_config_by_name(self.conn, name))
 
     def list_player_configs(self) -> list[dict]:
-        return models.list_player_configs(self.conn)
+        return [self._decrypt_config(item) for item in models.list_player_configs(self.conn)]
 
     def update_player_config(self, config_id: str, **kwargs: Any) -> bool:
+        if "api_key" in kwargs:
+            kwargs["api_key"] = encrypt_secret(kwargs["api_key"])
         return models.update_player_config(self.conn, config_id, **kwargs)
 
     def delete_player_config(self, config_id: str) -> bool:
@@ -100,7 +111,14 @@ class DatabaseRepository:
         return models.get_player(self.conn, player_id)
 
     def get_player_with_config(self, player_id: str) -> dict | None:
-        return models.get_player_with_config(self.conn, player_id)
+        return self._decrypt_config(models.get_player_with_config(self.conn, player_id))
+
+    @staticmethod
+    def _decrypt_config(config: dict | None) -> dict | None:
+        if config and "api_key" in config:
+            config = dict(config)
+            config["api_key"] = decrypt_secret(config.get("api_key", ""))
+        return config
 
     def list_players(self, config_id: str | None = None) -> list[dict]:
         return models.list_players(self.conn, config_id=config_id)
@@ -314,6 +332,54 @@ class DatabaseRepository:
             self.conn, player_id, phase, provider, model, success, **kwargs,
         )
 
+    # ── evaluation ──────────────────────────────────────────────────────────────
+
+    def create_experiment(self, experiment_id: str, spec: dict, spec_sha256: str) -> str:
+        return models.insert_experiment(self.conn, experiment_id, spec, spec_sha256)
+
+    def create_evaluation_run(self, experiment_id: str, manifest: dict, manifest_sha256: str) -> str:
+        return models.insert_evaluation_run(self.conn, experiment_id, manifest, manifest_sha256)
+
+    def create_evaluation_task(self, run_id: str, variant_id: str, seed: str, seat_rotation: int) -> str:
+        return models.insert_evaluation_task(self.conn, run_id, variant_id, seed, seat_rotation)
+
+    def update_evaluation_task(self, task_id: str, status: str, *, match_id: str | None = None, failure_reason: str | None = None) -> None:
+        models.update_evaluation_task(self.conn, task_id, status, match_id=match_id, failure_reason=failure_reason)
+
+    def get_evaluation_run(self, run_id: str) -> dict | None:
+        return models.get_evaluation_run(self.conn, run_id)
+
+    def get_evaluation_tasks(self, run_id: str) -> list[dict]:
+        return models.get_evaluation_tasks(self.conn, run_id)
+
+    def save_memory_training_checkpoint(
+        self, run_id: str, memories: dict[str, str], completed_task_id: str | None = None,
+    ) -> None:
+        models.upsert_memory_training_checkpoint(
+            self.conn, run_id, memories, completed_task_id=completed_task_id,
+        )
+
+    def get_memory_training_checkpoint(self, run_id: str) -> dict | None:
+        return models.get_memory_training_checkpoint(self.conn, run_id)
+
+    def update_evaluation_run_status(self, run_id: str, status: str, failure_reason: str | None = None) -> None:
+        models.update_evaluation_run_status(self.conn, run_id, status, failure_reason)
+
+    def list_evaluation_runs(self) -> list[dict]:
+        return models.list_evaluation_runs(self.conn)
+
+    def get_experiment(self, experiment_db_id: str) -> dict | None:
+        return models.get_experiment(self.conn, experiment_db_id)
+
+    def add_model_snapshot(self, run_id: str, snapshot: dict) -> str:
+        return models.insert_model_snapshot(self.conn, run_id, snapshot)
+
+    def add_decision_event(self, *, phase: str, attempt: int, **kwargs: Any) -> str:
+        return models.insert_decision_event(self.conn, phase=phase, attempt=attempt, **kwargs)
+
+    def get_decision_events(self, run_id: str | None = None, match_id: str | None = None) -> list[dict]:
+        return models.get_decision_events(self.conn, run_id=run_id, match_id=match_id)
+
     # ── initial_hands / remaining_hands ──────────────────────────────────────────
 
     def add_initial_hand(
@@ -354,6 +420,9 @@ class DatabaseRepository:
 
     def get_table_hands_for_hand(self, hand_id: str) -> list[dict]:
         return models.get_table_hands_for_hand(self.conn, hand_id)
+
+    def get_player_hand_records(self, player_id: str | None = None) -> list[dict]:
+        return models.get_player_hand_records(self.conn, player_id)
 
     def get_table_hand(self, table_hand_id: str) -> dict | None:
         return models.get_table_hand(self.conn, table_hand_id)

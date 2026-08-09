@@ -122,6 +122,26 @@ class MatchEventBus:
             },
         })
 
+    async def emit_play_turn_started(
+        self,
+        table: str,
+        hand_num: int,
+        seat: str,
+        timeout_ms: int,
+        deadline_ms: int,
+    ) -> None:
+        """Notify spectators before an LLM play decision begins."""
+        await self.put({
+            "type": "play_turn_started",
+            "payload": {
+                "table": table,
+                "hand_num": hand_num,
+                "seat": seat,
+                "timeout_ms": timeout_ms,
+                "deadline_ms": deadline_ms,
+            },
+        })
+
     async def emit_card_played(
         self,
         table: str,
@@ -135,25 +155,29 @@ class MatchEventBus:
         current_pattern: dict[str, Any] | None,
         next_seat: str,
         timestamp_ms: int,
+        thought: dict[str, Any] | None = None,
     ) -> None:
+        payload: dict[str, Any] = {
+            "table": table,
+            "hand_num": hand_num,
+            "round": round_num,
+            "sub_round": sub_round,
+            "seat": seat,
+            "action": {
+                "type": "play",
+                "cards": cards,
+                "pattern": pattern,
+                "display": display,
+            },
+            "current_pattern": current_pattern,
+            "next_seat": next_seat,
+            "timestamp_ms": timestamp_ms,
+        }
+        if thought is not None:
+            payload["thought"] = thought
         await self.put({
             "type": "card_played",
-            "payload": {
-                "table": table,
-                "hand_num": hand_num,
-                "round": round_num,
-                "sub_round": sub_round,
-                "seat": seat,
-                "action": {
-                    "type": "play",
-                    "cards": cards,
-                    "pattern": pattern,
-                    "display": display,
-                },
-                "current_pattern": current_pattern,
-                "next_seat": next_seat,
-                "timestamp_ms": timestamp_ms,
-            },
+            "payload": payload,
         })
 
     async def emit_pass(
@@ -166,19 +190,23 @@ class MatchEventBus:
         pass_count_in_round: int,
         next_seat: str,
         timestamp_ms: int,
+        thought: dict[str, Any] | None = None,
     ) -> None:
+        payload: dict[str, Any] = {
+            "table": table,
+            "hand_num": hand_num,
+            "round": round_num,
+            "sub_round": sub_round,
+            "seat": seat,
+            "pass_count_in_round": pass_count_in_round,
+            "next_seat": next_seat,
+            "timestamp_ms": timestamp_ms,
+        }
+        if thought is not None:
+            payload["thought"] = thought
         await self.put({
             "type": "pass",
-            "payload": {
-                "table": table,
-                "hand_num": hand_num,
-                "round": round_num,
-                "sub_round": sub_round,
-                "seat": seat,
-                "pass_count_in_round": pass_count_in_round,
-                "next_seat": next_seat,
-                "timestamp_ms": timestamp_ms,
-            },
+            "payload": payload,
         })
 
     async def emit_trick_won(

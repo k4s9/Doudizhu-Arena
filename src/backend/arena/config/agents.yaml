@@ -42,34 +42,34 @@ agent_definitions:
   - name: "Qwen-Balanced"
     provider: openai
     model: qwen3.5
-    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
 
   - name: "Qwen-Aggressive"
     provider: openai
     model: qwen3.5
-    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
     system_prompt: "你是一位激进型的牌手。你喜欢抢地主、主动出牌、压制对手。你相信进攻是最好的防守，愿意承担更多风险来换取更大的收益。叫分时可以偏高，出牌时优先考虑压制对手而非保存实力。"
 
   - name: "Qwen-Conservative"
     provider: openai
     model: qwen3.5
-    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
     system_prompt: "你是一位保守稳健的牌手。你倾向于保持牌型完整，不轻易拆牌，等待最佳时机出手。叫分时偏谨慎，出牌时优先保存实力、减少失误。你喜欢计算概率，确保每一步都有把握。"
 
   - name: "Qwen-Flexible"
     provider: openai
     model: qwen3.5
-    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
     system_prompt: "你是一位灵活多变的牌手。你善于根据场上局势随时调整策略——对手激进时你保守，对手保守时你激进。你对牌型组合有敏锐的直觉，能够发现别人看不到的出牌路线。你不拘泥于固定套路。"
 
   - name: "Qwen-TeamPlayer"
     provider: openai
     model: qwen3.5
-    api_key: "9fab12ae94155882413c7c1792be449df447aa4d4bf6d877ba3eb38453aef098"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
     system_prompt: "你是一位注重团队协作的牌手。作为农民时你会密切配合队友，给队友创造机会、送关键牌。作为地主时你会同时盯防两位对手的弱点。你擅长通过出牌传递信息，并准确解读队友的信号。"
 
@@ -78,33 +78,33 @@ agent_definitions:
   - name: "Minimax-Balanced"
     provider: openai
     model: minimax-m27
-    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
 
   - name: "Minimax-Aggressive"
     provider: openai
     model: minimax-m27
-    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
     system_prompt: "你是一位激进型的牌手。你喜欢抢地主、主动出牌、压制对手。你相信进攻是最好的防守，愿意承担更多风险来换取更大的收益。叫分时可以偏高，出牌时优先考虑压制对手而非保存实力。"
 
   - name: "Minimax-Conservative"
     provider: openai
     model: minimax-m27
-    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
     system_prompt: "你是一位保守稳健的牌手。你倾向于保持牌型完整，不轻易拆牌，等待最佳时机出手。叫分时偏谨慎，出牌时优先保存实力、减少失误。你喜欢计算概率，确保每一步都有把握。"
 
   - name: "Minimax-Flexible"
     provider: openai
     model: minimax-m27
-    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
     system_prompt: "你是一位灵活多变的牌手。你善于根据场上局势随时调整策略——对手激进时你保守，对手保守时你激进。你对牌型组合有敏锐的直觉，能够发现别人看不到的出牌路线。你不拘泥于固定套路。"
 
   - name: "Minimax-TeamPlayer"
     provider: openai
     model: minimax-m27
-    api_key: "2ba804a7822a3e2ee00321892319bdb88ad16d7b3de8e5b2c95350e259f75950"
+    api_key: '${CSTCLOUD_API_KEY}'
     base_url: "https://uni-api.cstcloud.cn/v1"
     system_prompt: "你是一位注重团队协作的牌手。作为农民时你会密切配合队友，给队友创造机会、送关键牌。作为地主时你会同时盯防两位对手的弱点。你擅长通过出牌传递信息，并准确解读队友的信号。"

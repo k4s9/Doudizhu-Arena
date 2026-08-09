@@ -31,6 +31,9 @@ class MatchConfig:
     ko_enabled: bool = True
     seed: str = ""  # match-level seed; hand seeds derived from this
     timeout_config: TimeoutConfig | None = None
+    enable_reflection: bool = True
+    enable_summary: bool = True
+    persist_long_term_memory: bool = True
 
 
 @dataclass
@@ -117,10 +120,12 @@ class MatchRunner:
         self.table_a = TableRunner(
             "A", table_a_agents, seating.table_a_teams,
             pause_a, timeout_a, db_repo=db_repo, match_id=self.match_id,
+            enable_reflection=config.enable_reflection,
         )
         self.table_b = TableRunner(
             "B", table_b_agents, seating.table_b_teams,
             pause_b, timeout_b, db_repo=db_repo, match_id=self.match_id,
+            enable_reflection=config.enable_reflection,
         )
 
         self.scoreboard = MatchScoreboard()
@@ -269,10 +274,14 @@ class MatchRunner:
 
         # Run match summary for all agents (updates long-term memory)
         # This can be slow (LLM calls) — does NOT block match_ended emission above
-        try:
-            await self._run_match_summary(winner_team, finished_at)
-        except Exception:
-            pass  # Summary failure should not affect match completion
+        if self.config.enable_summary:
+            try:
+                await self._run_match_summary(winner_team, finished_at)
+            except Exception:
+                pass  # Summary failure should not affect match completion
+
+        for agent in self.agents.values():
+            agent.memory.end_match()
 
         # Close event bus after everything is done
         if self.event_bus:
@@ -479,9 +488,6 @@ class MatchRunner:
 
     async def _run_match_summary(self, winner_team: str, finished_at: str) -> None:
         """Run post-match summary for all agents, updating long-term memory and stats."""
-        if not self.db_repo or not self.match_id:
-            return
-
         from ..agent.base import AgentContext
         from ..engine.card import SEATS
 
@@ -489,19 +495,18 @@ class MatchRunner:
         # Increment matches_played for every participant, and matches_won for
         # players on the winning team.  Also update total_score from the
         # cumulative match score (red vs blue).
-        for agent_id, team in self.seating.agent_teams.items():
-            won = (team == winner_team)
-            self.db_repo.update_player_stats(
-                agent_id,
-                matches_played_delta=1,
-                matches_won_delta=1 if won else 0,
-                # Per-player total_score: signed contribution to their team's score
-                # Each team has 4 players — divide team total evenly.
-                total_score_delta=(
-                    self.scoreboard.red_total if team == "red"
-                    else self.scoreboard.blue_total
-                ),
-            )
+        if self.db_repo:
+            for agent_id, team in self.seating.agent_teams.items():
+                won = (team == winner_team)
+                self.db_repo.update_player_stats(
+                    agent_id,
+                    matches_played_delta=1,
+                    matches_won_delta=1 if won else 0,
+                    total_score_delta=(
+                        self.scoreboard.red_total if team == "red"
+                        else self.scoreboard.blue_total
+                    ),
+                )
 
         # ── Build match summary context ──────────────────────────────────────
         match_summary: dict[int, dict[str, str]] = {}
@@ -533,11 +538,14 @@ class MatchRunner:
             )
             try:
                 summary_result = await agent.summarize(ctx)
-                summary_text = summary_result.get("summary", "")
                 long_term = summary_result.get("long_term_memory", "")
 
                 if long_term:
                     agent.memory.update_long_term(long_term)
+                if (
+                    long_term and self.config.persist_long_term_memory
+                    and self.db_repo and self.match_id
+                ):
                     self.db_repo.update_player_long_term_memory(
                         agent.agent_id, long_term,
                     )

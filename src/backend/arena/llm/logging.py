@@ -74,6 +74,12 @@ class LoggingLLMProvider(AbstractLLMProvider):
         self._agent_id = agent_id
         self._repo = repo
         self._table_hand_id = table_hand_id
+        self._run_id = ""
+        self._variant_id = ""
+        self._match_id = ""
+        self._decision_id = ""
+        self._attempt: int | None = None
+        self._phase = ""
         self.last_usage: LLMUsage | None = None
         self.last_thinking: str | None = None
 
@@ -85,19 +91,36 @@ class LoggingLLMProvider(AbstractLLMProvider):
     def model(self) -> str:
         return self._inner.model
 
-    def set_context(self, *, agent_id: str = "", table_hand_id: str = "") -> None:
+    def set_context(
+        self, *, agent_id: str | None = None, table_hand_id: str | None = None,
+        run_id: str | None = None, variant_id: str | None = None,
+        match_id: str | None = None, decision_id: str | None = None,
+        attempt: int | None = None, phase: str | None = None,
+    ) -> None:
         """Update logging context between calls."""
-        if agent_id:
+        if agent_id is not None:
             self._agent_id = agent_id
-        if table_hand_id:
+        if table_hand_id is not None:
             self._table_hand_id = table_hand_id
+        if run_id is not None:
+            self._run_id = run_id
+        if variant_id is not None:
+            self._variant_id = variant_id
+        if match_id is not None:
+            self._match_id = match_id
+        if decision_id is not None:
+            self._decision_id = decision_id
+        if attempt is not None:
+            self._attempt = attempt
+        if phase is not None:
+            self._phase = phase
 
     async def generate(
         self,
         user_prompt: str,
         system_prompt: str = "",
     ) -> str:
-        phase = self._detect_phase(system_prompt)
+        phase = self._phase or self._detect_phase(system_prompt)
         start = time.monotonic()
         success = False
         error_msg: str | None = None
@@ -170,12 +193,19 @@ class LoggingLLMProvider(AbstractLLMProvider):
             if self._repo is not None:
                 try:
                     self._repo.add_llm_call_log(
-                        agent_id=self._agent_id,
+                        player_id=self._agent_id,
                         phase=phase,
                         provider=self.provider_name,
                         model=self.model,
                         success=success,
+                        run_id=self._run_id or None,
+                        variant_id=self._variant_id or None,
+                        match_id=self._match_id or None,
+                        decision_id=self._decision_id or None,
+                        attempt=self._attempt,
                         table_hand_id=self._table_hand_id or None,
+                        response_model=getattr(self._inner, "last_response_model", None),
+                        system_fingerprint=getattr(self._inner, "last_system_fingerprint", None),
                         prompt_tokens=self.last_usage.prompt_tokens if self.last_usage else None,
                         completion_tokens=self.last_usage.completion_tokens if self.last_usage else None,
                         total_tokens=self.last_usage.total_tokens if self.last_usage else None,

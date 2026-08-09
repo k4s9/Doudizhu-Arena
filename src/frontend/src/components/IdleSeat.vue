@@ -12,7 +12,7 @@ defineProps({
 </script>
 
 <template>
-  <div class="bg-slate-800/60 rounded-lg border border-dashed border-slate-600 p-3 text-center min-w-[100px]">
+  <div class="border border-dashed border-slate-600 bg-slate-950/35 p-3 text-center">
     <PlayerSeat
       :seat="seat"
       :player="player"

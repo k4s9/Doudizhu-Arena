@@ -1,0 +1,39 @@
+experiment_id: reliability-v1
+seed_set_path: src/backend/evaluation/seed_sets/v1.json
+training_seed_set_path: src/backend/evaluation/seed_sets/train-v1.json
+memory_training_variant_id: reflection_memory
+training_total_hands: 5
+total_hands: 20
+ko_enabled: false
+seat_rotations: 1
+timeout_config:
+  bidding_seconds: 60
+  individual_play_seconds: 360
+  team_pool_seconds: 3600
+  max_consecutive_llm_failures: 3
+pricing_version: pricing-v1
+budget_limit_usd: 100.0
+models:
+  - config_name: example-model
+    provider: openai
+    model: replace-before-real-run
+    parameters:
+      max_tokens: 4096
+      temperature: 0
+      top_p: 1
+variants:
+  - variant_id: baseline_no_feedback
+    retry_limit: 0
+    rule_feedback: false
+    enable_reflection: false
+    memory_mode: disabled
+  - variant_id: rule_feedback
+    retry_limit: 3
+    rule_feedback: true
+    enable_reflection: false
+    memory_mode: disabled
+  - variant_id: reflection_memory
+    retry_limit: 3
+    rule_feedback: true
+    enable_reflection: true
+    memory_mode: read_only

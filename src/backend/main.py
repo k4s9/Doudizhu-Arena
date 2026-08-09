@@ -90,12 +90,13 @@ def create_app() -> FastAPI:
         }
 
     # M5: REST API routes
-    from arena.api.routes import match, replay, agent, config, player
+    from arena.api.routes import match, replay, agent, config, player, evaluation
     app.include_router(match.router, prefix="/api/v1")
     app.include_router(replay.router, prefix="/api/v1")
     app.include_router(agent.router, prefix="/api/v1")
     app.include_router(config.router, prefix="/api/v1")
     app.include_router(player.router, prefix="/api/v1")
+    app.include_router(evaluation.router, prefix="/api/v1")
 
     # M5: WebSocket handler
     from arena.api.ws import router as ws_router
@@ -103,6 +104,7 @@ def create_app() -> FastAPI:
 
     # M5: Active match registry for WebSocket state access
     app.state.active_matches = {}
+    app.state.active_evaluations = {}
 
     return app
 

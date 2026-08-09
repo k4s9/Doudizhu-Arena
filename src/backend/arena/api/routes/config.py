@@ -7,6 +7,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from ...agent.loader import load_agents_from_yaml
+from ...security.credentials import MASTER_KEY_ENV, master_key_configured
 
 logger = logging.getLogger("arena.api.configs")
 
@@ -31,6 +32,8 @@ async def list_configs(request: Request):
                 "model": c["model"],
                 "base_url": c.get("base_url"),
                 "system_prompt": c.get("system_prompt"),
+                "has_api_key": bool(c.get("api_key")),
+                "credential_storage": "encrypted" if master_key_configured() else "environment_or_legacy",
                 "player_count": repo.count_players_for_config(c["id"]),
                 "created_at": c["created_at"],
                 "updated_at": c["updated_at"],
@@ -56,6 +59,8 @@ async def create_config(request: Request):
 
     model = body.get("model", "")
     api_key = body.get("api_key", "")
+    if api_key and provider != "random" and not master_key_configured():
+        raise HTTPException(503, detail={"error": {"code": "MASTER_KEY_REQUIRED", "message": f"请先在服务端设置 {MASTER_KEY_ENV}"}})
     base_url = body.get("base_url")
     system_prompt = body.get("system_prompt")
 
@@ -112,6 +117,10 @@ async def update_config(config_id: str, request: Request):
     for field in ("name", "model", "base_url", "system_prompt", "provider", "api_key"):
         if field in body:
             updates[field] = body[field]
+    if updates.get("api_key") and not master_key_configured():
+        raise HTTPException(503, detail={"error": {"code": "MASTER_KEY_REQUIRED", "message": f"请先在服务端设置 {MASTER_KEY_ENV}"}})
+    if updates.get("api_key") == "":
+        updates.pop("api_key")
 
     if updates:
         repo.update_player_config(config_id, **updates)

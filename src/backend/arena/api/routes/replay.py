@@ -74,8 +74,10 @@ def _build_table_detail(
                 role = "farmer"
             if seat == idle_participation.get("original_farmer"):
                 role = "idle"
+        display_name = agent_map.get(aid, {}).get("display_name") or aid
         players[seat] = {
             "agent_id": aid,
+            "agent_name": display_name,
             "team": team,
             "role": role,
         }

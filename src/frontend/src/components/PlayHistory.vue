@@ -10,6 +10,12 @@ const props = defineProps({
   showCards: { type: Boolean, default: true },
 });
 
+const SEAT_NAMES = { S: '南', E: '东', N: '北', W: '西' };
+
+function seatLabel(seat) {
+  return SEAT_NAMES[seat] || '未知席位';
+}
+
 const groupedByRound = computed(() => {
   const groups = [];
   let current = null;
@@ -70,7 +76,7 @@ function suitColor(cards) {
         class="flex items-center gap-2 py-1 px-2 rounded hover:bg-slate-800/50 text-sm"
       >
         <span class="w-6 text-center text-xs font-mono text-slate-500">{{ actionIcon(a) }}</span>
-        <span class="w-6 text-center font-semibold text-slate-300">{{ a.seat }}</span>
+        <span class="w-8 text-center font-semibold text-slate-300">{{ seatLabel(a.seat) }}</span>
         <span :class="[a.action?.type === 'pass' ? 'text-slate-500 italic' : suitColor(a.action?.cards), 'font-mono']">
           {{ actionSummary(a) }}
         </span>

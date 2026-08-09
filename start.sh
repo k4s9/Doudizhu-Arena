@@ -34,6 +34,15 @@ fi
 # Create data directory if needed
 mkdir -p "$PROJECT_DIR/data"
 
+# Validate configuration before either service is started. This avoids a
+# misleading state where Vite is available but every API request fails.
+echo -e "${GREEN}=== Validating configuration ===${NC}"
+cd "$BACKEND_DIR"
+"$CONDA_PREFIX/bin/python" -c 'from pathlib import Path; import yaml; yaml.safe_load(Path("arena/config/agents.yaml").read_text(encoding="utf-8"))' || {
+    echo -e "${RED}Invalid agents.yaml; services were not started.${NC}"
+    exit 1
+}
+
 # Clean up function
 cleanup() {
     echo -e "\n${YELLOW}Shutting down...${NC}"

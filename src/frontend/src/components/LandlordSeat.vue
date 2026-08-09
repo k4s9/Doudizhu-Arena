@@ -22,10 +22,8 @@ const props = defineProps({
   lastAction: { type: Object, default: null },
   /** Thought bubble data */
   thought: { type: Object, default: null },
-  /** Remaining seconds for countdown */
-  remainingSeconds: { type: Number, default: 0 },
-  /** Total timeout seconds */
-  totalSeconds: { type: Number, default: 360 },
+  /** Server-authoritative deadline for this active play turn */
+  turnTimer: { type: Object, default: null },
 });
 
 const SEAT_NAMES = { S: '南', E: '东', N: '北', W: '西' };
@@ -90,9 +88,9 @@ const lastWasPass = computed(() => {
         </div>
       </div>
       <CountdownTimer
-        v-if="isCurrentPlayer && remainingSeconds > 0"
-        :remaining-seconds="remainingSeconds"
-        :total-seconds="totalSeconds"
+        v-if="isCurrentPlayer && turnTimer"
+        :deadline-ms="turnTimer.deadline_ms"
+        :timeout-ms="turnTimer.timeout_ms"
       />
     </div>
 
@@ -103,6 +101,10 @@ const lastWasPass = computed(() => {
         size="md"
         :highlight="isCurrentPlayer"
       />
+    </div>
+
+    <div v-if="isCurrentPlayer && turnTimer && !thought" class="mb-3 text-xs font-medium text-amber-300">
+      正在思考
     </div>
 
     <!-- Last played / pass -->
@@ -123,7 +125,7 @@ const lastWasPass = computed(() => {
         <div class="absolute -top-1.5 right-4 w-3 h-3 bg-amber-900/70 border-t border-r border-amber-500/40 rounded-tr-xl" />
         <div class="absolute -top-2 left-8 w-5 h-2 bg-amber-900/70 border-t border-amber-500/40 rounded-t-lg" />
         <div class="text-[10px] text-amber-400 font-semibold mb-1">
-          💭 {{ thought.agent_id || seatName }} · 出牌思考
+          💭 {{ player?.agent_name || seatName }} · 出牌思考
           <span v-if="thought.round">第{{ thought.round }}轮</span>
         </div>
         <p class="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap line-clamp-5">

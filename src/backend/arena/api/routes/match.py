@@ -248,6 +248,7 @@ async def start_match(match_id: str, request: Request, background_tasks: Backgro
     from ...agent.llm_agent import LLMAgent
     from ...agent.random_agent import RandomAgent
     from ...llm.base import AbstractLLMProvider
+    from ...llm.logging import LoggingLLMProvider
 
     player_ids_in_match: set[str] = set()
     for p in repo.get_participants(match_id):
@@ -279,7 +280,7 @@ async def start_match(match_id: str, request: Request, background_tasks: Backgro
                 )
             agents_dict[pid] = LLMAgent(
                 agent_id=pid,
-                provider=provider,
+                provider=LoggingLLMProvider(provider, repo=repo, agent_id=pid),
                 long_term_memory=player_row.get("long_term_memory", ""),
                 system_prompt_override=player_row.get("system_prompt"),
             )

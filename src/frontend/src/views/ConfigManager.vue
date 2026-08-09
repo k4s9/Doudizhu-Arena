@@ -6,6 +6,7 @@ const configs = ref([]);
 const error = ref('');
 
 const editing = ref(null);
+const creating = ref(false);
 const editForm = ref({
   name: '',
   provider: '',
@@ -45,10 +46,18 @@ function startEdit(c) {
   };
 }
 
+function startCreate() {
+  creating.value = true;
+  editing.value = null;
+  editForm.value = { name: '', provider: 'openai', model: '', api_key: '', base_url: '', system_prompt: '' };
+}
+
 async function saveEdit() {
-  if (!editing.value) return;
   try {
-    await api.updateConfig(editing.value, editForm.value);
+    if (creating.value) await api.createConfig(editForm.value);
+    else if (editing.value) await api.updateConfig(editing.value, editForm.value);
+    else return;
+    creating.value = false;
     editing.value = null;
     await loadConfigs();
   } catch (e) {
@@ -58,6 +67,7 @@ async function saveEdit() {
 
 function cancelEdit() {
   editing.value = null;
+  creating.value = false;
 }
 
 async function deleteConfig(id) {
@@ -78,6 +88,7 @@ onMounted(loadConfigs);
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-white">玩家配置</h1>
       <div class="flex gap-2">
+        <button @click="startCreate" class="px-3 py-1.5 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded">新建供应商配置</button>
         <button
           @click="reloadConfigs"
           class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
@@ -151,9 +162,9 @@ onMounted(loadConfigs);
     </div>
 
     <!-- Edit modal -->
-    <div v-if="editing" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50" @click.self="cancelEdit">
+    <div v-if="editing || creating" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50" @click.self="cancelEdit">
       <div class="bg-slate-800 border border-slate-600 rounded-lg p-6 w-full max-w-md">
-        <h2 class="text-lg font-semibold text-white mb-4">编辑配置</h2>
+        <h2 class="text-lg font-semibold text-white mb-4">{{ creating ? '新建供应商配置' : '编辑配置' }}</h2>
         <div class="space-y-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">名称</label>

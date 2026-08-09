@@ -3,29 +3,50 @@
  * CountdownTimer — displays a countdown timer ring + digital readout.
  * Only shown for the currently active player.
  */
-import { computed } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 
 const props = defineProps({
   /** Total seconds allotted */
   totalSeconds: { type: Number, default: 60 },
   /** Remaining seconds (will be driven by WS time_remaining in future) */
   remainingSeconds: { type: Number, default: 0 },
+  /** Unix timestamp supplied by the match server for the active play turn */
+  deadlineMs: { type: Number, default: 0 },
+  /** Duration supplied with deadlineMs; used for the progress ring */
+  timeoutMs: { type: Number, default: 0 },
   /** Whether to show a simplified text-only version */
   compact: { type: Boolean, default: false },
 });
 
+const nowMs = ref(Date.now());
+const ticker = setInterval(() => {
+  nowMs.value = Date.now();
+}, 250);
+
+onUnmounted(() => clearInterval(ticker));
+
+const effectiveRemainingSeconds = computed(() => {
+  if (props.deadlineMs > 0) {
+    return Math.max(0, Math.ceil((props.deadlineMs - nowMs.value) / 1000));
+  }
+  return props.remainingSeconds;
+});
+
+const effectiveTotalSeconds = computed(() => {
+  return props.timeoutMs > 0 ? props.timeoutMs / 1000 : props.totalSeconds;
+});
+
 const display = computed(() => {
-  if (props.remainingSeconds <= 0 && props.totalSeconds <= 0) return '';
-  const secs = Math.max(0, Math.floor(props.remainingSeconds || props.totalSeconds));
+  if (props.deadlineMs <= 0 && props.remainingSeconds <= 0) return '';
+  const secs = Math.max(0, effectiveRemainingSeconds.value);
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 });
 
 const pct = computed(() => {
-  if (props.totalSeconds <= 0) return 100;
-  const remaining = props.remainingSeconds || props.totalSeconds;
-  return Math.max(0, Math.min(100, (remaining / props.totalSeconds) * 100));
+  if (effectiveTotalSeconds.value <= 0) return 100;
+  return Math.max(0, Math.min(100, (effectiveRemainingSeconds.value / effectiveTotalSeconds.value) * 100));
 });
 
 const ringColor = computed(() => {

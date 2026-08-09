@@ -39,7 +39,7 @@ const handCards = computed(() => {
 </script>
 
 <template>
-  <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+  <div :class="phase === 'bidding' ? '' : 'bg-slate-800 rounded-xl border border-slate-700 p-4'">
     <!-- No data state -->
     <div v-if="!tableData" class="text-center text-slate-500 py-8">
       <p>等待数据...</p>
@@ -85,6 +85,7 @@ const handCards = computed(() => {
       :thoughts="seatThoughts"
       :last-thoughts="lastThoughts"
       :dizhu-cards="tableData.dizhu_cards || []"
+      :turn-timer="tableData.turn_timer || null"
     />
 
     <!-- Finished / other state -->

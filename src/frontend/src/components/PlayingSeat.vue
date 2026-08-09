@@ -28,10 +28,8 @@ const props = defineProps({
   showHandCards: { type: Boolean, default: false },
   /** Thought bubble data (for current player = live; for non-current = persisted) */
   thought: { type: Object, default: null },
-  /** Remaining seconds for countdown (0 = not shown) */
-  remainingSeconds: { type: Number, default: 0 },
-  /** Total timeout seconds */
-  totalSeconds: { type: Number, default: 360 },
+  /** Server-authoritative deadline for this active play turn */
+  turnTimer: { type: Object, default: null },
 });
 
 const SEAT_NAMES = { S: '南', E: '东', N: '北', W: '西' };
@@ -71,29 +69,29 @@ const showThought = computed(() => {
 <template>
   <div
     :class="[
-      'rounded-xl border p-2.5 transition-all duration-300',
+      'w-full min-w-0 rounded-xl border p-2.5 transition-all duration-300',
       isCurrentPlayer
         ? 'border-amber-400 bg-amber-400/10 ring-1 ring-amber-400/50 shadow-lg shadow-amber-400/10'
         : 'border-slate-600 bg-slate-800/50',
     ]"
   >
     <!-- Player info header (compact) -->
-    <div class="flex items-center justify-between gap-2 mb-1.5">
+    <div class="flex min-w-0 items-center justify-between gap-2 mb-1.5">
       <PlayerSeat
         :seat="seat"
         :player="player"
         :show-hand-size="true"
       />
       <CountdownTimer
-        v-if="isCurrentPlayer && remainingSeconds > 0"
-        :remaining-seconds="remainingSeconds"
-        :total-seconds="totalSeconds"
+        v-if="isCurrentPlayer && turnTimer"
+        :deadline-ms="turnTimer.deadline_ms"
+        :timeout-ms="turnTimer.timeout_ms"
         compact
       />
     </div>
 
     <!-- Hand cards: show real cards in god mode, face-down backs otherwise -->
-    <div v-if="showHandCards && handCards.length" class="mb-1.5">
+    <div v-if="showHandCards && handCards.length" class="min-w-0 overflow-hidden mb-1.5">
       <CardHand
         :cards="handCards"
         size="xs"
@@ -113,6 +111,10 @@ const showThought = computed(() => {
       <span v-if="!player?.hand_size" class="text-[9px] text-slate-600 italic">0 张</span>
     </div>
 
+    <div v-if="isCurrentPlayer && turnTimer && !thought" class="mb-1.5 text-[10px] font-medium text-amber-300">
+      正在思考
+    </div>
+
     <!-- Last played action + thought together -->
     <div v-if="lastPlayedCards.length > 0" class="border-t border-slate-700/50 pt-1.5">
       <div class="text-[9px] text-slate-500 mb-0.5">
@@ -125,10 +127,10 @@ const showThought = computed(() => {
     </div>
 
     <!-- Thought bubble (for current player or persisted alongside last play) -->
-    <div v-if="showThought" class="mt-1.5">
+    <div v-if="showThought" class="mt-1.5 max-w-full min-w-0">
       <div class="bg-amber-900/60 border border-amber-500/30 rounded-lg p-2 shadow-lg relative">
         <div class="text-[9px] text-amber-400 font-semibold mb-0.5">
-          💭 {{ thought.agent_id || seatName }}
+          💭 {{ player?.agent_name || seatName }}
           <span v-if="thought.round" class="text-slate-500">第{{ thought.round }}轮</span>
         </div>
         <p class="text-slate-300 text-[9px] leading-relaxed whitespace-pre-wrap line-clamp-3">

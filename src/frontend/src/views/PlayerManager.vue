@@ -40,15 +40,15 @@ function selectConfig(name) {
   configDropdownOpen.value = false;
 }
 
-function winRate(p) {
-  if (!p.matches_played) return '—';
-  return Math.round((p.matches_won / p.matches_played) * 100) + '%';
+function winRate(statistics) {
+  if (statistics?.win_rate == null) return '—';
+  return `${statistics.win_rate}%`;
 }
 
 async function loadAll() {
   try {
     const [playersData, configsData] = await Promise.all([
-      api.listPlayers(),
+      api.getPlayerLeaderboard(),
       api.listConfigs(),
     ]);
     players.value = playersData.players;
@@ -108,10 +108,15 @@ onMounted(async () => {
 <template>
   <div class="max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-white">玩家管理</h1>
-      <router-link to="/configs" class="text-sm text-amber-400 hover:text-amber-300">
-        管理配置 &rarr;
-      </router-link>
+      <h1 class="text-2xl font-bold text-white">选手管理</h1>
+      <div class="flex items-center gap-4 text-sm">
+        <router-link to="/players/leaderboard" class="text-amber-400 hover:text-amber-300">
+          胜率与积分榜 &rarr;
+        </router-link>
+        <router-link to="/configs" class="text-slate-400 hover:text-slate-200">
+          管理配置 &rarr;
+        </router-link>
+      </div>
     </div>
 
     <div v-if="error" class="bg-red-900/30 border border-red-700 rounded-lg p-3 mb-4 text-sm text-red-300">
@@ -176,9 +181,10 @@ onMounted(async () => {
             <th class="text-left px-4 py-2 font-medium">显示名称</th>
             <th class="text-left px-4 py-2 font-medium">配置</th>
             <th class="text-left px-4 py-2 font-medium">提供商/模型</th>
-            <th class="text-center px-4 py-2 font-medium">比赛</th>
+            <th class="text-center px-4 py-2 font-medium">已赛副数</th>
             <th class="text-center px-4 py-2 font-medium">胜场</th>
             <th class="text-center px-4 py-2 font-medium">胜率</th>
+            <th class="text-center px-4 py-2 font-medium">累计积分</th>
             <th class="text-right px-4 py-2 font-medium"></th>
           </tr>
         </thead>
@@ -188,15 +194,23 @@ onMounted(async () => {
             :key="p.id"
             class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"
           >
-            <td class="px-4 py-2 text-white">{{ p.display_name }}</td>
+            <td class="px-4 py-2">
+              <router-link :to="`/players/${p.id}`" class="text-white hover:text-amber-300 transition-colors">
+                {{ p.display_name }}
+              </router-link>
+            </td>
             <td class="px-4 py-2 text-slate-400">{{ p.config_name }}</td>
             <td class="px-4 py-2 text-slate-400">{{ p.provider }}/{{ p.model }}</td>
-            <td class="px-4 py-2 text-center text-slate-300">{{ p.matches_played }}</td>
-            <td class="px-4 py-2 text-center text-slate-300">{{ p.matches_won }}</td>
-            <td class="px-4 py-2 text-center" :class="p.matches_played > 0 && p.matches_won / p.matches_played >= 0.5 ? 'text-green-400' : p.matches_played > 0 ? 'text-red-400' : 'text-slate-500'">
-              {{ winRate(p) }}
+            <td class="px-4 py-2 text-center text-slate-300">{{ p.statistics.hands_played }}</td>
+            <td class="px-4 py-2 text-center text-slate-300">{{ p.statistics.wins }}</td>
+            <td class="px-4 py-2 text-center" :class="p.statistics.win_rate >= 50 ? 'text-green-400' : p.statistics.win_rate != null ? 'text-red-400' : 'text-slate-500'">
+              {{ winRate(p.statistics) }}
+            </td>
+            <td class="px-4 py-2 text-center font-medium" :class="p.statistics.score_total > 0 ? 'text-green-400' : p.statistics.score_total < 0 ? 'text-red-400' : 'text-slate-400'">
+              {{ p.statistics.score_total > 0 ? '+' : '' }}{{ p.statistics.score_total }}
             </td>
             <td class="px-4 py-2 text-right">
+              <router-link :to="`/players/${p.id}`" class="mr-3 text-xs text-amber-400 hover:text-amber-300">详情</router-link>
               <button
                 @click="deletePlayer(p.id)"
                 :disabled="deleting === p.id"
@@ -207,8 +221,8 @@ onMounted(async () => {
             </td>
           </tr>
           <tr v-if="players.length === 0">
-            <td colspan="7" class="px-4 py-8 text-center text-slate-500">
-              暂无玩家。请在上方创建或在 agents.yaml 中配置 default_players。
+            <td colspan="8" class="px-4 py-8 text-center text-slate-500">
+              暂无选手。请在上方创建或在 agents.yaml 中配置 default_players。
             </td>
           </tr>
         </tbody>

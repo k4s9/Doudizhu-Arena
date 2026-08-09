@@ -28,6 +28,8 @@ const props = defineProps({
   handCards: { type: Object, default: () => ({}) },
   thoughts: { type: Object, default: () => ({}) },
   dizhuCards: { type: Array, default: () => [] },
+  /** Current server-authoritative timer, if an LLM is deciding a play */
+  turnTimer: { type: Object, default: null },
   /** Map of seat -> last thought that accompanied their last action */
   lastThoughts: { type: Object, default: () => ({}) },
 });
@@ -121,6 +123,11 @@ function seatThought(seat) {
   }
   return null;
 }
+
+function timerForSeat(seat) {
+  if (props.currentSeat !== seat || props.turnTimer?.seat !== seat) return null;
+  return props.turnTimer;
+}
 </script>
 
 <template>
@@ -138,7 +145,7 @@ function seatThought(seat) {
     <!-- Playing layout -->
     <div class="flex flex-col gap-2">
       <!-- Upper row: lordPrev (left) + lordNext (right) -->
-      <div class="flex justify-between gap-2">
+      <div class="grid grid-cols-2 items-start gap-3">
         <PlayingSeat
           v-if="lordPrev"
           :seat="lordPrev"
@@ -149,6 +156,7 @@ function seatThought(seat) {
           :hand-cards="handCards[lordPrev] || []"
           :show-hand-cards="true"
           :thought="seatThought(lordPrev)"
+          :turn-timer="timerForSeat(lordPrev)"
         />
         <PlayingSeat
           v-if="lordNext"
@@ -160,6 +168,7 @@ function seatThought(seat) {
           :hand-cards="handCards[lordNext] || []"
           :show-hand-cards="true"
           :thought="seatThought(lordNext)"
+          :turn-timer="timerForSeat(lordNext)"
         />
       </div>
 
@@ -184,6 +193,7 @@ function seatThought(seat) {
         :last-played="lastPlayedAction(landlord)"
         :last-action="lastAction(landlord)"
         :thought="seatThought(landlord)"
+        :turn-timer="timerForSeat(landlord)"
       />
     </div>
   </div>

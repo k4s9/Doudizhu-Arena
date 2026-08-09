@@ -56,16 +56,40 @@ function buildBiddingOrder(dealer, idleSeat) {
 }
 
 /**
- * Build merged timeline from bidding + play_history + agent_thoughts.
- * Each step: { type, seat, timestamp_ms, ...originalFields }
+ * Build action timeline from bidding + play_history, attaching each thought to
+ * its corresponding action. Thoughts never create independent replay steps.
  */
-function buildTimeline(tableDetail) {
-  const steps = [];
+export function buildReplayTimeline(tableDetail) {
+  const thoughts = tableDetail?.agent_thoughts || [];
+  const bidThoughts = new Map();
+  const playThoughts = new Map();
+
+  for (const thought of thoughts) {
+    const normalized = {
+      seat: thought.seat,
+      phase: thought.phase,
+      round: thought.round,
+      sub_round: thought.sub_round,
+      reasoning: thought.reasoning,
+      decision: thought.decision,
+      timestamp_ms: thought.timestamp_ms,
+    };
+    if (thought.phase === 'playing') {
+      const key = `${thought.seat}-${thought.round}-${thought.sub_round}`;
+      if (!playThoughts.has(key)) playThoughts.set(key, normalized);
+    } else if (thought.phase === 'bidding' && !bidThoughts.has(thought.seat)) {
+      bidThoughts.set(thought.seat, normalized);
+    }
+  }
 
   const bidding = tableDetail?.bidding || [];
-  for (const b of bidding) {
-    steps.push({ type: 'bid', seat: b.seat, timestamp_ms: b.timestamp_ms, bid: b.bid });
-  }
+  const steps = bidding.map(bid => ({
+    type: 'bid',
+    seat: bid.seat,
+    timestamp_ms: bid.timestamp_ms,
+    bid: bid.bid,
+    thought: bidThoughts.get(bid.seat) || null,
+  }));
 
   const plays = tableDetail?.play_history || [];
   for (const p of plays) {
@@ -76,20 +100,7 @@ function buildTimeline(tableDetail) {
       round: p.round,
       sub_round: p.sub_round,
       action: p.action,
-    });
-  }
-
-  const thoughts = tableDetail?.agent_thoughts || [];
-  for (const t of thoughts) {
-    steps.push({
-      type: 'thought',
-      seat: t.seat,
-      timestamp_ms: t.timestamp_ms,
-      phase: t.phase,
-      round: t.round,
-      sub_round: t.sub_round,
-      reasoning: t.reasoning,
-      decision: t.decision,
+      thought: playThoughts.get(`${p.seat}-${p.round}-${p.sub_round}`) || null,
     });
   }
 
@@ -131,7 +142,7 @@ function buildHandCards(tableDetail, completedBids, completedPlays) {
   const initial = tableDetail?.initial_hands || {};
   const handCards = {};
   for (const seat of TURN_CYCLE) {
-    handCards[seat] = [...(initial[seat] || [])];
+    handCards[seat] = sortHandCards(initial[seat] || []);
   }
 
   // If bidding is complete and we have a landlord, give them the dizhu cards
@@ -226,14 +237,14 @@ function computeCurrentPattern(tableDetail, completedPlays) {
 /**
  * Build players dict in the format PlayingView/PlayingSeat expect.
  */
-function buildPlayers(tableDetail, handCards, currentStep, timeline) {
+function buildPlayers(tableDetail, handCards) {
   const apiPlayers = tableDetail?.players || {};
   const result = {};
   for (const seat of TURN_CYCLE) {
     const apiPlayer = apiPlayers[seat] || {};
     const cards = handCards[seat] || [];
     result[seat] = {
-      agent_name: apiPlayer.agent_id || seat,
+      agent_name: apiPlayer.agent_name || apiPlayer.agent_id || seat,
       player_id: apiPlayer.agent_id || '',
       team: apiPlayer.team || '',
       role: apiPlayer.role || '',
@@ -246,8 +257,8 @@ function buildPlayers(tableDetail, handCards, currentStep, timeline) {
 
 /**
  * Compute seat thought maps for current step.
- * - seatThoughts: live thought for the current step (if type === 'thought')
- * - lastThoughts: for each seat, the last thought up to and including current step
+ * - seatThoughts: thought attached to the just-completed bidding action
+ * - lastThoughts: thoughts attached to visible play/pass actions
  */
 function buildThoughts(timeline, currentStep) {
   const seatThoughts = {};
@@ -255,26 +266,17 @@ function buildThoughts(timeline, currentStep) {
 
   if (currentStep > 0 && currentStep <= timeline.length) {
     const currentItem = timeline[currentStep - 1];
-    if (currentItem.type === 'thought') {
-      seatThoughts[currentItem.seat] = currentItem;
+    if (currentItem.type === 'bid' && currentItem.thought) {
+      seatThoughts[currentItem.seat] = currentItem.thought;
     }
   }
 
-  // For each seat, find the last thought up to currentStep
-  const seatLastThought = {};
+  // A playing thought belongs with that player's completed play/pass, never
+  // with a later bidding state or another player's action.
   for (let i = 0; i < currentStep; i++) {
     const item = timeline[i];
-    if (item.type === 'thought') {
-      seatLastThought[item.seat] = item;
-    }
-  }
-  // Only include thoughts for seats that have a last action (play or pass) before the thought
-  for (const seat of TURN_CYCLE) {
-    const thought = seatLastThought[seat];
-    if (thought) {
-      // Check if this seat had an action (play/pass) whose timestamp is before this thought
-      // In practice, thoughts come right before or during the action, so we include them
-      lastThoughts[seat] = thought;
+    if (item.type === 'play' && item.thought) {
+      lastThoughts[item.seat] = item.thought;
     }
   }
 
@@ -313,24 +315,13 @@ export function useReplayState({ tableDetail, currentStep }) {
       };
     }
 
-    const timeline = buildTimeline(td);
+    const timeline = buildReplayTimeline(td);
     const { phase, completedBids, completedPlays } = computePhase(timeline, step, td);
     const handCards = buildHandCards(td, completedBids, completedPlays);
     const currentPattern = computeCurrentPattern(td, completedPlays);
-    const players = buildPlayers(td, handCards, step, timeline);
+    const players = buildPlayers(td, handCards);
     const { seatThoughts, lastThoughts } = buildThoughts(timeline, step);
     const visiblePlayHistory = buildVisiblePlayHistory(td, completedPlays);
-
-    // Current seat: the seat of the event at this step
-    let currentSeat = '';
-    if (step > 0 && step <= timeline.length) {
-      currentSeat = timeline[step - 1].seat || '';
-    }
-
-    // For finished state with no more steps, clear current_seat
-    if (phase === 'finished') {
-      currentSeat = '';
-    }
 
     // Bidding data
     const bidding = td?.bidding || [];
@@ -346,6 +337,25 @@ export function useReplayState({ tableDetail, currentStep }) {
     const dealer = td?.dealer || '';
     const idleSeat = td?.idle_seat || '';
     const biddingOrder = buildBiddingOrder(dealer, idleSeat);
+
+    // During bidding, the event at the current step has already completed.
+    // Highlight the first bidder who has not acted yet, including the dealer
+    // at the initial replay step.
+    let currentSeat = '';
+    if (phase === 'bidding') {
+      const completedBidSeats = new Set(
+        bidding.slice(0, completedBids).map(entry => entry.seat),
+      );
+      currentSeat = biddingOrder.find(seat => !completedBidSeats.has(seat)) || '';
+    } else {
+      // After an action, highlight the player who will act next. This leaves
+      // the completed action and its thought together on the actor's card.
+      currentSeat = timeline.slice(step).find(item => item.type === 'play')?.seat || '';
+    }
+
+    if (phase === 'finished') {
+      currentSeat = '';
+    }
 
     // Check void
     const isVoid = td?.is_void || false;
