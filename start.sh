@@ -38,7 +38,7 @@ mkdir -p "$PROJECT_DIR/data"
 # misleading state where Vite is available but every API request fails.
 echo -e "${GREEN}=== Validating configuration ===${NC}"
 cd "$BACKEND_DIR"
-"$ARENA_ENV_PREFIX/bin/python" -I -c 'from pathlib import Path; import yaml; yaml.safe_load(Path("arena/config/agents.yaml").read_text(encoding="utf-8"))' || {
+"$ARENA_ENV_PREFIX/bin/python" -I -B -c 'from pathlib import Path; import yaml; from arena.config.settings import settings; yaml.safe_load(Path(settings.agents_yaml_path).read_text(encoding="utf-8"))' || {
     echo -e "${RED}Invalid agents.yaml; services were not started.${NC}"
     exit 1
 }

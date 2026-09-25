@@ -1,0 +1,26 @@
+{
+  "kind": "deployment-mock-acceptance",
+  "base_url": "http://127.0.0.1:38879",
+  "restart_check": false,
+  "page_errors": [],
+  "run_id": "d6496971b1784955a5aeaa5a8767fdb7",
+  "manifest_sha256": "2fc18f48dd0e2e9002c6861d6294f8476a06b2f2b54f8a10914bbb190cf07a60",
+  "task_counts": {
+    "planned": 0,
+    "running": 0,
+    "finished": 6,
+    "failed": 0,
+    "cancelled": 0
+  },
+  "integrity_complete": true,
+  "terminal_snapshot": {
+    "status": "finished",
+    "score": {
+      "red": 0,
+      "blue": 0
+    },
+    "watermark": 281
+  },
+  "match_id": "7b96cd2fdd4044e8ac1d74d9326c54a8",
+  "complete": true
+}

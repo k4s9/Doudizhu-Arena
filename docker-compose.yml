@@ -1,26 +1,37 @@
 services:
   backend:
     build:
-      context: src/backend
+      context: .
+      dockerfile: src/backend/Dockerfile
     ports:
-      - "8000:8000"
+      - "${DOUDIZHU_BACKEND_PORT:-8000}:8000"
     volumes:
-      - ./data:/app/data
-      - ./src/backend/logs:/app/logs
-      - ./src/backend/arena/config/agents.yaml:/app/arena/config/agents.yaml:ro
+      - ${DOUDIZHU_DATA_DIR:-./data}:/app/data
+      - ${DOUDIZHU_LOG_DIR:-./src/backend/logs}:/app/src/backend/logs
+      - ./src/backend/arena/config/agents.yaml:/app/src/backend/arena/config/agents.yaml:ro
     environment:
-      - DATABASE_URL=sqlite:///app/data/arena.db
-      - LOG_DIR=/app/logs
+      - DATABASE_URL=sqlite:////app/data/arena.db
+      - LOG_DIR=/app/src/backend/logs
+      - AGENTS_YAML_PATH=/app/src/backend/arena/config/agents.yaml
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - CSTCLOUD_API_KEY=${CSTCLOUD_API_KEY:-}
+      - DOUDIZHU_CREDENTIAL_MASTER_KEY=${DOUDIZHU_CREDENTIAL_MASTER_KEY:-}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/conda/envs/doudizhu-arena/bin/python", "-I", "-B", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3).close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   frontend:
     build:
-      context: src/frontend
+      context: .
+      dockerfile: src/frontend/Dockerfile
     ports:
-      - "80:80"
+      - "${DOUDIZHU_FRONTEND_PORT:-80}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped

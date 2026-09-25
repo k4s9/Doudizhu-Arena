@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
+from .paths import BACKEND_DIR, CONFIG_DIR, PROJECT_ROOT, project_path, sqlite_path
 
 # Load .env before reading any settings
 _ENV_FILES = [
-    Path(__file__).resolve().parent.parent.parent / ".env",       # src/backend/.env
-    Path(__file__).resolve().parent.parent.parent.parent.parent / ".env",  # project root
+    BACKEND_DIR / ".env",
+    PROJECT_ROOT / ".env",
 ]
 for _ef in _ENV_FILES:
     if _ef.exists():
@@ -22,9 +22,6 @@ for _ef in _ENV_FILES:
             load_dotenv(_ef)
         except ImportError:
             pass  # python-dotenv not installed, skip silently
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
-CONFIG_DIR = Path(__file__).resolve().parent
 
 
 def _int_env(key: str, default: int) -> int:
@@ -83,16 +80,16 @@ class Settings:
         "DOUDIZHU_DIFF_CAP", 12))
 
     # ── agent ───────────────────────────────────────────────────────────
-    agents_yaml_path: str = field(default_factory=lambda: os.getenv(
+    agents_yaml_path: str = field(default_factory=lambda: str(project_path(os.getenv(
         "AGENTS_YAML_PATH",
         str(CONFIG_DIR / "agents.yaml"),
-    ))
+    ))))
 
     # ── logging ─────────────────────────────────────────────────────────
-    log_dir: str = field(default_factory=lambda: os.getenv(
+    log_dir: str = field(default_factory=lambda: str(project_path(os.getenv(
         "LOG_DIR",
         str(PROJECT_ROOT / "src" / "backend" / "logs"),
-    ))
+    ))))
     llm_call_log_file: str = "llm_calls.log"
     app_log_file: str = "app.log"
     prompts_log_file: str = "prompts.log"
@@ -105,6 +102,10 @@ class Settings:
         "DATABASE_URL",
         f"sqlite:///{PROJECT_ROOT}/data/arena.db",
     ))
+
+    @property
+    def database_path(self) -> str:
+        return sqlite_path(self.database_url)
 
     # ── server ──────────────────────────────────────────────────────────
     host: str = field(default_factory=lambda: os.getenv("DOUDIZHU_HOST", "0.0.0.0"))

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,9 +26,7 @@ async def lifespan(app: FastAPI):
 
     # Init DB
     from arena.db.repository import DatabaseRepository
-    repo = DatabaseRepository(
-        str(Path(settings.database_url.replace("sqlite:///", "")))
-    )
+    repo = DatabaseRepository(settings.database_path)
     repo.init()
     app.state.db_repo = repo
     logger.info("Database initialized at %s", settings.database_url)

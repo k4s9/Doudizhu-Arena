@@ -42,3 +42,45 @@ jobs:
           path: |
             data/ci-backend.xml
             data/ci-browser/
+
+  deployment-acceptance:
+    name: Compose mock and restart acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: doudizhu-ci
+      DOUDIZHU_FRONTEND_PORT: '18080'
+      DOUDIZHU_BACKEND_PORT: '18000'
+      DOUDIZHU_DATA_DIR: ./data/ci-docker/state
+      DOUDIZHU_LOG_DIR: ./data/ci-docker/logs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          environment-file: environment.yml
+          activate-environment: doudizhu-arena
+      - name: Install headless Chromium
+        run: conda run --no-capture-output -n doudizhu-arena python -I -m playwright install --with-deps chromium --only-shell
+      - name: Build and start deployment
+        run: docker compose --env-file /dev/null up --build -d --wait --wait-timeout 180
+      - name: Create mock experiment through Nginx and verify report, replay and WebSocket
+        run: conda run --no-capture-output -n doudizhu-arena python -I -B scripts/verify_deployment.py --base-url http://127.0.0.1:18080 --output data/ci-docker/before-restart
+      - name: Restart backend and verify persisted data
+        run: |
+          docker compose --env-file /dev/null restart backend
+          conda run --no-capture-output -n doudizhu-arena python -I -B scripts/verify_deployment.py --base-url http://127.0.0.1:18080 --resume-from data/ci-docker/before-restart/result.json --output data/ci-docker/after-restart
+      - name: Capture logs and stop test services
+        if: always()
+        run: |
+          mkdir -p data/ci-docker
+          docker compose --env-file /dev/null logs --no-color > data/ci-docker/compose.log
+          docker compose --env-file /dev/null stop
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-acceptance
+          path: |
+            data/ci-docker/before-restart/
+            data/ci-docker/after-restart/
+            data/ci-docker/compose.log

@@ -4,6 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 from ..config.settings import settings
+from ..config.paths import PROJECT_ROOT, project_path
 from ..db.repository import DatabaseRepository
 from .runner import EvaluationRunner
 from .spec import build_run_manifest, load_experiment_spec, load_manifest, ExperimentSpec
@@ -19,14 +20,14 @@ def main():
     mode.add_argument('--real-models',action='store_true')
     parser.add_argument('--resume',action='store_true')
     parser.add_argument('--run-id')
-    parser.add_argument('--db',default=settings.database_url.replace('sqlite:///',''))
+    parser.add_argument('--db',default=settings.database_path)
     parser.add_argument('--output')
     args=parser.parse_args()
-    root=Path(__file__).resolve().parents[4]
+    root=PROJECT_ROOT
     path=Path(args.spec)
     if not path.exists(): path=root/args.spec
     spec=load_experiment_spec(path)
-    repo=DatabaseRepository(args.db);repo.init()
+    repo=DatabaseRepository(args.db if args.db == ':memory:' else str(project_path(args.db)));repo.init()
     try:
         manifest=build_run_manifest(spec,root,repo)
         if args.dry_run:
@@ -41,7 +42,7 @@ def main():
         else:
             run_id=runner.create_run(spec,manifest)
         asyncio.run(runner.run(run_id,spec,manifest,real_models=args.real_models,mock=args.mock))
-        summary=export_report(repo,run_id,args.output or root/'data/evaluations'/run_id)
+        summary=export_report(repo,run_id,project_path(args.output) if args.output else root/'data/evaluations'/run_id)
         print(json.dumps({'run_id':run_id,'status':repo.get_evaluation_run(run_id)['status'],
                           'integrity_complete':summary['integrity_complete']},indent=2))
         status = repo.get_evaluation_run(run_id)['status']

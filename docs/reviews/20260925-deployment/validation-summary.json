@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-25",
+  "base_commit": "27a56f8",
+  "deployment_changes_committed": false,
+  "backend": {
+    "tests": "39",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "time": "53.533"
+  },
+  "offline_guard_attempts": 0,
+  "backend_source_sha256": "a487af6c9c887aa20a2185e561ad0fcc23f9823617fd4c49318c492d1c0b9777",
+  "dependency_sha256": "70632e5b6f5cc7a0264d34dc8f50bb10d3e33b8815a025af47192375a125c4ee",
+  "local_process_and_browser_acceptance": "passed with relocated backend and Vite preview",
+  "browser_restart_arg": "--js-flags=--jitless",
+  "browser_limitation": "Default local Chromium intermittently failed to reserve V8 CodeRange before page load; original failure outputs retained.",
+  "docker_compose_config": "passed",
+  "docker_build_and_nginx_runtime": "not run; previous image-pull approval declined",
+  "remote_ci": "not run; workflow added for user push",
+  "deployment_file_sha256": {
+    "docker-compose.yml": "825093efed97df042c093ef0e17d164ac3208de9be42a183f5375473e0bcf194",
+    ".dockerignore": "9f04a0a739729a396c0c8e9041792bd319d2c3c3fcaa5122a221594ed9a382da",
+    ".env.example": "3dd857c2415019fa07db897e06b3b4711bf826a3647ae4f6dce34c065ef293d6",
+    ".github/workflows/ci.yml": "d27addb7bd8ec70ce4b408058131513ac31fd1365a8207019d4fb02e42d6c438",
+    "src/backend/Dockerfile": "4b64867b0ea27b34fd6e782affbd540b0dd729e9ea0f6782a203f167e180473e",
+    "src/frontend/Dockerfile": "e35b483fff499cd3fbc5c4330c4e685add29b372e80aa85b8cd43ad1ece54bd5",
+    "src/frontend/nginx.conf": "15766a257a65df3ca077c3c2a1721fe9528c7a86c030d3c8997e1f30a184c40b",
+    "src/backend/requirements.txt": "9e22a0a3c82868a782fd52c520a7159703d281403bd2c2b1c2b81d00867f7fd1",
+    "src/backend/main.py": "f9c6edc5debb9cc5e1d0f584c30fb59f9838cb04a3eae1e7b530fdf8453891c5",
+    "start.sh": "25d9e1f63cd5651df1bc28dd85bc305b1094a14e249860e8dea709e4f9ff350e",
+    "scripts/verify_deployment.py": "d5f3a24486e48a61435f05585706a4dfbd1e5334b31e612db14535519e5682b7",
+    "src/backend/arena/config/paths.py": "d89e0329300fa17dd868b4abcc5ef364a6fd852fbaa8a6a2c61f53586bb7e0d0",
+    "src/backend/arena/config/settings.py": "4aab9ed0f79768daa1ff2a571d3247fc1256cba6b1394f3646c88118308d1b31",
+    "src/backend/arena/api/routes/evaluation.py": "d3b08a0805d719141ae19d93093a77ce66ffb5e43f60c2f124ab824ebbf36f16",
+    "src/backend/arena/evaluation/run.py": "4badccddb23f466e1db5b4fbaccf8c4d43e13634ac749e093bab105f3e81d713",
+    "src/backend/arena/evaluation/train_memory.py": "c1ff46d2257cb4ad6493dca5886efc7aeebe0a8c80f767aea5666ad64f1c50c6",
+    "src/backend/tests/test_deployment_paths.py": "727ef77ac6893034af5ea15e0f1c40af1b39930186c4c2ceb5f484d1828fc9bd"
+  }
+}

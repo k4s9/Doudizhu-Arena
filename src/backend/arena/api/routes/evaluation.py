@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 
 from ...evaluation.runner import EvaluationRunner
 from ...evaluation.spec import ExperimentSpec, PreflightError, RunManifest, build_run_manifest
 from ...security.credentials import has_usable_credential
+from ...config.paths import PROJECT_ROOT as ROOT, EVALUATION_DIR
 
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
-ROOT = Path(__file__).resolve().parents[5]
 
 
 def _repo(request: Request):
@@ -55,7 +54,7 @@ async def get_template(mode: str = 'mock'):
     from ...evaluation.spec import load_experiment_spec
     if mode not in ('mock', 'real'):
         raise HTTPException(400, detail='mode must be mock or real')
-    spec = load_experiment_spec(ROOT / 'src/backend/evaluation/experiments/mock-v2.yaml').model_dump(mode='json')
+    spec = load_experiment_spec(EVALUATION_DIR / 'experiments/mock-v2.yaml').model_dump(mode='json')
     spec['mock_scenario'] = 'valid_first'
     if mode == 'real':
         from dataclasses import asdict

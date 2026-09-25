@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from ..config.settings import settings
+from ..config.paths import PROJECT_ROOT
 from ..db.repository import DatabaseRepository
 from .memory_training import MemoryTrainingRunner, build_memory_training_plan
 from .spec import build_run_manifest, load_experiment_spec
@@ -24,7 +25,7 @@ def main() -> None:
     parser.add_argument("--output")
     args = parser.parse_args()
 
-    root = Path(__file__).resolve().parents[4]
+    root = PROJECT_ROOT
     spec_path = Path(args.spec)
     if not spec_path.exists():
         spec_path = root / args.spec
@@ -59,8 +60,7 @@ def main() -> None:
 
     if args.resume and not args.run_id:
         raise ValueError("--resume requires --run-id")
-    db_path = str(Path(settings.database_url.replace("sqlite:///", "")))
-    repo = DatabaseRepository(db_path)
+    repo = DatabaseRepository(settings.database_path)
     repo.init()
     try:
         runner = MemoryTrainingRunner(repo, root)

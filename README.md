@@ -107,27 +107,55 @@ Doudizhu-Arena/
 - **Python 3.12+**（项目使用 conda 环境 `doudizhu-arena`）
 - **Node.js 22.12+**（前端开发需要；environment.yml 使用 22 系列）
 - **Docker**（推荐部署方式）
-- **Anthropic API Key** 和/或 **OpenAI API Key**（使用 AI 代理） 
+- **Uni API / Anthropic / OpenAI API Key**（真实 AI 代理需要；本地 mock 无需密钥）
 
 ### 方式一：Docker Compose（推荐）
 
-最简单的一键启动方式：
+在项目根目录执行；需要 Docker Compose v2（支持 `up --wait`），首次构建会下载基础镜像和依赖。后端镜像与本地开发均使用 `doudizhu-arena` conda 环境。
 
 ```bash
-# 1. 克隆项目后，配置环境变量
-cp .env.example .env
-# 编辑 .env 文件，填入你的 API Keys:
-#   ANTHROPIC_API_KEY=sk-ant-...
-#   OPENAI_API_KEY=sk-...
+# 1. 首次配置；已有 .env 时直接编辑，保留原有密钥
+cp -n .env.example .env
+# 默认 Qwen / Minimax 配置使用 CSTCLOUD_API_KEY。
+# 需要保存真实密钥时，设置并长期保留 DOUDIZHU_CREDENTIAL_MASTER_KEY。
+# 可用 openssl rand -hex 32 生成主密钥，并将结果保存到 .env。
+# 仅演示「可靠性实验 → 本地 mock」时可留空两项。
 
 # 2. 启动所有服务
-docker compose up --build
+docker compose up --build -d --wait
 
-# 3. 访问
+# 3. 健康检查（通过前端 Nginx 转发）
+curl --fail http://localhost/api/v1/health
+
+# 4. 访问
 #    前端: http://localhost
 #    后端 API: http://localhost:8000
 #    API 文档: http://localhost:8000/docs
 ```
+
+从前端进入「可靠性实验 → 新建实验」，选择本地 mock，运行预检、创建并启动。完成后可查看审计报告、下载文件、观战和回放。
+
+后端启动健康后才会启动前端。`docker compose restart backend` 可用于验证重启后仍能读取历史实验。停止服务用 `docker compose stop`。
+
+### 路径与持久化约定
+
+容器保留仓库布局，项目根目录是 `/app`，后端在 `/app/src/backend`。数据库、日志和代理配置中的相对路径始终以项目根目录为基准，与启动命令的工作目录无关。
+
+| 用途 | 本地默认位置 | 容器位置 |
+|---|---|---|
+| 数据库 | `data/arena.db` | `/app/data/arena.db` |
+| 实验报告 | `data/evaluations/<run_id>/` | `/app/data/evaluations/<run_id>/` |
+| 日志 | `src/backend/logs/` | `/app/src/backend/logs/` |
+| 代理配置 | `src/backend/arena/config/agents.yaml` | `/app/src/backend/arena/config/agents.yaml`（只读挂载） |
+| 实验规格与 seed | `src/backend/evaluation/` | `/app/src/backend/evaluation/`（镜像内置） |
+
+本地可用 `DATABASE_URL=sqlite:///data/arena.db`；绝对路径使用四个斜杠，例如 `sqlite:////app/data/arena.db`。`LOG_DIR` 和 `AGENTS_YAML_PATH` 也支持相对或绝对路径。评测 CLI 的 `--db`、`--output` 相对路径同样从项目根目录解析。
+
+Compose 固定使用表中的容器路径。在根 `.env` 中设置 `DOUDIZHU_DATA_DIR`、`DOUDIZHU_LOG_DIR` 可改变宿主机挂载目录，默认分别为 `./data`、`./src/backend/logs`；相对挂载路径以 Compose 文件所在目录为基准。端口可用 `DOUDIZHU_FRONTEND_PORT`（默认 80）、`DOUDIZHU_BACKEND_PORT`（默认 8000）调整。
+
+本地配置优先级为：进程环境变量 → `src/backend/.env` → 根 `.env`。Compose 读取根 `.env` 并显式传入三种供应商凭据、加密主密钥和日志级别；不会将 `.env`、已有数据库或日志打包到镜像中。持久化目录和加密主密钥应一起保存，否则旧数据库中的加密凭据无法解密。
+
+容器 mock 验收脚本与 CI 说明见 [部署验收记录](docs/deployment-paths-20260925.md)。
 
 ### 方式二：本地开发运行
 
@@ -141,13 +169,13 @@ conda activate doudizhu-arena
 cd src/backend
 
 # 安装依赖
-pip install -r requirements.txt
+conda run -n doudizhu-arena python -I -m pip install -r requirements.txt -e .
 
 # 创建 data 目录（用于 SQLite 数据库）
 mkdir -p ../../data
 
 # 启动后端服务
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+conda run --no-capture-output -n doudizhu-arena python -I -B -m uvicorn main:app --app-dir . --host 0.0.0.0 --port 8000 --reload
 ```
 
 #### 前端
