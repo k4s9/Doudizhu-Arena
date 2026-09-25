@@ -1,0 +1,7 @@
+{
+  "fixture_kind": "regression motivated by real inline-think response; not a game outcome",
+  "fixture_raw": "<think>Example: {\"bid\": 0}. Choose three instead.</think>\n{\"bid\": 3}",
+  "before_bid": 0,
+  "after_bid": 3,
+  "real_minimax_probe_application_json_ok": true
+}

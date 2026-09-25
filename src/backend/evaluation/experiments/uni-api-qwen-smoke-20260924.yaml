@@ -1,0 +1,52 @@
+# Real smoke: user-authorized free account, one seed, three retry protocols.
+experiment_id: uni-api-qwen-smoke-20260924
+seed_set_path: src/backend/evaluation/seed_sets/smoke-v1.json
+total_hands: 1
+max_tiebreaker_hands: 0
+ko_enabled: false
+seat_rotations: 1
+max_calls: 2000
+max_input_tokens: 65536
+task_timeout_seconds: 14400
+cancellation_deadline_seconds: 5
+timeout_config:
+  bidding_seconds: 600
+  individual_play_seconds: 600
+  team_pool_seconds: 14400
+  exhausted_individual_seconds: 600
+  max_consecutive_llm_failures: 3
+pricing_version: uni-api-user-confirmed-free-20260924
+budget_limit_usd: 0
+models:
+- config_name: Qwen-Balanced
+  provider: openai
+  model: qwen3.5
+  base_url: https://uni-api.cstcloud.cn/v1
+  parameters:
+    max_tokens: 8192
+    temperature: 0
+    top_p: 1
+    seed: null
+  pricing:
+    input_per_million: 0
+    output_per_million: 0
+    currency: USD
+    source: User confirmed Uni API account is free in this session; not a published
+      provider price
+    effective_date: '2026-09-24'
+variants:
+- variant_id: single_generation
+  retry_limit: 0
+  rule_feedback: false
+  enable_reflection: false
+  memory_mode: disabled
+- variant_id: generic_retry
+  retry_limit: 2
+  rule_feedback: false
+  enable_reflection: false
+  memory_mode: disabled
+- variant_id: rule_feedback
+  retry_limit: 2
+  rule_feedback: true
+  enable_reflection: false
+  memory_mode: disabled

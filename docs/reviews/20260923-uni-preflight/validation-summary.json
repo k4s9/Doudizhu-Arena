@@ -1,0 +1,49 @@
+{
+  "checked_at_utc": "2026-09-23T03:16:17.548899+00:00",
+  "scope": "Local Uni API configuration and targeted regression; no inference",
+  "backend": {
+    "tests": 34,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "network_connection_attempts": 0,
+    "execution": "Outside OS sandbox, application socket guard enabled",
+    "junit": "backend.xml"
+  },
+  "frontend": {
+    "tests": 7,
+    "files": 4,
+    "failures": 0,
+    "production_build_passed": true,
+    "full_browser_flow_rerun": false
+  },
+  "configuration_report": "configuration.json",
+  "draft_preflight": {
+    "report": "draft-preflight.json",
+    "expected_exit_code": 1,
+    "missing_budget_and_pricing": true
+  },
+  "real_model_calls": 0,
+  "remote_authentication_verified": false,
+  "existing_workspace_preserved": true,
+  "credential_literals_absent_from_checked_artifacts": true,
+  "backend_source_sha256": "dac2853215e13c10cb3339f62b872ce45eda864a81289c11dfa252f667174da8",
+  "file_sha256": {
+    "scripts/preflight_uni_api.py": "a08e50df1525b98585b87d3667be92ff9c715cb8cd6de0ef6b0f52b4b6918fb7",
+    "src/backend/tests/test_uni_api_preflight.py": "2329b7f4e1388691ca15310cf0f7f299de7d599caf6d0c175b8835cffd6fd851",
+    "src/backend/arena/api/routes/evaluation.py": "d2dfbc7f9e02afa649f64250816eb4a85947cff842e482b95bf5e3645c1e0fad",
+    "src/frontend/src/views/ConfigManager.vue": "f2376fc42cd93ffe430c9e5bace2ee1a4d560127b61699f3c6bf6af6c650b8ff",
+    "src/frontend/src/views/ConfigManager.test.js": "7276211c8a5e0d3e6b7f6ff350b497bf4ef8819db1940933dcee14811b763357",
+    "src/frontend/src/views/EvaluationCreate.vue": "ca79f1e4dabd3d4fb78abba91e52f93b40c3a04d39d8e1288b3164d190a7222d",
+    "src/backend/evaluation/experiments/uni-api-smoke-draft.yaml": "0656f2d011cbd206dc720697a898b6ede89674e2c01e697a03cb6c9160a623b3",
+    "docs/uni-api-preflight-20260923.md": "8ebeaa1f86009ba0384df6ac4ef8cade14a55ec361f7a0569cba95b6af48015f",
+    "docs/session-handoff-20260923.md": "249746116354e05349ee8f23635b1c58e8b2a92f681e8b5b26868a514478a2a0",
+    "docs/reviews/20260923-uni-preflight/draft-preflight.json": "3ee3973c627766a7c3d7d6584d611fac7a3b80ee08f181d5b6a8b9b122f070d3",
+    "docs/reviews/20260923-uni-preflight/backend.xml": "05d031393dee9746c65e72b71baff7dd8a4c1197817cd9efe451ccf5b5f48617",
+    "docs/reviews/20260923-uni-preflight/configuration.json": "50d54c75b302c204b36eb959e51b481386e9fbc6f9c4c3fe1006de865af6b272"
+  },
+  "previous_full_suite": {
+    "passed": 338,
+    "rerun_this_session": false
+  }
+}

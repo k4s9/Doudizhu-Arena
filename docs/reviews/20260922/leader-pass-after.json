@@ -1,0 +1,52 @@
+{
+  "kind": "executed-engine-regression-not-real-model",
+  "seed": "failure-leader-pass-v1",
+  "observation": {
+    "seat": "S",
+    "current_trick": null,
+    "hand_cards": [
+      "♠2",
+      "♥2",
+      "♥A",
+      "♠K",
+      "♣K",
+      "♦K",
+      "♠Q",
+      "♣Q",
+      "♦Q",
+      "♥J",
+      "♣10",
+      "♠9",
+      "♣9",
+      "♦9",
+      "♦6",
+      "♠5",
+      "♥5",
+      "♠4",
+      "♥4",
+      "♦3"
+    ]
+  },
+  "raw_output": "{\"reasoning\":\"pass on lead\",\"action\":{\"type\":\"pass\"}}",
+  "parser_accepted": false,
+  "error": "领出必须出牌，不能 pass（当前没有需要压过的牌型）。",
+  "feedback": "冻结观察\n\n---\n## 第1次重试反馈\n上次回复有误：领出必须出牌，不能 pass（当前没有需要压过的牌型）。\n请修正错误，重新输出完整的 JSON 回复。",
+  "engine_accepted": false,
+  "engine_error": "Leader must play: cannot pass without a current trick",
+  "repair_output": "{\"reasoning\": \"lead requires a card\", \"action\": {\"type\": \"play\", \"cards\": [\"♦3\"]}}",
+  "actual_action": [
+    "♦3"
+  ],
+  "hand_size_before": 20,
+  "hand_size_after": 19,
+  "broadcast": {
+    "viewer_a": [
+      0,
+      1
+    ],
+    "viewer_b": [
+      0,
+      1
+    ]
+  }
+}

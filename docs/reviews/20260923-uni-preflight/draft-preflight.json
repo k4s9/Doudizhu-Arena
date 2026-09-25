@@ -1,0 +1,26 @@
+{
+  "kind": "offline-uni-api-preflight",
+  "env_files_present": {
+    "root": true,
+    "backend": false
+  },
+  "credentials_available_locally": {
+    "CSTCLOUD_API_KEY": true,
+    "DOUDIZHU_CREDENTIAL_MASTER_KEY": true
+  },
+  "remote_config_count": 10,
+  "all_remote_configs_have_credentials": true,
+  "config_api_redacts_credentials": true,
+  "in_memory_credentials_encrypted": true,
+  "credential_roundtrip_ok": true,
+  "persistent_database_opened": false,
+  "remote_authentication_verified": false,
+  "configuration_ok": true,
+  "experiment_preflight": {
+    "status": "checked",
+    "ok": false,
+    "http_status": 400
+  },
+  "network_connection_attempts": 0,
+  "ok": false
+}

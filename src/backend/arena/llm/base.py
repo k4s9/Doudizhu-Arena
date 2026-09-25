@@ -13,6 +13,16 @@ class LLMUsage:
     completion_tokens: int
     total_tokens: int
 
+    @classmethod
+    def from_counts(cls, prompt_tokens, completion_tokens, total_tokens=None) -> LLMUsage | None:
+        """Keep partial/invalid gateway usage unknown instead of inventing zero."""
+        if any(type(n) is not int or n < 0 for n in (prompt_tokens, completion_tokens)):
+            return None
+        total = prompt_tokens + completion_tokens if total_tokens is None else total_tokens
+        if type(total) is not int or total < 0:
+            return None
+        return cls(prompt_tokens, completion_tokens, total)
+
 
 class LLMError(Exception):
     """Raised when an LLM call fails."""

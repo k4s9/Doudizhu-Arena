@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="18" time="3.768" timestamp="2026-09-23T10:29:40.551001+08:00" hostname="Taishan200"><testcase classname="tests.test_gateway_contract" name="test_custom_gateway_request_and_usage[openai]" time="0.847" /><testcase classname="tests.test_gateway_contract" name="test_custom_gateway_request_and_usage[claude]" time="0.021"><failure message="AssertionError: assert 'api.anthropic.com' == 'gateway.invalid'&#10;  &#10;  - gateway.invalid&#10;  + api.anthropic.com">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0xffff96037050&gt;
+provider = 'claude'
+
+    @pytest.mark.parametrize('provider', ['openai', 'claude'])
+    def test_custom_gateway_request_and_usage(monkeypatch, provider):
+        calls = []
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(200, json=response_body(provider))
+        use_transport(monkeypatch, provider, handle)
+        base = GATEWAY if provider == 'openai' else 'https://gateway.invalid/anthropic'
+        adapter = create_provider(provider, 'requested-model', TOKEN, base_url=base)
+        async def run():
+            try:
+                assert await adapter.generate('user text', 'system text') == '{"bid":3}'
+            finally:
+                await adapter._client.close()
+        asyncio.run(run())
+        assert len(calls) == 1
+        request = calls[0]
+&gt;       assert request.url.host == 'gateway.invalid'
+E       AssertionError: assert 'api.anthropic.com' == 'gateway.invalid'
+E         
+E         - gateway.invalid
+E         + api.anthropic.com
+
+tests/test_gateway_contract.py:71: AssertionError</failure></testcase><testcase classname="tests.test_gateway_contract" name="test_gateway_error_has_no_hidden_retries_or_stale_usage[401-openai]" time="0.006" /><testcase classname="tests.test_gateway_contract" name="test_gateway_error_has_no_hidden_retries_or_stale_usage[401-claude]" time="0.005" /><testcase classname="tests.test_gateway_contract" name="test_gateway_error_has_no_hidden_retries_or_stale_usage[429-openai]" time="0.006" /><testcase classname="tests.test_gateway_contract" name="test_gateway_error_has_no_hidden_retries_or_stale_usage[429-claude]" time="0.005" /><testcase classname="tests.test_gateway_contract" name="test_gateway_error_has_no_hidden_retries_or_stale_usage[500-openai]" time="0.006" /><testcase classname="tests.test_gateway_contract" name="test_gateway_error_has_no_hidden_retries_or_stale_usage[500-claude]" time="0.005" /><testcase classname="tests.test_gateway_contract" name="test_missing_usage_preserves_text_and_unknown_cost[absent-openai]" time="0.004" /><testcase classname="tests.test_gateway_contract" name="test_missing_usage_preserves_text_and_unknown_cost[absent-claude]" time="0.003" /><testcase classname="tests.test_gateway_contract" name="test_missing_usage_preserves_text_and_unknown_cost[incomplete-openai]" time="0.006"><failure message="assert LLMUsage(prompt_tokens=12, completion_tokens=None, total_tokens=None) is None&#10; +  where LLMUsage(prompt_tokens=12, completion_tokens=None, total_tokens=None) = &lt;arena.llm.openai.OpenAIProvider object at 0xffff955c73e0&gt;.last_usage">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0xffff94481100&gt;
+provider = 'openai', usage_kind = 'incomplete'
+
+    @pytest.mark.parametrize('provider', ['openai', 'claude'])
+    @pytest.mark.parametrize('usage_kind', ['absent', 'incomplete'])
+    def test_missing_usage_preserves_text_and_unknown_cost(monkeypatch, provider, usage_kind):
+        body = response_body(provider, usage=False)
+        if usage_kind == 'incomplete':
+            body['usage'] = {'prompt_tokens': 12} if provider == 'openai' else {'input_tokens': 12}
+        use_transport(monkeypatch, provider, lambda _: httpx.Response(200, json=body))
+        adapter = create_provider(provider, 'requested-model', TOKEN, base_url=GATEWAY)
+        async def run():
+            try:
+                assert await adapter.generate('test') == '{"bid":3}'
+                assert adapter.last_usage is None
+            finally:
+                await adapter._client.close()
+&gt;       asyncio.run(run())
+
+tests/test_gateway_contract.py:118: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        try:
+            assert await adapter.generate('test') == '{"bid":3}'
+&gt;           assert adapter.last_usage is None
+E           assert LLMUsage(prompt_tokens=12, completion_tokens=None, total_tokens=None) is None
+E            +  where LLMUsage(prompt_tokens=12, completion_tokens=None, total_tokens=None) = &lt;arena.llm.openai.OpenAIProvider object at 0xffff955c73e0&gt;.last_usage
+
+tests/test_gateway_contract.py:115: AssertionError</failure></testcase><testcase classname="tests.test_gateway_contract" name="test_missing_usage_preserves_text_and_unknown_cost[incomplete-claude]" time="0.004"><failure message="arena.llm.base.LLMError: Claude API call failed: unsupported operand type(s) for +: 'int' and 'NoneType'">self = &lt;arena.llm.claude.ClaudeProvider object at 0xffff97c51100&gt;
+user_prompt = 'test', system_prompt = ''
+
+    async def generate(
+        self,
+        user_prompt: str,
+        system_prompt: str = "",
+    ) -&gt; str:
+        client = self._get_client()
+        self.last_usage = None
+        self.last_response_model = None
+        self.last_system_fingerprint = None
+        try:
+            request = dict(
+                model=self._model,
+                max_tokens=self._max_tokens,
+                system=system_prompt or "You are a Doudizhu AI player.",
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            if self._temperature is not None:
+                request["temperature"] = self._temperature
+            if self._top_p is not None:
+                request["top_p"] = self._top_p
+            response = await client.messages.create(**request)
+            self.last_response_model = getattr(response, "model", None)
+            # Capture usage if available
+            if hasattr(response, 'usage') and response.usage:
+                self.last_usage = LLMUsage(
+                    prompt_tokens=getattr(response.usage, 'input_tokens', 0),
+                    completion_tokens=getattr(response.usage, 'output_tokens', 0),
+&gt;                   total_tokens=getattr(response.usage, 'input_tokens', 0)
+                    + getattr(response.usage, 'output_tokens', 0),
+                )
+E               TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'
+
+arena/llm/claude.py:70: TypeError
+
+The above exception was the direct cause of the following exception:
+
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0xffff96037200&gt;
+provider = 'claude', usage_kind = 'incomplete'
+
+    @pytest.mark.parametrize('provider', ['openai', 'claude'])
+    @pytest.mark.parametrize('usage_kind', ['absent', 'incomplete'])
+    def test_missing_usage_preserves_text_and_unknown_cost(monkeypatch, provider, usage_kind):
+        body = response_body(provider, usage=False)
+        if usage_kind == 'incomplete':
+            body['usage'] = {'prompt_tokens': 12} if provider == 'openai' else {'input_tokens': 12}
+        use_transport(monkeypatch, provider, lambda _: httpx.Response(200, json=body))
+        adapter = create_provider(provider, 'requested-model', TOKEN, base_url=GATEWAY)
+        async def run():
+            try:
+                assert await adapter.generate('test') == '{"bid":3}'
+                assert adapter.last_usage is None
+            finally:
+                await adapter._client.close()
+&gt;       asyncio.run(run())
+
+tests/test_gateway_contract.py:118: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+tests/test_gateway_contract.py:114: in run
+    assert await adapter.generate('test') == '{"bid":3}'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;arena.llm.claude.ClaudeProvider object at 0xffff97c51100&gt;
+user_prompt = 'test', system_prompt = ''
+
+    async def generate(
+        self,
+        user_prompt: str,
+        system_prompt: str = "",
+    ) -&gt; str:
+        client = self._get_client()
+        self.last_usage = None
+        self.last_response_model = None
+        self.last_system_fingerprint = None
+        try:
+            request = dict(
+                model=self._model,
+                max_tokens=self._max_tokens,
+                system=system_prompt or "You are a Doudizhu AI player.",
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            if self._temperature is not None:
+                request["temperature"] = self._temperature
+            if self._top_p is not None:
+                request["top_p"] = self._top_p
+            response = await client.messages.create(**request)
+            self.last_response_model = getattr(response, "model", None)
+            # Capture usage if available
+            if hasattr(response, 'usage') and response.usage:
+                self.last_usage = LLMUsage(
+                    prompt_tokens=getattr(response.usage, 'input_tokens', 0),
+                    completion_tokens=getattr(response.usage, 'output_tokens', 0),
+                    total_tokens=getattr(response.usage, 'input_tokens', 0)
+                    + getattr(response.usage, 'output_tokens', 0),
+                )
+            content = response.content
+            return "".join(block.text for block in content if getattr(block, "type", "text") == "text")
+        except Exception as e:
+            self.last_usage = None
+            if isinstance(e, LLMError):
+                raise
+&gt;           raise LLMError(f"Claude API call failed: {e}") from e
+E           arena.llm.base.LLMError: Claude API call failed: unsupported operand type(s) for +: 'int' and 'NoneType'
+
+arena/llm/claude.py:79: LLMError</failure></testcase><testcase classname="tests.test_gateway_contract" name="test_credential_status_and_preflight_agree[${MISSING_GATEWAY_TEST_KEY}-False]" time="0.035"><failure message="assert True is False">api_repo = (&lt;fastapi.applications.FastAPI object at 0xffff9447e8d0&gt;, &lt;arena.db.repository.DatabaseRepository object at 0xffff955c6ab0&gt;)
+token = '${MISSING_GATEWAY_TEST_KEY}', available = False
+
+    @pytest.mark.parametrize('token, available', [('${MISSING_GATEWAY_TEST_KEY}', False), ('', False), ('  ', False), (TOKEN, True)])
+    def test_credential_status_and_preflight_agree(api_repo, token, available):
+        app, repo = api_repo
+        repo.create_player_config('gateway-test', 'openai', 'requested-model', token, base_url=GATEWAY)
+        raw = load_experiment_spec(ROOT / 'src/backend/evaluation/experiments/mock-v2.yaml').model_dump(mode='json')
+        raw['models'][0].update(config_name='gateway-test', provider='openai', model='requested-model', base_url=GATEWAY)
+        raw['models'][0]['pricing'].update(input_per_million=1, output_per_million=1, source='offline-test-fixture')
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+                configs = (await client.get('/configs')).json()['configs']
+                assert configs[0]['has_api_key'] is available
+                assert 'api_key' not in configs[0]
+                preflight = await client.post('/evaluations/preflight', json=raw)
+                assert preflight.status_code == 200 and preflight.json()['ok'] is available
+&gt;       asyncio.run(run())
+
+tests/test_gateway_contract.py:149: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+            configs = (await client.get('/configs')).json()['configs']
+&gt;           assert configs[0]['has_api_key'] is available
+E           assert True is False
+
+tests/test_gateway_contract.py:145: AssertionError</failure></testcase><testcase classname="tests.test_gateway_contract" name="test_credential_status_and_preflight_agree[-False]" time="0.056" /><testcase classname="tests.test_gateway_contract" name="test_credential_status_and_preflight_agree[  -False]" time="0.032"><failure message="assert True is False">api_repo = (&lt;fastapi.applications.FastAPI object at 0xffff955c6c60&gt;, &lt;arena.db.repository.DatabaseRepository object at 0xffff955c66f0&gt;)
+token = '  ', available = False
+
+    @pytest.mark.parametrize('token, available', [('${MISSING_GATEWAY_TEST_KEY}', False), ('', False), ('  ', False), (TOKEN, True)])
+    def test_credential_status_and_preflight_agree(api_repo, token, available):
+        app, repo = api_repo
+        repo.create_player_config('gateway-test', 'openai', 'requested-model', token, base_url=GATEWAY)
+        raw = load_experiment_spec(ROOT / 'src/backend/evaluation/experiments/mock-v2.yaml').model_dump(mode='json')
+        raw['models'][0].update(config_name='gateway-test', provider='openai', model='requested-model', base_url=GATEWAY)
+        raw['models'][0]['pricing'].update(input_per_million=1, output_per_million=1, source='offline-test-fixture')
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+                configs = (await client.get('/configs')).json()['configs']
+                assert configs[0]['has_api_key'] is available
+                assert 'api_key' not in configs[0]
+                preflight = await client.post('/evaluations/preflight', json=raw)
+                assert preflight.status_code == 200 and preflight.json()['ok'] is available
+&gt;       asyncio.run(run())
+
+tests/test_gateway_contract.py:149: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../miniconda3/envs/doudizhu-arena/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+            configs = (await client.get('/configs')).json()['configs']
+&gt;           assert configs[0]['has_api_key'] is available
+E           assert True is False
+
+tests/test_gateway_contract.py:145: AssertionError</failure></testcase><testcase classname="tests.test_gateway_contract" name="test_credential_status_and_preflight_agree[offline-test-token-True]" time="0.070" /><testcase classname="tests.test_gateway_contract" name="test_match_uses_configured_gateway[openai]" time="0.033" /><testcase classname="tests.test_gateway_contract" name="test_match_uses_configured_gateway[claude]" time="0.028"><failure message="AssertionError: assert ([None, None, None, None, None, None, ...] and {None} == {'https://gateway.invalid/v1'}&#10;  &#10;  Extra items in the left set:&#10;  None&#10;  Extra items in the right set:&#10;  'https://gateway.invalid/v1'&#10;  Use -v to get more diff)">api_repo = (&lt;fastapi.applications.FastAPI object at 0xffff944026f0&gt;, &lt;arena.db.repository.DatabaseRepository object at 0xffff94401040&gt;)
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0xffff944024b0&gt;
+provider = 'claude'
+
+    @pytest.mark.parametrize('provider', ['openai', 'claude'])
+    def test_match_uses_configured_gateway(api_repo, monkeypatch, provider):
+        app, repo = api_repo
+        cid = repo.create_player_config('gateway-test', provider, 'requested-model', TOKEN, base_url=GATEWAY)
+        mid = repo.create_match('offline match', {}, 'offline-seed')
+        for table in ('A', 'B'):
+            for seat in ('S', 'E', 'N', 'W'):
+                pid = repo.create_player(cid, f'{table}-{seat}')
+                repo.add_participant(mid, pid, 'red' if seat in ('S', 'N') else 'blue', **{f'seat_table_{table.lower()}': seat})
+        endpoints = []
+        async def fake_run(runner):
+            for agent in runner.agents.values():
+                endpoints.append(agent._provider._inner._base_url)
+        monkeypatch.setattr(MatchRunner, 'run', fake_run)
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+                response = await client.post(f'/matches/{mid}/start')
+                assert response.is_success, response.text
+                await asyncio.sleep(0)
+        asyncio.run(run())
+&gt;       assert endpoints and set(endpoints) == {GATEWAY}
+E       AssertionError: assert ([None, None, None, None, None, None, ...] and {None} == {'https://gateway.invalid/v1'}
+E         
+E         Extra items in the left set:
+E         None
+E         Extra items in the right set:
+E         'https://gateway.invalid/v1'
+E         Use -v to get more diff)
+
+tests/test_gateway_contract.py:172: AssertionError</failure></testcase></testsuite></testsuites>

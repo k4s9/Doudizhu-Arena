@@ -85,6 +85,7 @@ export function buildReplayTimeline(tableDetail) {
   const bidding = tableDetail?.bidding || [];
   const steps = bidding.map(bid => ({
     type: 'bid',
+    seq: bid.seq,
     seat: bid.seat,
     timestamp_ms: bid.timestamp_ms,
     bid: bid.bid,
@@ -95,6 +96,7 @@ export function buildReplayTimeline(tableDetail) {
   for (const p of plays) {
     steps.push({
       type: 'play',
+      seq: p.seq,
       seat: p.seat,
       timestamp_ms: p.timestamp_ms,
       round: p.round,
@@ -104,7 +106,10 @@ export function buildReplayTimeline(tableDetail) {
     });
   }
 
-  steps.sort((a, b) => (a.timestamp_ms || 0) - (b.timestamp_ms || 0));
+  steps.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'bid' ? -1 : 1;
+    return (a.seq ?? 0) - (b.seq ?? 0);
+  });
   return steps;
 }
 
@@ -154,7 +159,7 @@ function buildHandCards(tableDetail, completedBids, completedPlays) {
   }
 
   // Remove cards that have been played up to completedPlays
-  const playHistory = tableDetail?.play_history || [];
+  const playHistory = [...(tableDetail?.play_history || [])].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
   for (let i = 0; i < completedPlays && i < playHistory.length; i++) {
     const p = playHistory[i];
     if (p.action?.type === 'play' && p.action?.cards) {
@@ -180,7 +185,7 @@ function buildHandCards(tableDetail, completedBids, completedPlays) {
  * lead play that hasn't been beaten yet, or returns null if the round ended.
  */
 function computeCurrentPattern(tableDetail, completedPlays) {
-  const playHistory = tableDetail?.play_history || [];
+  const playHistory = [...(tableDetail?.play_history || [])].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
   const visible = playHistory.slice(0, completedPlays);
   if (visible.length === 0) return null;
 
@@ -287,7 +292,7 @@ function buildThoughts(timeline, currentStep) {
  * Compute visible play history (truncated to completedPlays).
  */
 function buildVisiblePlayHistory(tableDetail, completedPlays) {
-  const playHistory = tableDetail?.play_history || [];
+  const playHistory = [...(tableDetail?.play_history || [])].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
   return playHistory.slice(0, completedPlays);
 }
 

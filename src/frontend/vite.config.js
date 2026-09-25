@@ -6,9 +6,9 @@ export default defineConfig({
   plugins: [vue(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8000',
+      '/api': process.env.DOUDIZHU_DEV_BACKEND || 'http://localhost:8000',
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: (process.env.DOUDIZHU_DEV_BACKEND || 'http://localhost:8000').replace(/^http/, 'ws'),
         ws: true,
       },
     },

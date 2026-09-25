@@ -12,7 +12,8 @@ async function request(path, options = {}) {
   if (res.status === 204) return null;
   const data = await res.json();
   if (!res.ok) {
-    const err = new Error(data?.error?.message || res.statusText);
+    const detail = data?.error || data?.detail?.error;
+    const err = new Error(detail?.message || (typeof data?.detail === 'string' ? data.detail : res.statusText));
     err.code = data?.error?.code || 'UNKNOWN';
     err.status = res.status;
     throw err;
@@ -91,6 +92,15 @@ export const api = {
   },
 
   // ── reliability evaluations ──
+  getEvaluationTemplate(mode = 'mock') {
+    return request(`/evaluations/template?mode=${encodeURIComponent(mode)}`);
+  },
+  getEvaluationReport(id) {
+    return request(`/evaluations/${id}/report`);
+  },
+  evaluationArtifactUrl(id, filename) {
+    return `${BASE}/evaluations/${encodeURIComponent(id)}/artifacts/${encodeURIComponent(filename)}`;
+  },
   listEvaluations() {
     return request('/evaluations');
   },
@@ -103,11 +113,11 @@ export const api = {
   createEvaluation(body) {
     return request('/evaluations', { method: 'POST', body: JSON.stringify(body) });
   },
-  startEvaluation(id) {
-    return request(`/evaluations/${id}/start`, { method: 'POST', body: JSON.stringify({ confirm_real_models: true }) });
+  startEvaluation(id, confirmRealModels = false) {
+    return request(`/evaluations/${id}/start`, { method: 'POST', body: JSON.stringify({ confirm_real_models: confirmRealModels }) });
   },
-  resumeEvaluation(id) {
-    return request(`/evaluations/${id}/resume`, { method: 'POST', body: JSON.stringify({ confirm_real_models: true }) });
+  resumeEvaluation(id, confirmRealModels = false) {
+    return request(`/evaluations/${id}/resume`, { method: 'POST', body: JSON.stringify({ confirm_real_models: confirmRealModels }) });
   },
   cancelEvaluation(id) {
     return request(`/evaluations/${id}/cancel`, { method: 'POST' });
@@ -145,9 +155,12 @@ export function createMatchSocket(matchId, handlers = {}) {
   let reconnectTimer = null;
   let reconnectDelay = 1000;
   let closed = false;
+  let lastSeq = null;
+  let awaitingSnapshot = true;
 
   function connect() {
     if (closed) return;
+    awaitingSnapshot = true;
     ws = new WebSocket(url);
 
     ws.onopen = () => {
@@ -158,6 +171,15 @@ export function createMatchSocket(matchId, handlers = {}) {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       const type = data.type;
+      if (type === 'resync_required') { ws.close(); return; }
+      if (type === 'match_state') {
+        lastSeq = data.payload.watermark;
+        awaitingSnapshot = false;
+      } else if (Number.isInteger(data.seq)) {
+        if (awaitingSnapshot || data.seq <= lastSeq) return;
+        if (data.seq !== lastSeq + 1) { awaitingSnapshot = true; ws.close(); return; }
+        lastSeq = data.seq;
+      }
       if (type === 'pong') {
         handlers.onPong?.();
       } else if (handlers.onEvent) {

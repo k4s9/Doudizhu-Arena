@@ -13,47 +13,106 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+class Subscription:
+    def __init__(self, maxsize):
+        self.queue = asyncio.Queue(maxsize=maxsize)
+
+    async def get(self):
+        return await self.queue.get()
+
+
 class MatchEventBus:
-    """Per-match event queue consumed by WebSocket handler.
+    """Single-process fanout with a durable match-wide transport sequence.
 
-    Usage:
-        bus = MatchEventBus(match_id, maxsize=10000)
-        # In MatchRunner/TableRunner:
-        await bus.emit_hand_started(hand_num, dealer, seed, tables_payload)
-        # In WS handler:
-        event = await bus.get()
+    Sequence is publication order, not a strategic ordering between tables.
+    Slow clients receive resync_required and are detached; producers never wait.
     """
-
-    def __init__(self, match_id: str, maxsize: int = 10000) -> None:
-        self.match_id = match_id
-        self._queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=maxsize)
+    def __init__(self, match_id: str, maxsize: int = 10000, repo=None):
+        from collections import deque
+        self.match_id, self.maxsize, self.repo = match_id, maxsize, repo
+        self._subscribers = set()
+        self._history = deque(maxlen=maxsize)
         self._closed = False
+        self.seq = 0
+        self.snapshot_factory = None
+        self._legacy = None
+        self.announced_hand = None
+        if repo:
+            self.seq = repo.conn.execute("SELECT COALESCE(MAX(seq),0) FROM match_events WHERE match_id=?", (match_id,)).fetchone()[0]
 
-    async def put(self, event: dict[str, Any]) -> None:
-        """Push an event onto the queue. Non-blocking if queue is full (drops with warning)."""
+    def subscribe(self):
+        sub = Subscription(self.maxsize)
+        self._subscribers.add(sub)
+        if self._closed:
+            sub.queue.put_nowait(None)
+        return sub
+
+    def unsubscribe(self, sub):
+        self._subscribers.discard(sub)
+
+    def snapshot(self):
+        from ..engine.projection import digest
+        state = self.snapshot_factory() if self.snapshot_factory else {}
+        state["stream_id"] = self.match_id
+        state["watermark"] = self.seq
+        # Timers and timestamps are presentation data, excluded from the hash.
+        projection = {k: v for k, v in state.items() if k not in ("tables", "stream_id", "watermark")}
+        projection["tables"] = {k: {key: value for key,value in table.items() if key not in ("turn_timer", "play_history", "time_remaining")}
+                                for k,table in state.get("tables", {}).items()}
+        state["state_hash"] = digest(projection)
+        return state
+
+    async def put(self, event):
+        import copy
+        import json
         if self._closed:
             return
-        try:
-            self._queue.put_nowait(event)
-        except asyncio.QueueFull:
-            logger.warning(
-                "MatchEventBus queue full for match %s, dropping event %s",
-                self.match_id,
-                event.get("type", "?"),
-            )
+        event = copy.deepcopy(event)
+        if event['type'] == 'hand_started':
+            self.announced_hand = event['payload']
+        if self.repo and event['type'] in ('bidding_update','card_played','pass'):
+            payload=event['payload']
+            phase='bidding' if event['type']=='bidding_update' else 'playing'
+            row=self.repo.conn.execute('''SELECT d.* FROM decisions d JOIN table_hands th ON th.id=d.table_hand_id
+                JOIN hands h ON h.id=th.hand_id WHERE d.match_id=? AND th."table"=? AND h.hand_num=?
+                AND d.seat=? AND d.phase=? AND d.action_id IS NOT NULL ORDER BY d.action_seq DESC LIMIT 1''',
+                (self.match_id,payload['table'],payload['hand_num'],payload['seat'],phase)).fetchone()
+            if row:
+                for key in ('decision_id','action_seq','state_hash_after','rules_version'):
+                    payload[key]=row[key]
+                payload['actual_action']=json.loads(row['actual_action'])
+        self.seq += 1
+        event.update(stream_id=self.match_id, seq=self.seq, event_id=f"{self.match_id}:{self.seq}")
+        if self.repo:
+            self.repo.conn.execute("INSERT INTO match_events VALUES(?,?,?)", (self.match_id, self.seq, json.dumps(event, ensure_ascii=False)))
+            self.repo.conn.commit()
+        self._history.append(event)
+        for sub in list(self._subscribers):
+            try:
+                sub.queue.put_nowait(event)
+            except asyncio.QueueFull:
+                while not sub.queue.empty():
+                    sub.queue.get_nowait()
+                sub.queue.put_nowait({"type": "resync_required", "payload": {"reason": "slow_client"}})
+                self.unsubscribe(sub)
 
-    async def get(self) -> dict[str, Any] | None:
-        """Wait for and return the next event. Returns None if bus is closed."""
-        if self._closed and self._queue.empty():
-            return None
-        try:
-            return await self._queue.get()
-        except Exception:
-            return None
+    async def get(self):
+        # Compatibility for local single-consumer tools; WS always subscribes.
+        if self._legacy is None:
+            self._legacy = self.subscribe()
+            for event in self._history:
+                if not self._legacy.queue.full(): self._legacy.queue.put_nowait(event)
+        return await self._legacy.get()
 
-    def close(self) -> None:
-        """Signal that no more events will be produced."""
+    def close(self):
         self._closed = True
+        for sub in list(self._subscribers):
+            if not sub.queue.full():
+                sub.queue.put_nowait(None)
+            else:
+                while not sub.queue.empty(): sub.queue.get_nowait()
+                sub.queue.put_nowait({"type": "resync_required", "payload": {"reason": "slow_client"}})
+        self._subscribers.clear()
 
     # ── convenience emit methods ────────────────────────────────────────────────
 

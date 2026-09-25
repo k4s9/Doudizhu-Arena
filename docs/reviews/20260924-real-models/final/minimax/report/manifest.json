@@ -1,0 +1,144 @@
+{
+  "dependency_sha256": "00dba27ef9996bd6185b962add74616e1f5236976ec59fe6ac95b0c0bdced6c4",
+  "experiment_id": "uni-api-minimax-smoke-20260924",
+  "frozen_spec": {
+    "budget_limit_usd": 0.0,
+    "cancellation_deadline_seconds": 5.0,
+    "experiment_id": "uni-api-minimax-smoke-20260924",
+    "ko_enabled": false,
+    "max_calls": 2000,
+    "max_input_tokens": 65536,
+    "max_tiebreaker_hands": 0,
+    "memory_artifact_path": null,
+    "memory_training_variant_id": null,
+    "mock_scenario": "initial_error",
+    "models": [
+      {
+        "base_url": "https://uni-api.cstcloud.cn/v1",
+        "config_name": "Minimax-Balanced",
+        "model": "minimax-m27",
+        "parameters": {
+          "max_tokens": 8192,
+          "seed": null,
+          "temperature": 0.0,
+          "top_p": 1.0
+        },
+        "pricing": {
+          "currency": "USD",
+          "effective_date": "2026-09-24",
+          "input_per_million": 0.0,
+          "output_per_million": 0.0,
+          "source": "User confirmed Uni API account is free in this session; not a published provider price"
+        },
+        "provider": "openai",
+        "system_prompt": null
+      }
+    ],
+    "pricing_version": "uni-api-user-confirmed-free-20260924",
+    "seat_rotations": 1,
+    "seed_set_path": "src/backend/evaluation/seed_sets/smoke-v1.json",
+    "task_timeout_seconds": 14400.0,
+    "timeout_config": {
+      "bidding_seconds": 600,
+      "exhausted_individual_seconds": 600,
+      "individual_play_seconds": 600,
+      "max_consecutive_llm_failures": 3,
+      "team_pool_seconds": 14400
+    },
+    "total_hands": 1,
+    "training_seed_set_path": null,
+    "training_total_hands": 5,
+    "variants": [
+      {
+        "enable_reflection": false,
+        "memory_mode": "disabled",
+        "retry_limit": 0,
+        "rule_feedback": false,
+        "variant_id": "single_generation"
+      },
+      {
+        "enable_reflection": false,
+        "memory_mode": "disabled",
+        "retry_limit": 2,
+        "rule_feedback": false,
+        "variant_id": "generic_retry"
+      },
+      {
+        "enable_reflection": false,
+        "memory_mode": "disabled",
+        "retry_limit": 2,
+        "rule_feedback": true,
+        "variant_id": "rule_feedback"
+      }
+    ]
+  },
+  "manifest_sha256": "4beeb007c56996d37ecc866121c9310e266aa544aeef8045b8189b227e196e17",
+  "memory_artifact_sha256": null,
+  "models": [
+    {
+      "base_url": "https://uni-api.cstcloud.cn/v1",
+      "config_name": "Minimax-Balanced",
+      "model": "minimax-m27",
+      "parameters": {
+        "max_tokens": 8192,
+        "seed": null,
+        "temperature": 0.0,
+        "top_p": 1.0
+      },
+      "pricing": {
+        "currency": "USD",
+        "effective_date": "2026-09-24",
+        "input_per_million": 0.0,
+        "output_per_million": 0.0,
+        "source": "User confirmed Uni API account is free in this session; not a published provider price"
+      },
+      "prompt_sha256": "40a5f75249895205b9c5c0cd4831bb4167efdf2d9563abdddb9aa9cd53dd7f54",
+      "prompt_templates": {
+        "__init__.py": "\"\"\"Prompt templates for LLM agents.\"\"\"\n",
+        "bidding.py": "\"\"\"Bidding (叫分) prompt template — section 5.1 of the spec.\"\"\"\n\nfrom __future__ import annotations\n\nfrom ..base import AgentContext\nfrom ..context import ContextBuilder\nfrom ..memory import MemoryManager\n\nBIDDING_SYSTEM_PROMPT = \"\"\"你是斗地主AI选手 [{agent_name}]，参加复式团体赛。\n\n{personality_hint}\n\n## 牌型规则\n- 单张：1张牌\n- 对子：2张同rank牌\n- 三条：3张同rank牌\n- 三带一：三条+1单张\n- 三带二：三条+1对子\n- 顺子：>=5张连续（3-A，不含2和王）\n- 连对：>=3对连续（3-A，不含2和王）\n- 飞机（不带）：>=2组连续三条\n- 飞机带单：连续三条+等量单张\n- 飞机带对：连续三条+等量对子\n- 四带二单：四同rank+2张不同单牌\n- 四带二同单：四同rank+1对子\n- 四带二对：四同rank+2对不同对子\n- 炸弹：4张同rank\n- 火箭：大小王\n\nrank顺序：3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A < 2 < 小王 < 大王\n\n## 叫分规则\n- 从首家开始，按顺序每家一次叫分机会（仅一轮，不回环）\n- 叫分选项：不叫(0) / 1分 / 2分 / 3分\n- 后叫者若选择叫分，必须大于当前最高叫分（但可以选择不叫）\n- 叫3分 → 直接成交地主，终止叫分\n- 无人叫3分 → 最高分值者成交地主\n- 三家均不叫 → 流局，本副牌不计分\n\n## 得分规则\n- 本桌得分 = 叫分 x (1 + 炸弹数 + 春天/反春天)\n- 每个打出的纯炸弹+1（火箭算1个；拆牌使用的不计；四带二中使用的四同rank不计）\n- 春天（地主赢+农民0手出牌）：+1\n- 反春天（农民赢+地主仅出1手牌）：+1\n\n## 叫分策略参考\n- 手牌含大王+2炸 → 牌力足够叫3分\n- 手牌含1炸+2 + 多个A/K → 可考虑叫2分\n- 手牌含多个顺子/连对/飞机 + 中等牌 → 可考虑叫1分\n- 手牌散乱、缺乏炸弹和大牌 → 倾向于不叫\n- 作为首家叫分，需要综合评估手牌强度\n- 作为后叫者，可以根据前家的叫分调整策略\n\n## 输出格式\n你必须输出完整的 JSON，不要包含任何其他文字。JSON 格式如下：\n```json\n{{\"reasoning\": \"你的牌力分析...\", \"bid\": 0}}\n```\nbid 取值：0=不叫, 1/2/3=叫分分数。\n{{thinking_guidance}}\"\"\"\n\n\ndef build_bidding_prompt(\n    ctx: AgentContext,\n    memory: MemoryManager,\n    agent_name: str,\n    system_prompt_override: str | None = None,\n) -> tuple[str, str]:\n    \"\"\"Build (system_prompt, user_prompt) for a bidding decision.\n\n    Returns:\n        (system_prompt, user_prompt) tuple\n    \"\"\"\n    context_text = ContextBuilder.build_bidding_context_text(ctx)\n\n    # Thinking time guidance\n    thinking_guidance = _bidding_thinking_guidance(ctx)\n\n    # Personality hint\n    personality = _get_personality(memory, system_prompt_override)\n\n    system = BIDDING_SYSTEM_PROMPT.format(\n        agent_name=agent_name,\n        personality_hint=personality,\n        thinking_guidance=thinking_guidance,\n    )\n\n    user = f\"\"\"## 当前局面\n{context_text}\n\n## 任务\n请评估手牌并给出叫分决策。\n\n输出 JSON：\"\"\"\n\n    return system, user\n\n\ndef _bidding_thinking_guidance(ctx: AgentContext) -> str:\n    \"\"\"Generate thinking time guidance based on hand complexity.\"\"\"\n    hand_size = ctx.hand_size\n    if hand_size <= 0:\n        return \"\"\n\n    # Check for obvious strong/weak hands\n    from ...engine.card import Rank\n    has_big_joker = any(c.rank == Rank.BIG_JOKER for c in ctx.hand_cards)\n    has_small_joker = any(c.rank == Rank.SMALL_JOKER for c in ctx.hand_cards)\n    has_two = sum(1 for c in ctx.hand_cards if c.rank == Rank.TWO)\n\n    if has_big_joker and has_two >= 2:\n        return \"\\n你的手牌很强（含大王+2），直接评估叫分即可，无需冗长分析。\"\n    if not has_big_joker and not has_small_joker and has_two == 0:\n        return \"\\n你的手牌缺乏大牌，快速判断是否值得叫分即可。\"\n\n    return \"\\n请详细分析手牌强度，考虑炸弹数量、大牌分布、顺子/连对/飞机的组织性。\"\n\n\ndef _get_personality(\n    memory: MemoryManager,\n    override: str | None = None,\n) -> str:\n    \"\"\"Build the personality section of the system prompt.\"\"\"\n    parts = []\n\n    long_term = memory.get_long_term()\n    if long_term:\n        parts.append(f\"你的长期记忆（性格/策略）：\\n{long_term}\")\n\n    short_term = memory.get_short_term()\n    if short_term:\n        parts.append(f\"你本场比赛的短期记忆：\\n{short_term}\")\n\n    if override:\n        parts.append(f\"特殊指示：{override}\")\n    elif not long_term:\n        parts.append(\"你是一位经验丰富的斗地主选手，善于根据手牌强度做出合理的叫分决策。\")\n\n    return \"\\n\\n\".join(parts)\n",
+        "playing.py": "\"\"\"Playing (行牌) prompt template — section 5.2 of the spec.\"\"\"\n\nfrom __future__ import annotations\n\nfrom ..base import AgentContext\nfrom ..context import ContextBuilder\nfrom ..memory import MemoryManager\n\nPLAYING_SYSTEM_PROMPT = \"\"\"你是斗地主AI选手 [{agent_name}]，参加复式团体赛。\n\n{personality_hint}\n\n## 牌型规则\n- 单张：1张牌\n- 对子：2张同rank牌\n- 三条：3张同rank牌\n- 三带一：三条+1单张\n- 三带二：三条+1对子\n- 顺子：>=5张连续（3-A，不含2和王）\n- 连对：>=3对连续（3-A，不含2和王）\n- 飞机（不带）：>=2组连续三条\n- 飞机带单：连续三条+等量单张（带的牌不能与飞机rank冲突）\n- 飞机带对：连续三条+等量对子（带的牌不能与飞机rank冲突）\n- 四带二单：四同rank+2张不同单牌\n- 四带二同单：四同rank+1对子\n- 四带二对：四同rank+2对不同对子\n- 炸弹：4张同rank（可压任意非炸弹牌型）\n- 火箭：大小王（可压一切，含普通炸弹）\n\nrank顺序：3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A < 2 < 小王 < 大王\n\n## 出牌规则\n- 出牌方向：南→东→北→西 固定循环（跳过闲家）\n- 新一轮：必须出牌，可以选择任意合法牌型，不能 Pass\n- 跟牌：必须出同类型且更大的牌，或炸弹/火箭来压\n- 两名对手均Pass后，最后出牌的玩家赢得该轮，领出下一轮\n- 地主先出第一手牌\n\n### 牌型比较规则（重要！）\n- 单张/对子/三条：比较rank大小，rank大者胜\n- 三带一/三带二：**只比较三条部分的rank**，带的单张或对子不影响比较\n  例：999+33 可以压 888+KK（因为三条部分 9>8，与带的牌无关）\n- 顺子/连对/飞机（及带牌）：比较最高rank，且张数必须相同\n- 四带二（所有变种）：只比较四同rank部分的rank\n- 炸弹：4张同rank，可压任意非炸弹牌型；炸弹之间比较rank\n- 火箭（大小王）：最大，可压一切\n\n## 卡牌表示格式\n- 普通牌：花色+rank，如 ♠A ♥K ♣10 ♦3\n- 花色符号：♠ (黑桃) ♥ (红桃) ♣ (梅花) ♦ (方片)\n- 大王/小王：直接使用中文\"大王\"\"小王\"\n- 手牌按 rank 降序、花色 ♠→♥→♣→♦ 排列\n\n## 出牌策略参考\n- 作为地主：争取尽快走完手牌，优先打出强势牌型\n- 作为农民：配合队友，顶住地主的牌，适时放队友\n- 如果手牌\"明大\"（所有可能的出牌组合均能压过场上任何牌型），直接出牌\n- 新回合时优先出短牌型（单张/对子），逐步消耗对手\n- 保留炸弹/火箭用于关键时刻\n\n## 输出格式\n你必须输出完整的 JSON，不要包含任何其他文字。JSON 格式如下：\n\n出牌：```json\n{{\"reasoning\": \"你的出牌分析...\", \"action\": {{\"type\": \"play\", \"cards\": [\"♠A\", \"♥A\"]}}}}\n```\n\n不出（Pass）：```json\n{{\"reasoning\": \"无法压下当前牌型...\", \"action\": {{\"type\": \"pass\"}}}}\n```\n\ncards 数组中每个元素必须与你的手牌中的卡牌字符串完全一致（包含花色+rank 或 大王/小王）。\n{{thinking_guidance}}\"\"\"\n\n\ndef build_playing_prompt(\n    ctx: AgentContext,\n    memory: MemoryManager,\n    agent_name: str,\n    seat_teams: dict[str, str] | None = None,\n    system_prompt_override: str | None = None,\n) -> tuple[str, str]:\n    \"\"\"Build (system_prompt, user_prompt) for a play decision.\n\n    Returns:\n        (system_prompt, user_prompt) tuple\n    \"\"\"\n    context_text = ContextBuilder.build_play_context_text(ctx, seat_teams)\n\n    thinking_guidance = _playing_thinking_guidance(ctx)\n\n    personality = _get_personality(memory, system_prompt_override)\n\n    system = PLAYING_SYSTEM_PROMPT.format(\n        agent_name=agent_name,\n        personality_hint=personality,\n        thinking_guidance=thinking_guidance,\n    )\n\n    user = f\"\"\"## 当前局面\n{context_text}\n\n## 任务\n请决定出牌或不出（Pass）。\n\n输出 JSON：\"\"\"\n\n    return system, user\n\n\ndef _playing_thinking_guidance(ctx: AgentContext) -> str:\n    \"\"\"Generate thinking time guidance for play decisions.\"\"\"\n    if ctx.current_trick is None:\n        return \"\\n你是新一轮的领出者，可以自由选择出牌。如果手牌明显占优，快速决策即可。\"\n    else:\n        return (\n            \"\\n你需要跟牌（出同类型更大的牌或炸弹/火箭，或Pass）。\"\n            \"如果只有一种合法选择（如仅有一组符合条件的牌），直接出牌即可。\"\n            \"如果局面复杂、存在多种可行策略，请详细分析每种选择的利弊。\"\n        )\n\n\ndef _get_personality(\n    memory: MemoryManager,\n    override: str | None = None,\n) -> str:\n    \"\"\"Build the personality section of the system prompt.\"\"\"\n    parts = []\n\n    long_term = memory.get_long_term()\n    if long_term:\n        parts.append(f\"你的长期记忆（性格/策略）：\\n{long_term}\")\n\n    short_term = memory.get_short_term()\n    if short_term:\n        parts.append(f\"你本场比赛的短期记忆：\\n{short_term}\")\n\n    if override:\n        parts.append(f\"特殊指示：{override}\")\n    elif not long_term:\n        parts.append(\"你是一位经验丰富的斗地主选手，善于分析局面做出最优出牌决策。\")\n\n    return \"\\n\\n\".join(parts)\n",
+        "reflection.py": "\"\"\"Reflection (复盘) prompt template — section 5.3 of the spec.\n\nCalled after each hand for agents that participated (including idle observers).\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom ..base import AgentContext\nfrom ..context import ContextBuilder\nfrom ..memory import MemoryManager\n\nREFLECTION_SYSTEM_PROMPT = \"\"\"你是斗地主AI选手 [{agent_name}]。请对本副牌进行策略复盘。\n\n{personality_hint}\n\n## 复盘目标\n通过分析本副牌的得失，更新你对本场比赛的短期记忆。短期记忆应该包含：\n1. 对其他牌手的行牌倾向观察（激进/保守/偏好某种牌型）\n2. 你本副牌的关键决策回顾（叫分是否合理、行牌是否最优）\n3. 当前心理状态调整（领先/落后感、信心水平）\n4. 下一副牌的策略调整方向\n\n## 输出格式\n你必须输出完整的 JSON，不要包含任何其他文字。JSON 格式如下：\n```json\n{{\n  \"reflection\": \"本副牌核心教训：...\",\n  \"short_term_memory\": \"<更新后的完整短期记忆文本>\"\n}}\n```\n\nshort_term_memory 将替换你当前的短期记忆，所以它应该包含本副牌的新经验以及之前记忆中的重要信息。\n如果之前的短期记忆为空，直接创建新的短期记忆即可。\"\"\"\n\n\ndef build_reflection_prompt(\n    ctx: AgentContext,\n    memory: MemoryManager,\n    agent_name: str,\n    system_prompt_override: str | None = None,\n) -> tuple[str, str]:\n    \"\"\"Build (system_prompt, user_prompt) for a post-hand reflection.\n\n    Returns:\n        (system_prompt, user_prompt) tuple\n    \"\"\"\n    context_text = ContextBuilder.build_reflection_context_text(ctx)\n\n    personality = _get_personality(memory, system_prompt_override)\n\n    current_short_term = memory.get_short_term()\n\n    system = REFLECTION_SYSTEM_PROMPT.format(\n        agent_name=agent_name,\n        personality_hint=personality,\n    )\n\n    user = f\"\"\"## 本副牌完整信息\n{context_text}\n\n## 你当前的短期记忆\n{current_short_term or \"（尚无短期记忆）\"}\n\n## 任务\n总结本副牌经验，更新比赛短期记忆。short_term_memory 字段请写入完整的更新后短期记忆文本。\n\n输出 JSON：\"\"\"\n\n    return system, user\n\n\ndef _get_personality(\n    memory: MemoryManager,\n    override: str | None = None,\n) -> str:\n    parts = []\n    long_term = memory.get_long_term()\n    if long_term:\n        parts.append(f\"你的长期记忆（性格/策略）：\\n{long_term}\")\n    if override:\n        parts.append(f\"特殊指示：{override}\")\n    return \"\\n\\n\".join(parts)\n",
+        "summary.py": "\"\"\"Match summary (比赛总结) prompt template — section 5.4 of the spec.\n\nCalled once after the match ends for all participating agents.\nUpdates long-term memory (cross-match personality/strategy evolution).\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom ..base import AgentContext\nfrom ..context import ContextBuilder\nfrom ..memory import MemoryManager\n\nSUMMARY_SYSTEM_PROMPT = \"\"\"你是斗地主AI选手 [{agent_name}]。比赛已结束，请进行赛后总结。\n\n{personality_hint}\n\n## 总结目标\n回顾整场比赛的表现，提炼长期策略经验。长期记忆应该包含：\n1. 你的叫分策略倾向（偏好什么手牌叫几分、在什么位置更激进/保守）\n2. 你的行牌风格特征（偏好进攻还是防守、如何处理复杂牌型）\n3. 你对不同对手类型的应对策略\n4. 你发现自己在哪些方面需要改进\n\n长期记忆将在未来的比赛中被注入到你的prompt中，所以它应该简洁但信息丰富。\n\n## 输出格式\n你必须输出完整的 JSON，不要包含任何其他文字。JSON 格式如下：\n```json\n{{\n  \"summary\": \"整场比赛总结：...\",\n  \"long_term_memory\": \"<更新后的完整长期记忆文本>\"\n}}\n```\n\nlong_term_memory 将替换你当前的长期记忆。如果之前有长期记忆，请基于旧记忆进行更新（保留重要经验，添加新经验）。\"\"\"\n\n\ndef build_summary_prompt(\n    ctx: AgentContext,\n    memory: MemoryManager,\n    agent_name: str,\n    system_prompt_override: str | None = None,\n) -> tuple[str, str]:\n    \"\"\"Build (system_prompt, user_prompt) for a post-match summary.\n\n    Returns:\n        (system_prompt, user_prompt) tuple\n    \"\"\"\n    context_text = ContextBuilder.build_summary_context_text(ctx)\n\n    personality = _get_personality(memory, system_prompt_override)\n\n    current_long_term = memory.get_long_term()\n    current_short_term = memory.get_short_term()\n\n    system = SUMMARY_SYSTEM_PROMPT.format(\n        agent_name=agent_name,\n        personality_hint=personality,\n    )\n\n    user = f\"\"\"## 比赛信息\n{context_text}\n\n## 你的长期记忆（旧）\n{current_long_term or \"（尚无长期记忆）\"}\n\n## 你的短期记忆（本场比赛积累）\n{current_short_term or \"（无短期记忆）\"}\n\n## 任务\n总结整场比赛，提炼长期策略经验。long_term_memory 字段请写入完整的更新后长期记忆文本。\n\n输出 JSON：\"\"\"\n\n    return system, user\n\n\ndef _get_personality(\n    memory: MemoryManager,\n    override: str | None = None,\n) -> str:\n    parts = []\n    long_term = memory.get_long_term()\n    if long_term:\n        parts.append(f\"你的长期记忆（旧）：\\n{long_term}\")\n    if override:\n        parts.append(f\"特殊指示：{override}\")\n    return \"\\n\\n\".join(parts)\n"
+      },
+      "provider": "openai",
+      "revision": "3bb8d2bbd948f0e5291d3500af1b1ee9ebf34a88",
+      "sdk_version": "3.5.0",
+      "system_prompt": null
+    }
+  ],
+  "rules_version": "duplicate-four-seat-v2-leader-must-play",
+  "sampling_reproducibility": "provider-dependent; all controllable parameters fixed",
+  "seed_set_id": "smoke-v1",
+  "seed_set_sha256": "62cb35ade99066094e33b501f30326130e8bcdc288f0165aedbe17ceb1c974a0",
+  "seeds": [
+    "reliability-smoke-v1-001"
+  ],
+  "source_dirty": true,
+  "source_revision": "3bb8d2bbd948f0e5291d3500af1b1ee9ebf34a88",
+  "source_sha256": "67f0d30788a4a92cfdcbc87de146dac66206716676ba9e57fa22eb09dbaf9ac8",
+  "spec_sha256": "cc947254d9e23d78de03e65578fb72b089a9b54cef27cf22b78d0fc22bd543b5",
+  "training_seed_set_sha256": null,
+  "variants": [
+    {
+      "enable_reflection": false,
+      "memory_mode": "disabled",
+      "retry_limit": 0,
+      "rule_feedback": false,
+      "variant_id": "single_generation"
+    },
+    {
+      "enable_reflection": false,
+      "memory_mode": "disabled",
+      "retry_limit": 2,
+      "rule_feedback": false,
+      "variant_id": "generic_retry"
+    },
+    {
+      "enable_reflection": false,
+      "memory_mode": "disabled",
+      "retry_limit": 2,
+      "rule_feedback": true,
+      "variant_id": "rule_feedback"
+    }
+  ]
+}

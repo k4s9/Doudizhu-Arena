@@ -1,0 +1,98 @@
+{
+  "kind": "round2-local-verification",
+  "verified_date": "2026-09-22",
+  "archived_session_date": "2026-09-23",
+  "head": "3bb8d2bbd948f0e5291d3500af1b1ee9ebf34a88",
+  "uncommitted_worktree": true,
+  "code_fingerprints_sha256": "29eb8f26152cc5b62ef517155bd68935f0c936004b669d0522d8fcf2a378f4d4",
+  "backend_source_sha256": "a1c6482470fe967a3b151773e1ecaf1191c5e41d6ce3c2563896f4cd13a230e2",
+  "manifest_matches_current_backend": true,
+  "backend_full_suite": {
+    "tests": "313",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "510.388"
+  },
+  "additional_cli_tests": {
+    "tests": "2",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "6.083"
+  },
+  "final_affected_suite": {
+    "tests": "34",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "46.333"
+  },
+  "test_order_note": "313-test full suite preceded the final mock lead-detection and display-name fixes; all 34 affected tests, including the two new CLI tests, passed after those fixes. No subsequent backend edits.",
+  "frontend": {
+    "test_files": 3,
+    "tests_passed": 6,
+    "command": "npm test",
+    "build": "passed; browser harness rebuilt the final source using Vite production build"
+  },
+  "browser": {
+    "kind": "mock-browser-acceptance",
+    "mock_delay_seconds": 0.06,
+    "real_providers_disabled": true,
+    "stage": "complete",
+    "identical_live_events": 10,
+    "terminal_reconnect": {
+      "match_id": "2a97986943624232a46deae358f61280",
+      "status": "finished",
+      "score": {
+        "red": 0,
+        "blue": 0
+      },
+      "watermark": 281
+    },
+    "terminal_reload": true,
+    "run_id": "e6e32ef11e0c49109bc612d173545867",
+    "task_counts": {
+      "planned": 0,
+      "running": 0,
+      "finished": 6,
+      "failed": 0,
+      "cancelled": 0
+    },
+    "integrity_complete": true,
+    "page_errors": []
+  },
+  "launcher": {
+    "backend_health": true,
+    "frontend": true,
+    "real_calls": 0,
+    "cleanup": true
+  },
+  "mock": {
+    "run_id": "e6e32ef11e0c49109bc612d173545867",
+    "manifest_sha256": "2351d5351a10d32dede841345dfd80aa226240d7131f0d75e48b81db38d96e50",
+    "task_counts": {
+      "finished": 6
+    },
+    "table_status_counts": {
+      "finished": 12
+    },
+    "cost_coverage": {
+      "numerator": 732,
+      "denominator": 732,
+      "value": 1.0
+    },
+    "known_cost_usd": 0
+  },
+  "python": "3.12.13",
+  "node": "v22.23.2",
+  "conda_prefix": "/home/guozy/miniconda3/envs/doudizhu-arena",
+  "pip_check": "passed",
+  "real_model_calls": 0,
+  "remote_ci_executed": false,
+  "limitations": [
+    "Synthetic mock only; metrics do not demonstrate model improvement.",
+    "Browser uses 60 ms artificial provider delay and production Vite preview.",
+    "Local tests do not establish multi-replica support or production service guarantees."
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "kind": "real-uni-api-probe",
+  "ok": false,
+  "results": [
+    {
+      "name": "Qwen-Balanced",
+      "provider": "openai",
+      "model": "qwen3.5",
+      "base_url": "https://uni-api.cstcloud.cn/v1",
+      "timeout_seconds": 600.0,
+      "max_tokens": 2048,
+      "sdk_retries": 0,
+      "ok": true,
+      "response_model": "Qwen3.5-397B-A17B",
+      "finish_reason": "stop",
+      "content_chars": 11,
+      "reasoning_chars": 838,
+      "usage": {
+        "completion_tokens": 256,
+        "prompt_tokens": 27,
+        "total_tokens": 283,
+        "completion_tokens_details": null,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 249
+      },
+      "elapsed_seconds": 7.482
+    },
+    {
+      "name": "Minimax-Balanced",
+      "provider": "openai",
+      "model": "minimax-m27",
+      "base_url": "https://uni-api.cstcloud.cn/v1",
+      "timeout_seconds": 600.0,
+      "max_tokens": 2048,
+      "sdk_retries": 0,
+      "ok": false,
+      "response_model": "minimax-m27-eic",
+      "finish_reason": "stop",
+      "content_chars": 187,
+      "reasoning_chars": 0,
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 28,
+        "total_tokens": 68,
+        "completion_tokens_details": null,
+        "prompt_tokens_details": null
+      },
+      "elapsed_seconds": 4.09
+    }
+  ]
+}

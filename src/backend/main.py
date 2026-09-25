@@ -50,10 +50,10 @@ async def lifespan(app: FastAPI):
     for status in orphaned_statuses:
         for m in repo.list_matches(status=status, page=1, page_size=1000)[0]:
             logger.warning(
-                "Orphaned %s match '%s' (%s) — marking as 'finished' (server restarted)",
+                "Orphaned %s match '%s' (%s) — marking as 'interrupted' (server restarted)",
                 status, m["name"], m["id"],
             )
-            repo.update_match_status(m["id"], "finished")
+            repo.update_match_status(m["id"], "interrupted")
 
     yield
 

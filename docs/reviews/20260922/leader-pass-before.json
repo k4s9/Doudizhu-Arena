@@ -1,0 +1,44 @@
+{
+  "kind": "executed-engine-regression-not-real-model",
+  "seed": "failure-leader-pass-v1",
+  "observation": {
+    "seat": "S",
+    "current_trick": null,
+    "hand_cards": [
+      "♠2",
+      "♥2",
+      "♥A",
+      "♠K",
+      "♣K",
+      "♦K",
+      "♠Q",
+      "♣Q",
+      "♦Q",
+      "♥J",
+      "♣10",
+      "♠9",
+      "♣9",
+      "♦9",
+      "♦6",
+      "♠5",
+      "♥5",
+      "♠4",
+      "♥4",
+      "♦3"
+    ]
+  },
+  "raw_output": "{\"reasoning\":\"pass on lead\",\"action\":{\"type\":\"pass\"}}",
+  "parser_accepted": true,
+  "engine_accepted": true,
+  "actual_action": [],
+  "hand_size_before": 20,
+  "hand_size_after": 20,
+  "broadcast": {
+    "viewer_a": [
+      0
+    ],
+    "viewer_b": [
+      1
+    ]
+  }
+}

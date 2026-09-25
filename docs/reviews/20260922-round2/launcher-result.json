@@ -1,0 +1,6 @@
+{
+  "backend_health": true,
+  "frontend": true,
+  "real_calls": 0,
+  "cleanup": true
+}

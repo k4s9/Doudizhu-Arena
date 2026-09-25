@@ -8,7 +8,8 @@ from .base import AbstractLLMProvider, LLMError, LLMUsage
 class ClaudeProvider(AbstractLLMProvider):
     """Provider for Anthropic Claude models."""
 
-    def __init__(self, model: str, api_key: str, max_tokens: int = 4096, temperature: float | None = None, top_p: float | None = None) -> None:
+    def __init__(self, model: str, api_key: str, max_tokens: int = 4096, temperature: float | None = None, top_p: float | None = None, base_url: str | None = None) -> None:
+        self._base_url = base_url
         self._model = model
         self._api_key = api_key
         self._max_tokens = max_tokens
@@ -31,7 +32,7 @@ class ClaudeProvider(AbstractLLMProvider):
         if self._client is None:
             try:
                 import anthropic
-                self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
+                self._client = anthropic.AsyncAnthropic(api_key=self._api_key, base_url=self._base_url, max_retries=0)
             except ImportError:
                 raise LLMError(
                     "anthropic package not installed. "
@@ -63,16 +64,12 @@ class ClaudeProvider(AbstractLLMProvider):
             self.last_response_model = getattr(response, "model", None)
             # Capture usage if available
             if hasattr(response, 'usage') and response.usage:
-                self.last_usage = LLMUsage(
-                    prompt_tokens=getattr(response.usage, 'input_tokens', 0),
-                    completion_tokens=getattr(response.usage, 'output_tokens', 0),
-                    total_tokens=getattr(response.usage, 'input_tokens', 0)
-                    + getattr(response.usage, 'output_tokens', 0),
+                self.last_usage = LLMUsage.from_counts(
+                    prompt_tokens=getattr(response.usage, 'input_tokens', None),
+                    completion_tokens=getattr(response.usage, 'output_tokens', None),
                 )
             content = response.content
-            if not content:
-                raise LLMError("Empty response from Claude")
-            return content[0].text
+            return "".join(block.text for block in content if getattr(block, "type", "text") == "text")
         except Exception as e:
             self.last_usage = None
             if isinstance(e, LLMError):

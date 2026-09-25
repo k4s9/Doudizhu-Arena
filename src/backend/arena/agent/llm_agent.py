@@ -57,8 +57,10 @@ class LLMAgent:
         long_term_memory: str = "",
         retry_limit: int = MAX_RETRIES,
         rule_feedback: bool = True,
+        prompt_name: str | None = None,
     ) -> None:
         self._agent_id = agent_id
+        self._prompt_name = prompt_name or agent_id
         self._seat = seat
         self._provider = provider
         self._system_prompt_override = system_prompt_override
@@ -94,6 +96,9 @@ class LLMAgent:
     def consecutive_failures(self) -> int:
         return self._consecutive_failures
 
+    def sync_failure_count(self, count: int) -> None:
+        self._consecutive_failures = count
+
     def reset_failures(self) -> None:
         self._consecutive_failures = 0
 
@@ -113,163 +118,72 @@ class LLMAgent:
         if hasattr(provider, "set_context"):
             provider.set_context(**self._decision_context)
 
-    def get_last_decision_meta(self) -> dict[str, int]:
+    def get_last_decision_meta(self) -> dict[str, Any]:
         return dict(self._last_decision_meta)
 
     def get_observability_context(self) -> dict[str, str]:
         return dict(self._decision_context)
 
+    def begin_decision(self, decision_id: str) -> None:
+        self._active_decision_id = decision_id
+        self._last_reasoning = ""
+        self._last_decision_meta = {"decision_id": decision_id, "retry_count": 0,
+                                    "latency_ms": 0, "resolution": "failed_no_action"}
+
     async def decide_bid(self, ctx: AgentContext) -> int:
-        """Decide a bid via LLM with retry on parse failure."""
-        system, user = build_bidding_prompt(
-            ctx, self._memory, self._agent_id, self._system_prompt_override
-        )
-
-        started = time.monotonic()
-        decision_id = uuid.uuid4().hex
-        retries = 0
-        for attempt in range(self._retry_limit + 1):
-            try:
-                self._set_provider_call_context("bidding", decision_id, attempt + 1)
-                response = await self._provider.generate(user, system)
-                bid, reasoning = parse_bid_response(response, ctx.current_high_bid)
-                elapsed_ms = int((time.monotonic() - started) * 1000)
-                self._record_event(
-                    "bidding", attempt + 1, decision_id=decision_id,
-                    response=response, is_retry=attempt > 0,
-                    latency_ms=elapsed_ms, final_action=json.dumps({"bid": bid}),
-                )
-                self._last_reasoning = reasoning
-                self._last_decision_meta = {"retry_count": retries, "latency_ms": elapsed_ms}
-                self._consecutive_failures = 0
-                logger.info(
-                    "Agent %s bidding: bid=%d reasoning=%s",
-                    self._agent_id, bid, reasoning[:200],
-                )
-                return bid
-            except ParseError as e:
-                is_final = attempt >= self._retry_limit
-                elapsed_ms = int((time.monotonic() - started) * 1000)
-                self._record_event(
-                    "bidding", attempt + 1, decision_id=decision_id, error=e,
-                    is_illegal=True, is_retry=attempt > 0, is_fallback=is_final,
-                    fallback_reason="parse_error" if is_final else None,
-                    latency_ms=elapsed_ms if is_final else None,
-                    final_action=json.dumps({"bid": 0}) if is_final else None,
-                )
-                if attempt < self._retry_limit:
-                    retries += 1
-                    if self._rule_feedback:
-                        user = self._append_retry_feedback(user, str(e), attempt + 1)
-                else:
-                    self._consecutive_failures += 1
-                    self._last_decision_meta = {"retry_count": retries, "latency_ms": elapsed_ms}
-                    logger.warning(
-                        "Agent %s bidding parse failed after %d retries: %s",
-                        self._agent_id, self._retry_limit, e,
-                    )
-                    return 0
-            except LLMProviderError as e:
-                is_final = attempt >= self._retry_limit
-                elapsed_ms = int((time.monotonic() - started) * 1000)
-                self._record_event(
-                    "bidding", attempt + 1, decision_id=decision_id, error=e,
-                    is_retry=attempt > 0, is_fallback=is_final,
-                    fallback_reason="provider_error" if is_final else None,
-                    latency_ms=elapsed_ms if is_final else None,
-                    final_action=json.dumps({"bid": 0}) if is_final else None,
-                )
-                self._consecutive_failures += 1
-                logger.error("Agent %s LLM error during bidding: %s", self._agent_id, e)
-                if attempt < self._retry_limit:
-                    retries += 1
-                    continue
-                self._last_decision_meta = {"retry_count": retries, "latency_ms": elapsed_ms}
-                return 0
-
-        return 0  # unreachable, but safe
+        system, user = build_bidding_prompt(ctx, self._memory, self._prompt_name, self._system_prompt_override)
+        return await self._decide("bidding", system, user,
+                                  lambda raw: parse_bid_response(raw, ctx.current_high_bid), 0)
 
     async def decide_play(self, ctx: AgentContext) -> list[Card]:
-        """Decide a play via LLM with retry on parse/validation failure."""
-        system, user = build_playing_prompt(
-            ctx, self._memory, self._agent_id,
-            seat_teams=self._seat_teams,
-            system_prompt_override=self._system_prompt_override,
-        )
+        system, user = build_playing_prompt(ctx, self._memory, self._prompt_name,
+            seat_teams=self._seat_teams, system_prompt_override=self._system_prompt_override)
+        return await self._decide("playing", system, user,
+            lambda raw: parse_play_response(raw, list(ctx.hand_cards), ctx.current_trick), [])
 
-        hand = list(ctx.hand_cards)
-
+    async def _decide(self, phase, system, user, parse, fallback):
+        import asyncio
+        decision_id = getattr(self, "_active_decision_id", None) or uuid.uuid4().hex
+        self._active_decision_id = None
+        self._last_reasoning = ""
         started = time.monotonic()
-        decision_id = uuid.uuid4().hex
-        retries = 0
-        for attempt in range(self._retry_limit + 1):
+        for attempt in range(1, self._retry_limit + 2):
+            response = None
+            error = None
+            self._set_provider_call_context(phase, decision_id, attempt)
             try:
-                self._set_provider_call_context("playing", decision_id, attempt + 1)
                 response = await self._provider.generate(user, system)
-                cards, reasoning = parse_play_response(response, hand, ctx.current_trick)
-                elapsed_ms = int((time.monotonic() - started) * 1000)
-                self._record_event(
-                    "playing", attempt + 1, decision_id=decision_id,
-                    response=response, is_retry=attempt > 0,
-                    latency_ms=elapsed_ms,
-                    final_action=json.dumps({"cards": [str(card) for card in cards]}, ensure_ascii=False),
-                )
-                self._last_reasoning = reasoning
-                self._last_decision_meta = {"retry_count": retries, "latency_ms": elapsed_ms}
+                action, reasoning = parse(response)
+            except asyncio.CancelledError:
+                self._last_decision_meta = {"decision_id": decision_id, "retry_count": attempt - 1,
+                    "latency_ms": int((time.monotonic()-started)*1000), "resolution": "cancelled"}
+                raise
+            except (ParseError, LLMProviderError) as exc:
+                error = exc
+            elapsed = int((time.monotonic()-started)*1000)
+            final = error is None or attempt == self._retry_limit + 1
+            self._record_event(phase, attempt, decision_id=decision_id, response=response,
+                error=error, is_illegal=isinstance(error, ParseError), is_retry=attempt > 1,
+                is_fallback=bool(error and final), fallback_reason=self._classify_error(error) if error and final else None,
+                latency_ms=elapsed if final else None)
+            self._last_decision_meta = {"decision_id": decision_id, "retry_count": attempt - 1,
+                "latency_ms": elapsed, "resolution": "system_fallback" if error else ("model_first" if attempt == 1 else "model_retry"),
+                "reason": self._classify_error(error) if error else None}
+            if error is None:
                 self._consecutive_failures = 0
-                logger.info(
-                    "Agent %s playing: cards=%s reasoning=%s",
-                    self._agent_id,
-                    [str(c) for c in cards],
-                    reasoning[:200],
-                )
-                return cards
-            except ParseError as e:
-                is_final = attempt >= self._retry_limit
-                elapsed_ms = int((time.monotonic() - started) * 1000)
-                self._record_event(
-                    "playing", attempt + 1, decision_id=decision_id, error=e,
-                    is_illegal=True, is_retry=attempt > 0, is_fallback=is_final,
-                    fallback_reason="parse_error" if is_final else None,
-                    latency_ms=elapsed_ms if is_final else None,
-                    final_action=json.dumps({"cards": []}) if is_final else None,
-                )
-                if attempt < self._retry_limit:
-                    retries += 1
-                    if self._rule_feedback:
-                        user = self._append_retry_feedback(user, str(e), attempt + 1)
-                else:
-                    self._consecutive_failures += 1
-                    self._last_decision_meta = {"retry_count": retries, "latency_ms": elapsed_ms}
-                    logger.warning(
-                        "Agent %s play parse failed after %d retries: %s",
-                        self._agent_id, self._retry_limit, e,
-                    )
-                    return []
-            except LLMProviderError as e:
-                is_final = attempt >= self._retry_limit
-                elapsed_ms = int((time.monotonic() - started) * 1000)
-                self._record_event(
-                    "playing", attempt + 1, decision_id=decision_id, error=e,
-                    is_retry=attempt > 0, is_fallback=is_final,
-                    fallback_reason="provider_error" if is_final else None,
-                    latency_ms=elapsed_ms if is_final else None,
-                    final_action=json.dumps({"cards": []}) if is_final else None,
-                )
-                self._consecutive_failures += 1
-                logger.error("Agent %s LLM error during play: %s", self._agent_id, e)
-                if attempt < self._retry_limit:
-                    retries += 1
-                    continue
-                self._last_decision_meta = {"retry_count": retries, "latency_ms": elapsed_ms}
-                return []
-
-        return []
+                self._last_reasoning = reasoning
+                return action
+            if final:
+                self._consecutive_failures += 1  # once per exhausted decision, not per provider attempt
+                return fallback
+            user = self._append_retry_feedback(user, str(error), attempt) if self._rule_feedback else (
+                user + "\n\n请重新独立生成一个完整 JSON 回复。")
+        raise AssertionError("unreachable")
 
     async def reflect(self, ctx: AgentContext) -> dict[str, str]:
         """Post-hand reflection via LLM."""
         system, user = build_reflection_prompt(
-            ctx, self._memory, self._agent_id, self._system_prompt_override
+            ctx, self._memory, self._prompt_name, self._system_prompt_override
         )
 
         started = time.monotonic()
@@ -334,7 +248,7 @@ class LLMAgent:
     async def summarize(self, ctx: AgentContext) -> dict[str, str]:
         """Post-match summary via LLM."""
         system, user = build_summary_prompt(
-            ctx, self._memory, self._agent_id, self._system_prompt_override
+            ctx, self._memory, self._prompt_name, self._system_prompt_override
         )
 
         started = time.monotonic()
@@ -405,16 +319,13 @@ class LLMAgent:
     ) -> None:
         if self._repo is None:
             return
-        try:
-            self._repo.add_decision_event(
-                phase=phase, attempt=attempt, decision_id=decision_id,
-                player_id=self._agent_id, seat=self._seat or None,
-                output_sha256=hashlib.sha256(response.encode()).hexdigest() if response is not None else None,
-                error_code=self._classify_error(error) if error else None,
-                **self._decision_context, **flags,
-            )
-        except Exception:
-            logger.exception("Failed to persist decision event")
+        self._repo.add_decision_event(
+            phase=phase, attempt=attempt, decision_id=decision_id,
+            player_id=self._agent_id, seat=self._seat or None,
+            output_sha256=hashlib.sha256(response.encode()).hexdigest() if response is not None else None,
+            error_code=self._classify_error(error) if error else None,
+            **self._decision_context, **flags,
+        )
 
     def _set_provider_call_context(self, phase: str, decision_id: str, attempt: int) -> None:
         if hasattr(self._provider, "set_context"):
@@ -431,6 +342,8 @@ class LLMAgent:
                 return "empty_response"
             return "provider_error"
         message = str(error)
+        if "领出" in message:
+            return "leader_pass"
         if "未找到 JSON" in message or "未正确闭合" in message or "JSON 解析错误" in message:
             return "json_format"
         if "缺少" in message or "必须是对象" in message or "必须是整数" in message or "必须是非空数组" in message:

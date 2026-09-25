@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from ...evaluation.runner import EvaluationRunner
 from ...evaluation.spec import ExperimentSpec, PreflightError, RunManifest, build_run_manifest
+from ...security.credentials import has_usable_credential
 
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 ROOT = Path(__file__).resolve().parents[5]
@@ -28,19 +29,48 @@ def _decode(row: dict) -> dict:
 
 
 def _preflight(repo, spec: ExperimentSpec):
-    manifest = build_run_manifest(spec, ROOT)
+    manifest = build_run_manifest(spec, ROOT, repo)
     errors = []
     for model in spec.models:
         config = repo.get_player_config_by_name(model.config_name)
-        if not config:
+        if not config and model.provider != "mock":
             errors.append(f"模型配置不存在: {model.config_name}")
-        elif model.provider != "random" and not config.get("api_key"):
+        elif config and model.provider not in ("random", "mock") and not has_usable_credential(config.get("api_key")):
             errors.append(f"模型配置缺少 API 密钥: {model.config_name}")
     if len(spec.models) != 1:
         errors.append("阶段 4 首版消融实验要求恰好选择一个模型配置")
     if any(variant.memory_mode == "read_only" for variant in spec.variants) and not spec.memory_artifact_path:
         errors.append("只读记忆变体必须指定冻结的 memory_artifact_path")
+    from ...evaluation.spec import validate_execution
+    if not errors:
+        try:
+            validate_execution(spec, manifest, ROOT, repo, mock=manifest.models[0].provider == 'mock')
+        except PreflightError as exc:
+            errors.append(str(exc))
     return manifest, errors
+
+
+@router.get('/template')
+async def get_template(mode: str = 'mock'):
+    from ...evaluation.spec import load_experiment_spec
+    if mode not in ('mock', 'real'):
+        raise HTTPException(400, detail='mode must be mock or real')
+    spec = load_experiment_spec(ROOT / 'src/backend/evaluation/experiments/mock-v2.yaml').model_dump(mode='json')
+    spec['mock_scenario'] = 'valid_first'
+    if mode == 'real':
+        from dataclasses import asdict
+        from ...engine.timeout import TimeoutConfig
+        spec.update(
+            experiment_id='reliability-smoke-v2',
+            seed_set_path='src/backend/evaluation/seed_sets/smoke-v1.json',
+            # Real decisions use the engine's normal limits, not mock latency.
+            timeout_config=asdict(TimeoutConfig()),
+            task_timeout_seconds=3600,
+            pricing_version='user-supplied-v1',
+            budget_limit_usd=None,
+        )
+        spec['models'] = []  # The user supplies the actual model and verified pricing.
+    return spec
 
 
 @router.post("/preflight")
@@ -85,32 +115,35 @@ def _load_spec(repo, run_id: str):
     run = repo.get_evaluation_run(run_id)
     if not run:
         raise HTTPException(404, detail={"error": {"code": "RUN_NOT_FOUND", "message": "实验运行不存在"}})
-    experiment = repo.get_experiment(run["experiment_id"])
-    spec = ExperimentSpec.model_validate_json(experiment["spec_json"])
+    from ...evaluation.spec import load_manifest
     stored = json.loads(run["manifest_json"])
-    stored["seeds"] = tuple(stored["seeds"])
-    # Rehydrate through the dataclass so start uses the immutable stored snapshot.
-    from ...evaluation.spec import ModelSnapshot
-    stored["models"] = tuple(ModelSnapshot(**model) for model in json.loads(run["manifest_json"])["models"])
-    stored["variants"] = tuple(stored["variants"])
-    manifest = RunManifest(**stored)
+    if not stored.get("frozen_spec"):
+        raise HTTPException(409, detail="Legacy run must be replanned with frozen inputs")
+    spec = ExperimentSpec.model_validate(stored["frozen_spec"])
+    manifest = load_manifest(stored)
     return run, spec, manifest
 
 
 @router.post("/{run_id}/start")
 async def start_evaluation(run_id: str, request: Request):
     body = await request.json()
-    if body.get("confirm_real_models") is not True:
-        raise HTTPException(400, detail={"error": {"code": "CONFIRMATION_REQUIRED", "message": "必须明确确认真实模型调用与成本"}})
     run, spec, manifest = _load_spec(_repo(request), run_id)
-    if run["status"] == "running":
+    mock = manifest.models[0].provider == "mock"
+    if not mock and body.get("confirm_real_models") is not True:
+        raise HTTPException(400, detail={"error": {"code": "CONFIRMATION_REQUIRED", "message": "必须明确确认真实模型调用与成本"}})
+    if run_id in request.app.state.active_evaluations:
         return {"run_id": run_id, "status": "running"}
-    runner = EvaluationRunner(_repo(request), str(ROOT))
+    from ...evaluation.spec import validate_execution
+    try:
+        validate_execution(spec, manifest, ROOT, _repo(request), mock=mock)
+    except PreflightError as exc:
+        raise HTTPException(400, detail=str(exc))
+    runner = EvaluationRunner(_repo(request), str(ROOT), request.app.state.active_matches)
     request.app.state.active_evaluations[run_id] = runner
 
     async def execute():
         try:
-            await runner.run(run_id, spec, manifest, real_models=True)
+            await runner.run(run_id, spec, manifest, real_models=not mock, mock=mock)
         finally:
             request.app.state.active_evaluations.pop(run_id, None)
 
@@ -131,3 +164,24 @@ async def cancel_evaluation(run_id: str, request: Request):
 @router.post("/{run_id}/resume")
 async def resume_evaluation(run_id: str, request: Request):
     return await start_evaluation(run_id, request)
+
+
+@router.get("/{run_id}/report")
+async def get_report(run_id: str, request: Request):
+    repo = _repo(request)
+    _load_spec(repo, run_id)
+    from ...evaluation.report import build_report
+    manifest, integrity, summary, metrics, seeds, failures = build_report(repo, run_id)
+    return {"integrity": integrity, "summary": summary, "seed_level": seeds, "failures": failures}
+
+
+@router.get("/{run_id}/artifacts/{filename}")
+async def get_artifact(run_id: str, filename: str, request: Request):
+    from fastapi.responses import FileResponse
+    if filename not in {"manifest.json","integrity.json","summary.json","metrics.csv","seed_level.csv","report.md"}:
+        raise HTTPException(404,detail="unknown artifact")
+    _load_spec(_repo(request),run_id)
+    from ...evaluation.report import export_report
+    out=ROOT/"data/evaluations"/run_id
+    export_report(_repo(request),run_id,out)
+    return FileResponse(out/filename,filename=filename)

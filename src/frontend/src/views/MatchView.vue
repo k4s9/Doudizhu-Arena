@@ -67,9 +67,9 @@ onMounted(async () => {
     currentHand.value = m.current_hand || 0;
     totalHands.value = m.config?.total_hands || 20;
 
-    if (m.status === 'running' || m.status === 'paused') {
-      connectWS();
-    }
+    // Completed matches also provide a persisted table snapshot, including
+    // when a spectator reloads after the match has ended.
+    connectWS();
   } catch (e) {
     status.value = 'error';
   }

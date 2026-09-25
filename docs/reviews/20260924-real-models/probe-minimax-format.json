@@ -1,0 +1,29 @@
+{
+  "kind": "real-uni-api-probe",
+  "ok": false,
+  "results": [
+    {
+      "name": "Minimax-Balanced",
+      "provider": "openai",
+      "model": "minimax-m27",
+      "base_url": "https://uni-api.cstcloud.cn/v1",
+      "timeout_seconds": 600.0,
+      "max_tokens": 2048,
+      "sdk_retries": 0,
+      "ok": false,
+      "response_model": "minimax-m27",
+      "finish_reason": "stop",
+      "content_chars": 334,
+      "content": "<think>The user asks: \"Reply with {\"ok\":true}.\"\n\nThey want a JSON output with exactly {\"ok\":true}.\n\nWe should follow their request, produce only JSON. The system says \"Return only valid JSON.\" Must produce that. The preceding analysis is not for output. The answer should be simple: {\"ok\":true}\n\nReturn it as is.\n</think>\n\n{\"ok\":true}",
+      "reasoning_chars": 0,
+      "usage": {
+        "completion_tokens": 80,
+        "prompt_tokens": 28,
+        "total_tokens": 108,
+        "completion_tokens_details": null,
+        "prompt_tokens_details": null
+      },
+      "elapsed_seconds": 3.229
+    }
+  ]
+}

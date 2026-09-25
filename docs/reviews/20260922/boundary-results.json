@@ -1,0 +1,53 @@
+{
+  "baseline": {
+    "run_id": "ac0ccc037ba6471c8e83d3f12c78fd7c",
+    "integrity": true,
+    "task_counts": {
+      "finished": 6
+    },
+    "tables": {
+      "void": 4,
+      "finished": 8
+    },
+    "calls": 420
+  },
+  "fallback_mislabeled_as_success": {
+    "decision_id": "820f1c1458b14a1489182208bcc50dea",
+    "invalid_validations": 3,
+    "integrity_after_fault": true,
+    "issues": [],
+    "model_successes_before": 312,
+    "model_successes_after": 313
+  },
+  "corrupted_terminal_result": {
+    "integrity_after_fault": true,
+    "issues": []
+  },
+  "orphan_budget_settlement": {
+    "integrity_after_fault": true,
+    "cost_coverage": {
+      "numerator": 420,
+      "denominator": 420,
+      "value": 1.0
+    }
+  },
+  "reconnect_after_finish": {
+    "first_event": {
+      "type": "replay_available",
+      "payload": {
+        "match_id": "6742fe333a41493dbaca663e35d6d841"
+      }
+    },
+    "has_authoritative_state": false
+  },
+  "dependency_and_sdk_drift": {
+    "rejected": false
+  },
+  "cancellation_deadline": {
+    "configured_seconds": 0.05,
+    "finished_by_deadline": false,
+    "status_at_deadline": "running",
+    "actual_seconds": 0.26057081297039986,
+    "eventual_status": "cancelled"
+  }
+}

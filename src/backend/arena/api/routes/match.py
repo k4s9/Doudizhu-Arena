@@ -11,6 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from ...tournament.match import MatchConfig, MatchRunner
 from ...tournament.seating import MatchSeating, assign_seating
 from ...engine.timeout import TimeoutConfig
+from ...security.credentials import has_usable_credential
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
@@ -266,11 +267,13 @@ async def start_match(match_id: str, request: Request, background_tasks: Backgro
             agents_dict[pid] = RandomAgent(agent_id=pid)
         else:
             api_key = player_row.get("api_key", "")
+            if not has_usable_credential(api_key):
+                raise HTTPException(400, detail={"error": {"code": "CREDENTIAL_UNAVAILABLE", "message": "模型密钥尚未配置或环境变量未解析"}})
             base_url = player_row.get("base_url")
             if provider_name == "claude":
                 from ...llm.claude import ClaudeProvider
                 provider: AbstractLLMProvider = ClaudeProvider(
-                    model=player_row["model"], api_key=api_key,
+                    model=player_row["model"], api_key=api_key, base_url=base_url,
                 )
             else:
                 from ...llm.openai import OpenAIProvider

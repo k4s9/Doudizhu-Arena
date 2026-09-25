@@ -16,6 +16,7 @@ from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from ..security.credentials import has_usable_credential
 
 
 class PreflightError(ValueError):
@@ -31,6 +32,15 @@ class ProviderParameters(BaseModel):
     seed: int | None = None
 
 
+class PriceSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    input_per_million: float = Field(ge=0)
+    output_per_million: float = Field(ge=0)
+    source: str
+    effective_date: str
+    currency: str = "USD"
+
+
 class ModelSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -39,6 +49,8 @@ class ModelSpec(BaseModel):
     model: str
     base_url: str | None = None
     parameters: ProviderParameters
+    system_prompt: str | None = None
+    pricing: PriceSpec | None = None
 
 
 class VariantSpec(BaseModel):
@@ -52,8 +64,6 @@ class VariantSpec(BaseModel):
 
     @model_validator(mode="after")
     def validate_controls(self) -> "VariantSpec":
-        if not self.rule_feedback and self.retry_limit:
-            raise ValueError("rule_feedback=false requires retry_limit=0")
         if self.memory_mode != "disabled" and not self.enable_reflection:
             raise ValueError("memory_mode requires enable_reflection=true")
         return self
@@ -71,9 +81,15 @@ class ExperimentSpec(BaseModel):
     total_hands: int = Field(gt=0, le=200)
     ko_enabled: bool = False
     seat_rotations: int = Field(default=1, ge=1, le=8)
+    max_tiebreaker_hands: int = Field(default=0, ge=0, le=100)
+    max_calls: int = Field(default=1000, gt=0, le=1000000)
+    max_input_tokens: int = Field(default=32768, gt=1024)
+    task_timeout_seconds: float = Field(default=600, gt=0, le=86400)
+    cancellation_deadline_seconds: float = Field(default=5, gt=0, le=30)
+    mock_scenario: str = Field(default='initial_error', pattern=r'^(initial_error|valid_first|play_error)$')
     timeout_config: dict[str, float | int]
     pricing_version: str
-    budget_limit_usd: float = Field(gt=0)
+    budget_limit_usd: float = Field(ge=0, allow_inf_nan=False)
     models: list[ModelSpec] = Field(min_length=1)
     variants: list[VariantSpec] = Field(min_length=1)
 
@@ -123,6 +139,9 @@ class ModelSnapshot:
     prompt_sha256: str
     revision: str
     sdk_version: str
+    system_prompt: str | None = None
+    prompt_templates: dict[str, str] = field(default_factory=dict)
+    pricing: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,6 +160,9 @@ class RunManifest:
     spec_sha256: str
     manifest_sha256: str
     sampling_reproducibility: str
+    source_sha256: str = ""
+    rules_version: str = ""
+    frozen_spec: dict[str, Any] = field(default_factory=dict)
 
 
 def load_experiment_spec(path: str | Path) -> ExperimentSpec:
@@ -148,7 +170,7 @@ def load_experiment_spec(path: str | Path) -> ExperimentSpec:
         return ExperimentSpec.model_validate(yaml.safe_load(handle))
 
 
-def build_run_manifest(spec: ExperimentSpec, root: str | Path) -> RunManifest:
+def build_run_manifest(spec: ExperimentSpec, root: str | Path, repo=None) -> RunManifest:
     """Validate fixed inputs and construct a deterministic, serializable manifest."""
     root_path = Path(root)
     seed_set_id, seeds, seed_hash = _load_seed_set(root_path / spec.seed_set_path)
@@ -166,15 +188,28 @@ def build_run_manifest(spec: ExperimentSpec, root: str | Path) -> RunManifest:
     revision = _git_revision(root_path)
     source_dirty = _git_dirty(root_path)
     dependency_hash = _dependency_hash(root_path)
-    snapshots = tuple(
-        ModelSnapshot(
+    templates = {p.name: p.read_text(encoding="utf-8") for p in sorted((root_path / "src/backend/arena/agent/prompts").glob("*.py"))}
+    snapshots = []
+    for model in spec.models:
+        config = repo.get_player_config_by_name(model.config_name) if repo else None
+        endpoint = model.base_url or (config.get("base_url") if config else None) or {
+            "openai": "https://api.openai.com/v1", "claude": "https://api.anthropic.com", "mock": "mock://local"}.get(model.provider)
+        if endpoint:
+            from urllib.parse import urlsplit
+            url = urlsplit(endpoint)
+            if url.username or url.password or url.query or url.fragment:
+                raise PreflightError("base_url must not contain credentials, query or fragment")
+        override = model.system_prompt if model.system_prompt is not None else (config.get("system_prompt") if config else None)
+        snapshots.append(ModelSnapshot(
             config_name=model.config_name, provider=model.provider, model=model.model,
-            base_url=model.base_url, parameters=model.parameters.model_dump(mode="json"),
-            prompt_sha256=prompt_hash, revision=revision,
-            sdk_version=_sdk_version(model.provider),
-        )
-        for model in spec.models
-    )
+            base_url=endpoint, parameters=model.parameters.model_dump(mode="json"),
+            system_prompt=override, prompt_templates=templates,
+            pricing=model.pricing.model_dump(mode="json") if model.pricing else None,
+            prompt_sha256=_canonical_hash({"templates": templates, "override": override}), revision=revision,
+            sdk_version=_sdk_version(model.provider)))
+    snapshots = tuple(snapshots)
+    from ..engine.projection import RULES_VERSION
+    source_hash = source_sha256(root_path)
     spec_payload = spec.model_dump(mode="json")
     spec_hash = _canonical_hash(spec_payload)
     raw = {
@@ -186,6 +221,7 @@ def build_run_manifest(spec: ExperimentSpec, root: str | Path) -> RunManifest:
         "variants": [variant.model_dump(mode="json") for variant in spec.variants],
         "source_revision": revision, "spec_sha256": spec_hash,
         "source_dirty": source_dirty, "dependency_sha256": dependency_hash,
+        "source_sha256": source_hash, "rules_version": RULES_VERSION, "frozen_spec": spec_payload,
         "sampling_reproducibility": "provider-dependent; all controllable parameters fixed",
     }
     return RunManifest(
@@ -202,7 +238,8 @@ def build_run_manifest(spec: ExperimentSpec, root: str | Path) -> RunManifest:
         dependency_sha256=dependency_hash,
         spec_sha256=spec_hash,
         sampling_reproducibility="provider-dependent; all controllable parameters fixed",
-        manifest_sha256=_canonical_hash(raw),
+        manifest_sha256=_canonical_hash(raw), source_sha256=source_hash,
+        rules_version=RULES_VERSION, frozen_spec=spec_payload,
     )
 
 
@@ -306,3 +343,54 @@ def _sdk_version(provider: str) -> str:
 def _canonical_hash(value: Any) -> str:
     data = json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(data.encode()).hexdigest()
+
+
+def source_sha256(root):
+    paths = sorted((Path(root)/"src/backend/arena").rglob("*.py"))
+    return _canonical_hash({str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths})
+
+
+def load_manifest(raw):
+    raw = dict(raw)
+    raw["models"] = tuple(ModelSnapshot(**m) for m in raw["models"])
+    raw["seeds"] = tuple(raw["seeds"])
+    raw["variants"] = tuple(raw["variants"])
+    return RunManifest(**raw)
+
+
+def validate_execution(spec, manifest, root, repo, *, mock=False):
+    raw = asdict(manifest)
+    raw.pop('manifest_sha256')
+    if _canonical_hash(raw) != manifest.manifest_sha256:
+        raise PreflightError('manifest hash mismatch')
+    if _canonical_hash(spec.model_dump(mode="json")) != manifest.spec_sha256:
+        raise PreflightError("spec does not match frozen manifest")
+    if not manifest.source_sha256 or source_sha256(root) != manifest.source_sha256:
+        raise PreflightError("runtime source differs from frozen manifest; create a new run")
+    if _dependency_hash(Path(root)) != manifest.dependency_sha256:
+        raise PreflightError('runtime dependency specification differs from frozen manifest')
+    if any(_sdk_version(m.provider) != m.sdk_version for m in manifest.models):
+        raise PreflightError('runtime SDK differs from frozen manifest')
+    if len(manifest.models) != 1:
+        raise PreflightError("first round requires one model")
+    if any(v.enable_reflection or v.memory_mode != "disabled" for v in spec.variants):
+        raise PreflightError("first round disables reflection/memory; read_only requires memory_artifact_path and a separate protocol")
+    model = manifest.models[0]
+    if model.provider != ("mock" if mock else model.provider) or (not mock and model.provider not in ("openai", "claude")):
+        raise PreflightError("provider does not match execution mode")
+    if not model.pricing or model.pricing.get("currency") != "USD":
+        raise PreflightError("explicit USD pricing with source and effective date required")
+    if not mock:
+        if not model.model or any(x in model.model.lower() for x in ("replace", "placeholder", "tbd")):
+            raise PreflightError("actual model required")
+        config = repo.get_player_config_by_name(model.config_name)
+        if not config or not has_usable_credential(config.get("api_key")):
+            raise PreflightError("credential unavailable")
+        if model.provider == "claude" and model.parameters.get("seed") is not None:
+            raise PreflightError("Claude does not accept a sampling seed")
+        if not model.pricing["source"].strip() or not model.pricing["effective_date"].strip():
+            raise PreflightError("explicit real model pricing source and effective date required")
+        if spec.budget_limit_usd == 0 and any(model.pricing[key] > 0 for key in (
+            "input_per_million", "output_per_million"
+        )):
+            raise PreflightError("zero budget requires zero input and output prices")

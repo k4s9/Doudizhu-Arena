@@ -1,0 +1,9 @@
+{
+  "preflight_ok": false,
+  "preflight_errors": [
+    "只读记忆变体必须指定冻结的 memory_artifact_path"
+  ],
+  "planned_tasks": 300,
+  "executed_tasks": 0,
+  "execution_validation_error": "first round disables reflection/memory; read_only requires memory_artifact_path and a separate protocol"
+}

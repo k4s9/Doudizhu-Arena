@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from ...agent.loader import load_agents_from_yaml
-from ...security.credentials import MASTER_KEY_ENV, master_key_configured
+from ...security.credentials import MASTER_KEY_ENV, master_key_configured, has_usable_credential
 
 logger = logging.getLogger("arena.api.configs")
 
@@ -32,7 +32,7 @@ async def list_configs(request: Request):
                 "model": c["model"],
                 "base_url": c.get("base_url"),
                 "system_prompt": c.get("system_prompt"),
-                "has_api_key": bool(c.get("api_key")),
+                "has_api_key": has_usable_credential(c.get("api_key")),
                 "credential_storage": "encrypted" if master_key_configured() else "environment_or_legacy",
                 "player_count": repo.count_players_for_config(c["id"]),
                 "created_at": c["created_at"],

@@ -7,129 +7,38 @@ on:
     branches: [main]
 
 jobs:
-  # ── Smoke tests: quick gate that runs first ────────────────────────
-  smoke-test:
-    name: Smoke Tests
+  reliability-acceptance:
+    name: Conda reliability and browser acceptance
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/backend
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: "3.12"
-
-      - name: Install dependencies
+          miniforge-version: latest
+          environment-file: environment.yml
+          activate-environment: doudizhu-arena
+      - name: Check environment and launcher
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install "pytest>=8.0"
-
-      - name: Run smoke tests
-        run: pytest tests/test_smoke.py -v -m smoke --tb=short
-
-  # ── Lint & syntax check ───────────────────────────────────────────
-  lint:
-    name: Lint & Syntax Check
-    runs-on: ubuntu-latest
-    defaults:
-      run:
+          conda run --no-capture-output -n doudizhu-arena python -I -m pip check
+          bash -n start.sh
+      - name: Backend regression suite
         working-directory: src/backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Check Python syntax (py_compile)
-        run: |
-          find . -name '*.py' -exec python -m py_compile {} +
-
-      - name: Check requirements are parseable
-        run: pip install --dry-run -r requirements.txt
-
-  # ── Full backend test suite (gated by smoke tests) ────────────────
-  backend-tests:
-    name: Backend Tests (Python ${{ matrix.python-version }})
-    needs: smoke-test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-    defaults:
-      run:
-        working-directory: src/backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install "pytest>=8.0"
-
-      - name: Run all backend tests
-        run: pytest tests/ -v --tb=short
-
-  # ── Frontend build (Vue + Vite) ───────────────────────────────────
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
+        run: conda run --no-capture-output -n doudizhu-arena python -I -B ../../scripts/test_offline.py --junitxml=../../data/ci-backend.xml
+      - name: Frontend tests and production build
         working-directory: src/frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+        run: |
+          conda run --no-capture-output -n doudizhu-arena npm ci
+          conda run --no-capture-output -n doudizhu-arena npm test
+          conda run --no-capture-output -n doudizhu-arena npm run build
+      - name: Install headless Chromium
+        run: conda run --no-capture-output -n doudizhu-arena python -I -m playwright install --with-deps chromium --only-shell
+      - name: Mock browser acceptance
+        run: conda run --no-capture-output -n doudizhu-arena python -I -B scripts/verify_browser.py --output data/ci-browser
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: src/frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build frontend
-        run: npm run build
-
-  # ── Docker build (main branch pushes only, placeholder) ───────────
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build backend Docker image
-        run: |
-          if [ -f src/backend/Dockerfile ]; then
-            docker build -t doudizhu-backend src/backend/
-            echo "Backend Docker image built successfully."
-          else
-            echo "No backend Dockerfile found, skipping."
-          fi
-
-      - name: Build frontend Docker image
-        run: |
-          if [ -f src/frontend/Dockerfile ]; then
-            docker build -t doudizhu-frontend src/frontend/
-            echo "Frontend Docker image built successfully."
-          else
-            echo "No frontend Dockerfile found, skipping."
-          fi
-
-      - name: Verify Docker images
-        run: |
-          docker images | grep doudizhu || echo "No doudizhu images (expected if Dockerfiles do not exist yet)."
+          name: reliability-acceptance
+          path: |
+            data/ci-backend.xml
+            data/ci-browser/

@@ -1,0 +1,52 @@
+{
+  "evaluated_source": "actual spec() and handleEvent() functions; isolated refs, no browser rendering",
+  "default_variants": [
+    {
+      "variant_id": "baseline_no_feedback",
+      "retry_limit": 0,
+      "rule_feedback": false,
+      "enable_reflection": false,
+      "memory_mode": "disabled"
+    },
+    {
+      "variant_id": "rule_feedback",
+      "retry_limit": 3,
+      "rule_feedback": true,
+      "enable_reflection": false,
+      "memory_mode": "disabled"
+    },
+    {
+      "variant_id": "reflection_memory",
+      "retry_limit": 3,
+      "rule_feedback": true,
+      "enable_reflection": true,
+      "memory_mode": "read_only"
+    }
+  ],
+  "default_has_model_pricing": false,
+  "default_has_memory_artifact": false,
+  "state_after_completed_match_reconnect": {
+    "status": {
+      "value": "running"
+    },
+    "score": {
+      "value": {
+        "red": 0,
+        "blue": 0
+      }
+    },
+    "currentHand": {
+      "value": 1
+    },
+    "tableA": {
+      "value": {
+        "phase": "playing"
+      }
+    },
+    "tableB": {
+      "value": {
+        "phase": "playing"
+      }
+    }
+  }
+}

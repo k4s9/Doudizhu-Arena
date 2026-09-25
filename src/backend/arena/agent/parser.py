@@ -33,6 +33,15 @@ def _extract_json(text: str) -> str:
     """Extract JSON from LLM output, handling markdown code fences and extra text."""
     text = text.strip()
 
+    # Some compatible gateways return reasoning inline instead of in a separate
+    # field. Only the answer after a complete leading think block is actionable;
+    # examples or abandoned actions inside reasoning are not model proposals.
+    while text.lower().startswith('<think>'):
+        block = re.match(r'<think>.*?</think>\s*', text, re.DOTALL | re.IGNORECASE)
+        if block is None:
+            raise ParseError('思考内容尚未结束，缺少最终 JSON 回复。')
+        text = text[block.end():].strip()
+
     # Try to find JSON in markdown code fences ```json ... ```
     fence_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
     if fence_match:
@@ -179,6 +188,8 @@ def parse_play_response(
     reasoning = data.get("reasoning", "")
 
     if action_type == "pass":
+        if current_trick is None:
+            raise ParseError("领出必须出牌，不能 pass（当前没有需要压过的牌型）。")
         return [], reasoning
 
     # action_type == "play"

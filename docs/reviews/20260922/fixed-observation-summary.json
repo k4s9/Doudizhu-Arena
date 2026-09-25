@@ -1,0 +1,14 @@
+{
+  "corpus_sha256": "4bc43d592f997608df3b8b83a52858d93c570a3feac47b2868cd6a1e4d4cf166",
+  "source_run": "ac0ccc037ba6471c8e83d3f12c78fd7c",
+  "observations": 16,
+  "development_observations": 8,
+  "test_observations": 8,
+  "evaluations": 24,
+  "model_success_by_variant": {
+    "single_generation": 0,
+    "generic_retry": 6,
+    "rule_feedback": 6
+  },
+  "provenance": "mock; descriptive engineering fixture only"
+}

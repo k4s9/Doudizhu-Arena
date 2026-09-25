@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 @dataclass
 class MatchConfig:
     """Configuration for a match."""
+    max_tiebreaker_hands: int = 101
     total_hands: int = 20
     ko_enabled: bool = True
     seed: str = ""  # match-level seed; hand seeds derived from this
@@ -154,7 +155,10 @@ class MatchRunner:
 
         # Initialize event bus for WebSocket broadcasting
         from ..api.event_bus import MatchEventBus
-        self.event_bus = MatchEventBus(self.match_id)
+        self.event_bus = MatchEventBus(self.match_id, repo=self.db_repo)
+        if self.db_repo:
+            from ..api.ws import _build_match_state
+            self.event_bus.snapshot_factory = lambda: _build_match_state(self.db_repo, self.db_repo.get_match(self.match_id), self)
         self.table_a.event_bus = self.event_bus
         self.table_b.event_bus = self.event_bus
 
@@ -206,7 +210,7 @@ class MatchRunner:
 
         # Tiebreaker loop
         tiebreaker_num = 0
-        while self.scoreboard.is_tie:
+        while self.scoreboard.is_tie and tiebreaker_num < self.config.max_tiebreaker_hands:
             # Need at least one tiebreaker
             tiebreaker_num += 1
             hand_num = self.config.total_hands + tiebreaker_num
@@ -358,7 +362,13 @@ class MatchRunner:
             )
 
         # AB tables run in parallel via asyncio.gather
-        await asyncio.gather(run_a(), run_b())
+        tasks = [asyncio.create_task(run_a()), asyncio.create_task(run_b())]
+        try:
+            await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks: task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
 
         assert result_a is not None and result_b is not None
 

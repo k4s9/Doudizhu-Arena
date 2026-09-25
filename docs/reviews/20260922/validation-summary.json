@@ -1,0 +1,35 @@
+{
+  "python_executable": "/tmp/doudizhu-conda/envs/doudizhu-arena/bin/python",
+  "python_version": "3.12.13",
+  "head": "3bb8d2bbd948f0e5291d3500af1b1ee9ebf34a88",
+  "source_sha256": "3335daf2b5a09fd444c5a041f42fb44b0e1c3df6afe4e9d99f4080ba4eec7e33",
+  "manifest_sha256": "35756aa2858e1b3273e750e25bbd59c2561d1d8f715f1f11d5460e25d9e2ce21",
+  "backend_tests": {
+    "tests": 300,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 0,
+    "duration_seconds": 481.267,
+    "failure_ids": [
+      "tests.test_agent.TestPlayParser.test_pass",
+      "tests.test_reliability_v2.test_timeout_fallback_nonempty_counts_decisions"
+    ]
+  },
+  "budget_stop_cli": {
+    "run_id": "7a7f5df35d7346bc957d7310c151ce26",
+    "max_calls": 1,
+    "run_status": "failed",
+    "integrity_complete": true,
+    "process_exit_code": 0
+  },
+  "frontend_environment": {
+    "node_version": "20.11.1",
+    "npm_version": "10.2.4",
+    "vite_version": "8.0.14",
+    "vite_node_requirement": "^20.19.0 || >=22.12.0",
+    "offline_install_exit_code": 1,
+    "offline_install_error": "ENOTCACHED: ws-8.21.0.tgz",
+    "full_build_and_vitest_executed": false
+  },
+  "model_calls": "mock only; no real provider execution"
+}

@@ -2,6 +2,23 @@
 
 **AI 斗地主竞技场** — 使用大语言模型（LLM）作为 AI 代理，以"双人桥牌复制赛"格式进行斗地主比赛。
 
+当前可靠性评测的运行方式、验收证据和局限见 [交付与演示说明](docs/reliability-delivery.md)。无 API Key 也可通过「可靠性实验 → 本地 mock」演示三组对照、失败记录、观战和回放。合成数据只验证工程流程，不代表真实模型效果。
+
+[Uni API 真实模型 smoke](docs/uni-api-real-test-20260924.md) 已完成：Qwen 与 Minimax 各三协议，567 次正式调用、12 个终态桌局（10 个正常结束、2 个流局）通过审计，并保留真实规则反馈恢复案例。每模型仅 1 个独立 seed，结果不代表统计显著的效果提升。
+
+在项目根目录安装开发环境：
+
+```bash
+conda env create -f environment.yml
+conda activate doudizhu-arena
+npm --prefix src/frontend ci
+bash start.sh
+```
+
+已有环境时直接激活；本机当前环境为 `/home/guozy/miniconda3/envs/doudizhu-arena`。
+
+Uni API 的地址和模型配置仍保留在 `agents.yaml`，使用 `CSTCLOUD_API_KEY`。配置说明与无需真实模型的测试命令见 [Uni API 离线检查](docs/uni-api-offline-check-20260923.md)。
+
 ## 项目概述
 
 Doudizhu Arena 是一个自动化斗地主 AI 对战平台。每场比赛采用**复制赛制（Duplicate Bridge 格式）**：同一手牌在 A/B 两张桌子上独立进行，通过差分计分（IMP 式，上限 12 分）比较两队表现，消除发牌运气的影响。
@@ -88,7 +105,7 @@ Doudizhu-Arena/
 ### 前提条件
 
 - **Python 3.12+**（项目使用 conda 环境 `doudizhu-arena`）
-- **Node.js 22+**（前端开发需要）
+- **Node.js 22.12+**（前端开发需要；environment.yml 使用 22 系列）
 - **Docker**（推荐部署方式）
 - **Anthropic API Key** 和/或 **OpenAI API Key**（使用 AI 代理） 
 

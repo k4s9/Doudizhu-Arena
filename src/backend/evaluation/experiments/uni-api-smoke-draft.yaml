@@ -1,0 +1,35 @@
+# DRAFT: suggested model, no approved budget or verified account pricing.
+# Intentionally fails preflight until those fields are supplied and reviewed.
+experiment_id: uni-api-smoke-draft-20260923
+seed_set_path: src/backend/evaluation/seed_sets/smoke-v1.json
+total_hands: 1
+max_tiebreaker_hands: 0
+ko_enabled: false
+seat_rotations: 1
+max_calls: 2000
+max_input_tokens: 65536
+task_timeout_seconds: 3600
+cancellation_deadline_seconds: 5
+timeout_config:
+  bidding_seconds: 60
+  individual_play_seconds: 360
+  team_pool_seconds: 3600
+  exhausted_individual_seconds: 60
+  max_consecutive_llm_failures: 3
+pricing_version: user-supplied-v1
+budget_limit_usd: null
+models:
+  - config_name: Qwen-Balanced
+    provider: openai
+    model: qwen3.5
+    base_url: https://uni-api.cstcloud.cn/v1
+    parameters:
+      max_tokens: 512
+      temperature: 0
+      top_p: 1
+      seed: null
+    pricing: null
+variants:
+  - {variant_id: single_generation, retry_limit: 0, rule_feedback: false, enable_reflection: false, memory_mode: disabled}
+  - {variant_id: generic_retry, retry_limit: 2, rule_feedback: false, enable_reflection: false, memory_mode: disabled}
+  - {variant_id: rule_feedback, retry_limit: 2, rule_feedback: true, enable_reflection: false, memory_mode: disabled}

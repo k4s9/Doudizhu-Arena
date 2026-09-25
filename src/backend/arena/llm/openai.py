@@ -36,7 +36,7 @@ class OpenAIProvider(AbstractLLMProvider):
         if self._client is None:
             try:
                 from openai import AsyncOpenAI
-                kwargs = {"api_key": self._api_key}
+                kwargs = {"api_key": self._api_key, "max_retries": 0}
                 if self._base_url:
                     kwargs["base_url"] = self._base_url
                 self._client = AsyncOpenAI(**kwargs)
@@ -75,16 +75,14 @@ class OpenAIProvider(AbstractLLMProvider):
             self.last_system_fingerprint = getattr(response, "system_fingerprint", None)
             # Capture usage if available
             if hasattr(response, 'usage') and response.usage:
-                self.last_usage = LLMUsage(
-                    prompt_tokens=response.usage.prompt_tokens or 0,
-                    completion_tokens=response.usage.completion_tokens or 0,
-                    total_tokens=response.usage.total_tokens or 0,
+                self.last_usage = LLMUsage.from_counts(
+                    prompt_tokens=getattr(response.usage, 'prompt_tokens', None),
+                    completion_tokens=getattr(response.usage, 'completion_tokens', None),
+                    total_tokens=getattr(response.usage, 'total_tokens', None),
                 )
             choice = response.choices[0]
             content = choice.message.content
-            if not content:
-                raise LLMError("Empty response from OpenAI")
-            return content
+            return content or ""
         except Exception as e:
             self.last_usage = None
             if isinstance(e, LLMError):

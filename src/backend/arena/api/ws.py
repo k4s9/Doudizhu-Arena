@@ -158,16 +158,48 @@ def _build_match_state(repo, match: dict, runner) -> dict[str, Any]:
             "turn_timer": getattr(table_runner, "active_turn", None),
         }
 
+    announced = runner.event_bus.announced_hand if runner.event_bus else None
+    if announced:
+        for key in ("A", "B"):
+            if tables[key]["hand_num"] < announced["hand_num"]:
+                tables[key] = {**announced["tables"][key], "hand_num": announced["hand_num"]}
+
     return {
         "match_id": match["id"],
         "status": match["status"],
-        "current_hand": match.get("current_hand", 0),
+        "current_hand": max(match.get("current_hand", 0), announced["hand_num"] if announced else 0),
         "score": {
             "red": match.get("score_red", 0),
             "blue": match.get("score_blue", 0),
         },
         "tables": tables,
     }
+
+
+def build_persisted_match_state(repo, match):
+    """An inactive match still has an authoritative snapshot on reconnect."""
+    from .routes.replay import _build_table_detail
+    bus = MatchEventBus(match['id'], repo=repo)
+    tables = {}
+    hands = repo.get_hands_for_match(match['id'])
+    if hands:
+        hand = hands[-1]
+        for th in repo.get_table_hands_for_hand(hand['id']):
+            detail = _build_table_detail(repo, th, match['id'], hand['hand_num'], hand['dealer'], hand['idle_seat'], hand['seed'])
+            remaining = repo.get_remaining_hands_for_table(th['id'])
+            players = {}
+            for seat, player in detail.get('players', {}).items():
+                cards = remaining.get(seat, detail.get('initial_hands', {}).get(seat, []))
+                players[seat] = {**player, 'hand_cards': cards, 'hand_size': len(cards)}
+            effective_idle = next((s for s, p in players.items() if p['role'] == 'idle'), hand['idle_seat'])
+            tables[th['table']] = {**detail, 'phase': th['status'], 'players': players,
+                'hand_num': hand['hand_num'], 'dealer': hand['dealer'], 'current_seat': '',
+                'current_pattern': None, 'turn_timer': None,
+                'idle_seat': hand['idle_seat'], 'effective_idle': effective_idle}
+    bus.snapshot_factory = lambda: {'match_id': match['id'], 'status': match['status'],
+        'current_hand': hands[-1]['hand_num'] if hands else 0,
+        'score': {'red': match['score_red'], 'blue': match['score_blue']}, 'tables': tables, 'live': False}
+    return bus.snapshot()
 
 
 @router.websocket("/ws/match/{match_id}")
@@ -184,23 +216,20 @@ async def match_ws(ws: WebSocket, match_id: str):
 
     _connections.setdefault(match_id, set()).add(ws)
 
-    # Send full snapshot
     runner = _get_active_matches(ws).get(match_id)
-    if runner:
-        state = _build_match_state(repo, match, runner)
-        await ws.send_json({"type": "match_state", "payload": state})
-
-    # Subscribe defaults
-    subscribed_tables: set[str] = {"A", "B"}
-    subscribed_events: set[str] | None = None
-
-    # Get event bus from runner
-    bus: MatchEventBus | None = runner.event_bus if runner else None
-
-    # Start event relay task if bus is available
-    relay_task: asyncio.Task | None = None
+    bus = runner.event_bus if runner else None
+    subscription = bus.subscribe() if bus else None
+    # Subscribe and capture snapshot synchronously on this event loop. No event
+    # can be published between these operations; queued events follow watermark.
     if bus:
-        relay_task = asyncio.create_task(_relay_events(ws, bus, subscribed_tables, subscribed_events))
+        state = bus.snapshot()
+        watermark = state["watermark"]
+        await ws.send_json({"type": "match_state", "payload": state})
+    else:
+        state = build_persisted_match_state(repo, match)
+        watermark = state['watermark']
+        await ws.send_json({'type': 'match_state', 'payload': state})
+    relay_task = asyncio.create_task(_relay_events(ws, subscription, watermark)) if subscription else None
 
     try:
         while True:
@@ -225,13 +254,10 @@ async def match_ws(ws: WebSocket, match_id: str):
                 pass
 
             elif msg_type == "subscribe":
-                payload = msg.get("payload", {})
-                tables = payload.get("tables")
-                events = payload.get("events")
-                if tables:
-                    subscribed_tables = set(tables)
-                if events:
-                    subscribed_events = set(events)
+                # State events are never filtered: filtering would create sequence gaps.
+                # Clients may filter presentation locally.
+                if bus:
+                    await ws.send_json({"type": "match_state", "payload": bus.snapshot()})
 
             elif msg_type == "pause_request":
                 active_matches = _get_active_matches(ws)
@@ -262,6 +288,8 @@ async def match_ws(ws: WebSocket, match_id: str):
     except WebSocketDisconnect:
         pass
     finally:
+        if bus and subscription:
+            bus.unsubscribe(subscription)
         if relay_task and not relay_task.done():
             relay_task.cancel()
             try:
@@ -274,36 +302,20 @@ async def match_ws(ws: WebSocket, match_id: str):
             _connections.pop(match_id, None)
 
 
-async def _relay_events(
-    ws: WebSocket,
-    bus: MatchEventBus,
-    subscribed_tables: set[str],
-    subscribed_events: set[str] | None,
-) -> None:
-    """Continuously poll the event bus and relay events to the WebSocket client."""
+async def _relay_events(ws, subscription, watermark=0):
     while True:
-        try:
-            event = await asyncio.wait_for(bus.get(), timeout=1.0)
-        except asyncio.TimeoutError:
-            continue
-        except asyncio.CancelledError:
-            break
-
+        event = await subscription.get()
         if event is None:
             break
-
-        # Filter by subscribed tables/events
-        table = event.get("payload", {}).get("table", "")
-        event_type = event.get("type", "")
-
-        if table and table not in subscribed_tables:
+        if event.get("seq", watermark + 1) <= watermark:
             continue
-        if subscribed_events and event_type not in subscribed_events:
-            continue
-
         try:
-            await ws.send_json(event)
-        except Exception:
+            await asyncio.wait_for(ws.send_json(event), timeout=5.0)
+            if event["type"] == "resync_required":
+                await ws.close(code=1013)
+                break
+        except (asyncio.TimeoutError, Exception):
+            await ws.close(code=1013)
             break
 
 

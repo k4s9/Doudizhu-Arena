@@ -1,0 +1,651 @@
+{
+  "metric_version": "reliability-v2",
+  "execution_kind": "mock",
+  "run_id": "e6e32ef11e0c49109bc612d173545867",
+  "manifest_sha256": "2351d5351a10d32dede841345dfd80aa226240d7131f0d75e48b81db38d96e50",
+  "integrity_complete": true,
+  "task_counts": {
+    "finished": 6
+  },
+  "planned_tasks": 6,
+  "started_attempts": 6,
+  "planned_table_hands": 12,
+  "started_table_hands": 12,
+  "table_status_counts": {
+    "finished": 12
+  },
+  "normal_table_completion": {
+    "numerator": 12,
+    "denominator": 12,
+    "value": 1.0
+  },
+  "match_latency_ms": {
+    "n": 6,
+    "p50": 4051.7632961273193,
+    "p95": 4096.99559211731,
+    "mean": 4047.7093855539956,
+    "max": 4096.99559211731
+  },
+  "known_cost_usd": 0,
+  "cost_coverage": {
+    "numerator": 732,
+    "denominator": 732,
+    "value": 1.0
+  },
+  "budget_exposure_usd": 0.0,
+  "cost_per_normal_table_usd": 0.0,
+  "metrics": [
+    {
+      "variant": "single_generation",
+      "phase": "bidding",
+      "D": 4,
+      "L": 4,
+      "calls": 4,
+      "resolutions": {
+        "model_first": 4
+      },
+      "first_availability": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "first_decision_success": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "model_success": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "illegal_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "autoplay": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "retry": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "attempt_distribution": {
+        "1": 4
+      },
+      "provider_latency_ms": {
+        "n": 4,
+        "p50": 61,
+        "p95": 63,
+        "mean": 61.0,
+        "max": 63
+      },
+      "decision_latency_ms": {
+        "n": 4,
+        "p50": 63.30156326293945,
+        "p95": 66.25056266784668,
+        "mean": 63.98272514343262,
+        "max": 66.25056266784668
+      },
+      "success_latency_ms": {
+        "n": 4,
+        "p50": 63.30156326293945,
+        "p95": 66.25056266784668,
+        "mean": 63.98272514343262,
+        "max": 66.25056266784668
+      },
+      "failure_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 9308,
+      "completion_tokens_known": 160
+    },
+    {
+      "variant": "single_generation",
+      "phase": "playing",
+      "D": 232,
+      "L": 232,
+      "calls": 232,
+      "resolutions": {
+        "system_fallback": 12,
+        "model_first": 220
+      },
+      "first_availability": {
+        "numerator": 232,
+        "denominator": 232,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 220,
+        "denominator": 232,
+        "value": 0.9482758620689655
+      },
+      "first_decision_success": {
+        "numerator": 220,
+        "denominator": 232,
+        "value": 0.9482758620689655
+      },
+      "model_success": {
+        "numerator": 220,
+        "denominator": 232,
+        "value": 0.9482758620689655
+      },
+      "illegal_recovery": {
+        "numerator": 0,
+        "denominator": 12,
+        "value": 0.0
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 12,
+        "denominator": 232,
+        "value": 0.05172413793103448
+      },
+      "autoplay": {
+        "numerator": 0,
+        "denominator": 232,
+        "value": 0.0
+      },
+      "retry": {
+        "numerator": 0,
+        "denominator": 232,
+        "value": 0.0
+      },
+      "attempt_distribution": {
+        "1": 232
+      },
+      "provider_latency_ms": {
+        "n": 232,
+        "p50": 60,
+        "p95": 61,
+        "mean": 59.99568965517241,
+        "max": 110
+      },
+      "decision_latency_ms": {
+        "n": 232,
+        "p50": 63.17543983459473,
+        "p95": 64.10336494445801,
+        "mean": 63.61194417394441,
+        "max": 114.06683921813965
+      },
+      "success_latency_ms": {
+        "n": 220,
+        "p50": 63.20786476135254,
+        "p95": 64.10336494445801,
+        "mean": 63.6427337473089,
+        "max": 114.06683921813965
+      },
+      "failure_latency_ms": {
+        "n": 12,
+        "p50": 63.055992126464844,
+        "p95": 63.356637954711914,
+        "mean": 63.04746866226196,
+        "max": 63.356637954711914
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 232,
+        "denominator": 232,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 876120,
+      "completion_tokens_known": 16076
+    },
+    {
+      "variant": "generic_retry",
+      "phase": "bidding",
+      "D": 4,
+      "L": 4,
+      "calls": 4,
+      "resolutions": {
+        "model_first": 4
+      },
+      "first_availability": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "first_decision_success": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "model_success": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "illegal_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "autoplay": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "retry": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "attempt_distribution": {
+        "1": 4
+      },
+      "provider_latency_ms": {
+        "n": 4,
+        "p50": 60,
+        "p95": 62,
+        "mean": 60.5,
+        "max": 62
+      },
+      "decision_latency_ms": {
+        "n": 4,
+        "p50": 62.3018741607666,
+        "p95": 63.79985809326172,
+        "mean": 62.450408935546875,
+        "max": 63.79985809326172
+      },
+      "success_latency_ms": {
+        "n": 4,
+        "p50": 62.3018741607666,
+        "p95": 63.79985809326172,
+        "mean": 62.450408935546875,
+        "max": 63.79985809326172
+      },
+      "failure_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 9308,
+      "completion_tokens_known": 160
+    },
+    {
+      "variant": "generic_retry",
+      "phase": "playing",
+      "D": 232,
+      "L": 232,
+      "calls": 244,
+      "resolutions": {
+        "model_retry": 12,
+        "model_first": 220
+      },
+      "first_availability": {
+        "numerator": 232,
+        "denominator": 232,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 220,
+        "denominator": 232,
+        "value": 0.9482758620689655
+      },
+      "first_decision_success": {
+        "numerator": 220,
+        "denominator": 232,
+        "value": 0.9482758620689655
+      },
+      "model_success": {
+        "numerator": 232,
+        "denominator": 232,
+        "value": 1.0
+      },
+      "illegal_recovery": {
+        "numerator": 12,
+        "denominator": 12,
+        "value": 1.0
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 0,
+        "denominator": 232,
+        "value": 0.0
+      },
+      "autoplay": {
+        "numerator": 0,
+        "denominator": 232,
+        "value": 0.0
+      },
+      "retry": {
+        "numerator": 12,
+        "denominator": 232,
+        "value": 0.05172413793103448
+      },
+      "attempt_distribution": {
+        "2": 12,
+        "1": 220
+      },
+      "provider_latency_ms": {
+        "n": 244,
+        "p50": 60,
+        "p95": 61,
+        "mean": 59.82377049180328,
+        "max": 64
+      },
+      "decision_latency_ms": {
+        "n": 232,
+        "p50": 61.94949150085449,
+        "p95": 122.2071647644043,
+        "mean": 65.17717550540793,
+        "max": 127.14600563049316
+      },
+      "success_latency_ms": {
+        "n": 232,
+        "p50": 61.94949150085449,
+        "p95": 122.2071647644043,
+        "mean": 65.17717550540793,
+        "max": 127.14600563049316
+      },
+      "failure_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 244,
+        "denominator": 244,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 918652,
+      "completion_tokens_known": 16944
+    },
+    {
+      "variant": "rule_feedback",
+      "phase": "bidding",
+      "D": 4,
+      "L": 4,
+      "calls": 4,
+      "resolutions": {
+        "model_first": 4
+      },
+      "first_availability": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "first_decision_success": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "model_success": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "illegal_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "autoplay": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "retry": {
+        "numerator": 0,
+        "denominator": 4,
+        "value": 0.0
+      },
+      "attempt_distribution": {
+        "1": 4
+      },
+      "provider_latency_ms": {
+        "n": 4,
+        "p50": 60,
+        "p95": 61,
+        "mean": 60.25,
+        "max": 61
+      },
+      "decision_latency_ms": {
+        "n": 4,
+        "p50": 62.49356269836426,
+        "p95": 63.47036361694336,
+        "mean": 62.53236532211304,
+        "max": 63.47036361694336
+      },
+      "success_latency_ms": {
+        "n": 4,
+        "p50": 62.49356269836426,
+        "p95": 63.47036361694336,
+        "mean": 62.53236532211304,
+        "max": 63.47036361694336
+      },
+      "failure_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 4,
+        "denominator": 4,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 9308,
+      "completion_tokens_known": 160
+    },
+    {
+      "variant": "rule_feedback",
+      "phase": "playing",
+      "D": 232,
+      "L": 232,
+      "calls": 244,
+      "resolutions": {
+        "model_retry": 12,
+        "model_first": 220
+      },
+      "first_availability": {
+        "numerator": 232,
+        "denominator": 232,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 220,
+        "denominator": 232,
+        "value": 0.9482758620689655
+      },
+      "first_decision_success": {
+        "numerator": 220,
+        "denominator": 232,
+        "value": 0.9482758620689655
+      },
+      "model_success": {
+        "numerator": 232,
+        "denominator": 232,
+        "value": 1.0
+      },
+      "illegal_recovery": {
+        "numerator": 12,
+        "denominator": 12,
+        "value": 1.0
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 0,
+        "denominator": 232,
+        "value": 0.0
+      },
+      "autoplay": {
+        "numerator": 0,
+        "denominator": 232,
+        "value": 0.0
+      },
+      "retry": {
+        "numerator": 12,
+        "denominator": 232,
+        "value": 0.05172413793103448
+      },
+      "attempt_distribution": {
+        "2": 12,
+        "1": 220
+      },
+      "provider_latency_ms": {
+        "n": 244,
+        "p50": 60,
+        "p95": 61,
+        "mean": 59.795081967213115,
+        "max": 62
+      },
+      "decision_latency_ms": {
+        "n": 232,
+        "p50": 62.584877014160156,
+        "p95": 122.52449989318848,
+        "mean": 65.6653056884634,
+        "max": 124.8924732208252
+      },
+      "success_latency_ms": {
+        "n": 232,
+        "p50": 62.584877014160156,
+        "p95": 122.52449989318848,
+        "mean": 65.6653056884634,
+        "max": 124.8924732208252
+      },
+      "failure_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 244,
+        "denominator": 244,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 921052,
+      "completion_tokens_known": 16944
+    }
+  ],
+  "limits": [
+    "mock results measure plumbing only",
+    "self-play does not establish competitive advantage",
+    "seed is the independent cluster; decision counts are correlated",
+    "P95 uses nearest-rank; small samples are descriptive",
+    "unknown usage retains reservation; known totals are lower bounds when coverage is incomplete"
+  ]
+}

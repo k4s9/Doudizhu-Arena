@@ -37,31 +37,16 @@ def test_repository_upgrades_legacy_credentials(tmp_path, monkeypatch):
     repo.close()
 
 
-def test_runner_finishes_and_skips_finished_tasks(tmp_path, monkeypatch):
+def test_runner_rejects_legacy_unaudited_execution(tmp_path):
     repo = DatabaseRepository(str(tmp_path / "arena.db")); repo.init()
     try:
         spec = load_experiment_spec(ROOT / "src/backend/evaluation/experiments/reliability-v1.yaml")
-        spec = spec.model_copy(update={
-            "models": [spec.models[0].model_copy(update={"config_name": "runner-model"})],
-            "variants": [variant for variant in spec.variants if variant.memory_mode == "disabled"],
-        })
-        repo.create_player_config("runner-model", "random", "random", "")
         manifest = build_run_manifest(spec, ROOT)
         runner = EvaluationRunner(repo, str(ROOT))
         run_id = runner.create_run(spec, manifest)
-        calls = []
-
-        async def fake_run_task(task, spec, manifest):
-            calls.append(task["id"])
-            return ""
-
-        monkeypatch.setattr(runner, "_run_task", fake_run_task)
-        first = repo.get_evaluation_tasks(run_id)[0]
-        repo.update_evaluation_task(first["id"], "finished")
-        asyncio.run(runner.run(run_id, spec, manifest, real_models=True))
-        assert first["id"] not in calls
-        assert repo.get_evaluation_run(run_id)["status"] == "finished"
-        assert all(row["status"] == "finished" for row in repo.get_evaluation_tasks(run_id))
+        with pytest.raises(PreflightError):
+            asyncio.run(runner.run(run_id, spec, manifest, real_models=True))
+        assert repo.get_evaluation_run(run_id)["status"] == "planned"
     finally:
         repo.close()
 
@@ -115,6 +100,6 @@ def test_v3_database_is_upgraded_with_evaluation_correlation_columns(tmp_path):
         assert {"run_id", "variant_id", "match_id", "decision_id", "attempt"} <= llm_columns
         assert {"decision_id", "seat"} <= event_columns
         assert "sdk_version" in snapshot_columns
-        assert repo.conn.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert repo.conn.execute("PRAGMA user_version").fetchone()[0] == 5
     finally:
         repo.close()

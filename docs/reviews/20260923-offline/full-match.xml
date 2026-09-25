@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="150.102" timestamp="2026-09-23T10:32:21.872432+08:00" hostname="Taishan200"><testcase classname="tests.test_m4_integration.TestFullMatchWithDB" name="test_5_hand_match_with_db" time="149.972" /></testsuite></testsuites>

@@ -17,7 +17,9 @@ def test_play_turn_event_contains_server_deadline():
 
     event = asyncio.run(run())
 
-    assert event == {
+    assert event['seq'] == 1
+    assert event['stream_id'] == 'match-1'
+    assert {k: event[k] for k in ('type', 'payload')} == {
         'type': 'play_turn_started',
         'payload': {
             'table': 'A',

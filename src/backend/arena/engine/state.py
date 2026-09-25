@@ -324,11 +324,15 @@ class GameEngine:
             raise InvalidPlayError("Idle player cannot play")
 
         is_pass = len(cards) == 0
+        if is_pass and state.current_trick is None:
+            raise InvalidPlayError("Leader must play: cannot pass without a current trick")
         trick = None
 
         if not is_pass:
             # Validate cards are in hand
             hand = state.live_hands[seat]
+            if len(set(cards)) != len(cards):
+                raise InvalidPlayError("Duplicate card in action")
             for c in cards:
                 if c not in hand:
                     raise InvalidPlayError(f"Card {c} not in hand")

@@ -1,0 +1,483 @@
+{
+  "verified_at": "2026-09-24T11:18:05.215746+00:00",
+  "run_id": "33eac844f2e244c8a1b8898164b358e7",
+  "model": "minimax-m27",
+  "started_at": "2026-09-24T02:49:31Z",
+  "finished_at": "2026-09-24T03:55:00Z",
+  "source_sha256": "67f0d30788a4a92cfdcbc87de146dac66206716676ba9e57fa22eb09dbaf9ac8",
+  "manifest_sha256": "4beeb007c56996d37ecc866121c9310e266aa544aeef8045b8189b227e196e17",
+  "checks": {
+    "sqlite_integrity": true,
+    "sqlite_foreign_keys": true,
+    "finished": true,
+    "semantic_audit": true,
+    "manifest_digest": true,
+    "run_manifest_link": true,
+    "frozen_spec_digest": true,
+    "runtime_source": true,
+    "dependency_specs": true,
+    "sdk_versions": true,
+    "original_report_matches_rebuilt": true
+  },
+  "complete": true,
+  "integrity": {
+    "complete": true,
+    "issues": [],
+    "run_status": "finished",
+    "terminal_state_hashes": {
+      "f7248b8dc6b24833b99775dac5463640": "8d6e7ec94122b27860c133d33643c0dac0134311933f016640de3dce92d9df5e",
+      "f552ba087dd2447686a1d882c2e90250": "0be4c47e4dae8370ff995a122936fdccacc134e9128dc3211e2d894210ffe77c",
+      "a5139f2036254abeab28596f31524138": "083201f00a7a23b477e9a0863a7bd548119efbdf2db0dda5d96233feab406645",
+      "bf3dcb6bd8d04a3ba8fe3acb096a9931": "999301ae139ab061b64ba42c887b1d517dc0e80a211d806af161c5a95b5e65b3",
+      "67022574ac284973b0241e691b1d6362": "49ab78abe46dfa189314fad89fa2066fb8714b07c257a837bd434eb9db5adb1e",
+      "cf269591356944b1a03bab6e0aa19c7c": "0be4c47e4dae8370ff995a122936fdccacc134e9128dc3211e2d894210ffe77c"
+    }
+  },
+  "original_report_mismatches": [],
+  "aggregate": {
+    "D": 250,
+    "L": 235,
+    "calls": 275,
+    "resolutions": {
+      "model_first": 198,
+      "model_retry": 26,
+      "system_fallback": 11,
+      "system_autoplay": 15
+    },
+    "first_availability": {
+      "numerator": 235,
+      "denominator": 235,
+      "value": 1.0
+    },
+    "first_output_legality": {
+      "numerator": 198,
+      "denominator": 235,
+      "value": 0.8425531914893617
+    },
+    "first_decision_success": {
+      "numerator": 198,
+      "denominator": 235,
+      "value": 0.8425531914893617
+    },
+    "model_success": {
+      "numerator": 224,
+      "denominator": 235,
+      "value": 0.9531914893617022
+    },
+    "illegal_recovery": {
+      "numerator": 26,
+      "denominator": 37,
+      "value": 0.7027027027027027
+    },
+    "provider_error_recovery": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null
+    },
+    "fallback": {
+      "numerator": 11,
+      "denominator": 250,
+      "value": 0.044
+    },
+    "autoplay": {
+      "numerator": 15,
+      "denominator": 250,
+      "value": 0.06
+    },
+    "retry": {
+      "numerator": 29,
+      "denominator": 235,
+      "value": 0.12340425531914893
+    },
+    "attempt_distribution": {
+      "1": 206,
+      "2": 18,
+      "3": 11
+    },
+    "provider_latency_ms": {
+      "n": 275,
+      "p50": 17814,
+      "p95": 39941,
+      "mean": 20284.06909090909,
+      "max": 84808
+    },
+    "decision_latency_ms": {
+      "n": 250,
+      "p50": 18282.271146774292,
+      "p95": 56913.575887680054,
+      "mean": 22317.701422691345,
+      "max": 90603.62577438354
+    },
+    "success_latency_ms": {
+      "n": 224,
+      "p50": 19133.704662322998,
+      "p95": 61649.75619316101,
+      "mean": 23600.558700306075,
+      "max": 90603.62577438354
+    },
+    "failure_latency_ms": {
+      "n": 26,
+      "p50": 1.0328292846679688,
+      "p95": 48021.18253707886,
+      "mean": 11265.392569395211,
+      "max": 49840.38019180298
+    },
+    "timeout_latency_ms": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "mean": null,
+      "max": null
+    },
+    "usage_coverage": {
+      "numerator": 275,
+      "denominator": 275,
+      "value": 1.0
+    },
+    "prompt_tokens_known": 321752,
+    "completion_tokens_known": 176184
+  },
+  "variants": [
+    {
+      "variant": "single_generation",
+      "seed": "reliability-smoke-v1-001",
+      "D": 61,
+      "L": 46,
+      "calls": 46,
+      "resolutions": {
+        "model_first": 38,
+        "system_fallback": 8,
+        "system_autoplay": 15
+      },
+      "first_availability": {
+        "numerator": 46,
+        "denominator": 46,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 38,
+        "denominator": 46,
+        "value": 0.8260869565217391
+      },
+      "first_decision_success": {
+        "numerator": 38,
+        "denominator": 46,
+        "value": 0.8260869565217391
+      },
+      "model_success": {
+        "numerator": 38,
+        "denominator": 46,
+        "value": 0.8260869565217391
+      },
+      "illegal_recovery": {
+        "numerator": 0,
+        "denominator": 8,
+        "value": 0.0
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 8,
+        "denominator": 61,
+        "value": 0.13114754098360656
+      },
+      "autoplay": {
+        "numerator": 15,
+        "denominator": 61,
+        "value": 0.2459016393442623
+      },
+      "retry": {
+        "numerator": 0,
+        "denominator": 46,
+        "value": 0.0
+      },
+      "attempt_distribution": {
+        "1": 46
+      },
+      "provider_latency_ms": {
+        "n": 46,
+        "p50": 15715,
+        "p95": 30609,
+        "mean": 17151.739130434784,
+        "max": 31591
+      },
+      "decision_latency_ms": {
+        "n": 61,
+        "p50": 14738.18826675415,
+        "p95": 30250.115871429443,
+        "mean": 12938.390290150877,
+        "max": 31596.92096710205
+      },
+      "success_latency_ms": {
+        "n": 38,
+        "p50": 15567.439317703247,
+        "p95": 30614.530563354492,
+        "mean": 16821.955781233937,
+        "max": 31415.220022201538
+      },
+      "failure_latency_ms": {
+        "n": 23,
+        "p50": 1.0058879852294922,
+        "p95": 22115.546703338623,
+        "mean": 6522.064696187558,
+        "max": 31596.92096710205
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 46,
+        "denominator": 46,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 51705,
+      "completion_tokens_known": 30051,
+      "table_status_counts": {
+        "finished": 1,
+        "void": 1
+      }
+    },
+    {
+      "variant": "generic_retry",
+      "seed": "reliability-smoke-v1-001",
+      "D": 126,
+      "L": 126,
+      "calls": 154,
+      "resolutions": {
+        "model_first": 106,
+        "model_retry": 17,
+        "system_fallback": 3
+      },
+      "first_availability": {
+        "numerator": 126,
+        "denominator": 126,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 106,
+        "denominator": 126,
+        "value": 0.8412698412698413
+      },
+      "first_decision_success": {
+        "numerator": 106,
+        "denominator": 126,
+        "value": 0.8412698412698413
+      },
+      "model_success": {
+        "numerator": 123,
+        "denominator": 126,
+        "value": 0.9761904761904762
+      },
+      "illegal_recovery": {
+        "numerator": 17,
+        "denominator": 20,
+        "value": 0.85
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 3,
+        "denominator": 126,
+        "value": 0.023809523809523808
+      },
+      "autoplay": {
+        "numerator": 0,
+        "denominator": 126,
+        "value": 0.0
+      },
+      "retry": {
+        "numerator": 20,
+        "denominator": 126,
+        "value": 0.15873015873015872
+      },
+      "attempt_distribution": {
+        "1": 106,
+        "2": 12,
+        "3": 8
+      },
+      "provider_latency_ms": {
+        "n": 154,
+        "p50": 18068,
+        "p95": 45543,
+        "mean": 21564.51948051948,
+        "max": 84808
+      },
+      "decision_latency_ms": {
+        "n": 126,
+        "p50": 20671.298503875732,
+        "p95": 65218.95098686218,
+        "mean": 26362.1323089751,
+        "max": 90603.62577438354
+      },
+      "success_latency_ms": {
+        "n": 123,
+        "p50": 20523.056030273438,
+        "p95": 65218.95098686218,
+        "mean": 25843.38172470651,
+        "max": 90603.62577438354
+      },
+      "failure_latency_ms": {
+        "n": 3,
+        "p50": 48021.18253707886,
+        "p95": 49840.38019180298,
+        "mean": 47630.90626398722,
+        "max": 49840.38019180298
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 154,
+        "denominator": 154,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 181951,
+      "completion_tokens_known": 96946,
+      "table_status_counts": {
+        "finished": 2
+      }
+    },
+    {
+      "variant": "rule_feedback",
+      "seed": "reliability-smoke-v1-001",
+      "D": 63,
+      "L": 63,
+      "calls": 75,
+      "resolutions": {
+        "model_first": 54,
+        "model_retry": 9
+      },
+      "first_availability": {
+        "numerator": 63,
+        "denominator": 63,
+        "value": 1.0
+      },
+      "first_output_legality": {
+        "numerator": 54,
+        "denominator": 63,
+        "value": 0.8571428571428571
+      },
+      "first_decision_success": {
+        "numerator": 54,
+        "denominator": 63,
+        "value": 0.8571428571428571
+      },
+      "model_success": {
+        "numerator": 63,
+        "denominator": 63,
+        "value": 1.0
+      },
+      "illegal_recovery": {
+        "numerator": 9,
+        "denominator": 9,
+        "value": 1.0
+      },
+      "provider_error_recovery": {
+        "numerator": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "fallback": {
+        "numerator": 0,
+        "denominator": 63,
+        "value": 0.0
+      },
+      "autoplay": {
+        "numerator": 0,
+        "denominator": 63,
+        "value": 0.0
+      },
+      "retry": {
+        "numerator": 9,
+        "denominator": 63,
+        "value": 0.14285714285714285
+      },
+      "attempt_distribution": {
+        "1": 54,
+        "2": 6,
+        "3": 3
+      },
+      "provider_latency_ms": {
+        "n": 75,
+        "p50": 17395,
+        "p95": 38167,
+        "mean": 19576.04,
+        "max": 75217
+      },
+      "decision_latency_ms": {
+        "n": 63,
+        "p50": 18486.098527908325,
+        "p95": 49851.06539726257,
+        "mean": 23310.394873694768,
+        "max": 83757.78007507324
+      },
+      "success_latency_ms": {
+        "n": 63,
+        "p50": 18486.098527908325,
+        "p95": 49851.06539726257,
+        "mean": 23310.394873694768,
+        "max": 83757.78007507324
+      },
+      "failure_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "timeout_latency_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "mean": null,
+        "max": null
+      },
+      "usage_coverage": {
+        "numerator": 75,
+        "denominator": 75,
+        "value": 1.0
+      },
+      "prompt_tokens_known": 88096,
+      "completion_tokens_known": 49187,
+      "table_status_counts": {
+        "finished": 1,
+        "void": 1
+      }
+    }
+  ],
+  "table_status_counts": {
+    "finished": 4,
+    "void": 2
+  },
+  "response_models": {
+    "minimax-m27-eic": 148,
+    "minimax-m27": 127
+  },
+  "provider_errors": {},
+  "validation_error_codes": {
+    "parse_error": 37,
+    "invalid_pattern": 7,
+    "card_not_in_hand": 3,
+    "json_format": 1,
+    "leader_pass": 3
+  },
+  "budget_status_counts": {
+    "settled": 275
+  },
+  "failure_case_count": 37,
+  "network_connection_attempts": 0
+}

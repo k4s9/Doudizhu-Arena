@@ -1,0 +1,30 @@
+{
+  "backend_suites": [
+    {
+      "file": "regression-unsandboxed.xml",
+      "tests": 49,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "file": "parser-regression-fixed.xml",
+      "tests": 72,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "backend_test_count": 121,
+  "backend_unique_test_count": 121,
+  "backend_network_connection_attempts": 0,
+  "frontend_tests": 8,
+  "frontend_passed": 8,
+  "frontend_build_passed": true,
+  "runtime_source_sha256": "67f0d30788a4a92cfdcbc87de146dac66206716676ba9e57fa22eb09dbaf9ac8",
+  "notes": [
+    "Initial sandbox test attempt interrupted after local socket restrictions.",
+    "Initial parser regression had one malformed card fixture (S3 instead of ♠3); fixed suite passed.",
+    "These are targeted regressions, not a rerun of the full historical suite."
+  ]
+}

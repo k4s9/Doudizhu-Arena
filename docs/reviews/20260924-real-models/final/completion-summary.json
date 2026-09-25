@@ -1,0 +1,79 @@
+{
+  "verified_at": "2026-09-24T11:20:51.809742+00:00",
+  "complete": true,
+  "scope": "Existing real-model smoke; continuation re-audited read-only with no new API calls.",
+  "runtime_source_sha256": "67f0d30788a4a92cfdcbc87de146dac66206716676ba9e57fa22eb09dbaf9ac8",
+  "finished_tasks": 6,
+  "terminal_table_hands": 12,
+  "table_status_counts": {
+    "finished": 10,
+    "void": 2
+  },
+  "decisions": 538,
+  "model_decisions": 523,
+  "formal_game_calls": 567,
+  "resolutions": {
+    "model_first": 481,
+    "model_retry": 30,
+    "system_fallback": 12,
+    "system_autoplay": 15
+  },
+  "usage_known_calls": 565,
+  "usage_unknown_calls": 2,
+  "failure_case_count": 42,
+  "models": {
+    "qwen": {
+      "model": "qwen3.5",
+      "run_id": "781a96ead0c7432bb68a90968d0387ac",
+      "finished_at": "2026-09-24T04:06:58Z",
+      "manifest_sha256": "b30ffb10d44bfa453b55c9b5fddb8d416653033da20c482abae33344e811f395",
+      "checks": {
+        "sqlite_integrity": true,
+        "sqlite_foreign_keys": true,
+        "finished": true,
+        "semantic_audit": true,
+        "manifest_digest": true,
+        "run_manifest_link": true,
+        "frozen_spec_digest": true,
+        "runtime_source": true,
+        "dependency_specs": true,
+        "sdk_versions": true,
+        "original_report_matches_rebuilt": true
+      }
+    },
+    "minimax": {
+      "model": "minimax-m27",
+      "run_id": "33eac844f2e244c8a1b8898164b358e7",
+      "finished_at": "2026-09-24T03:55:00Z",
+      "manifest_sha256": "4beeb007c56996d37ecc866121c9310e266aa544aeef8045b8189b227e196e17",
+      "checks": {
+        "sqlite_integrity": true,
+        "sqlite_foreign_keys": true,
+        "finished": true,
+        "semantic_audit": true,
+        "manifest_digest": true,
+        "run_manifest_link": true,
+        "frozen_spec_digest": true,
+        "runtime_source": true,
+        "dependency_specs": true,
+        "sdk_versions": true,
+        "original_report_matches_rebuilt": true
+      }
+    }
+  },
+  "prior_regression": {
+    "backend_passed": 121,
+    "frontend_passed": 8,
+    "frontend_build_passed": true,
+    "note": "Existing targeted regressions; not rerun during continuation. Backend source fingerprint still matches."
+  },
+  "continuation_network_connection_attempts": 0,
+  "limits": [
+    "One independent seed per model; no confidence intervals or generalizable improvement claim.",
+    "Closed-loop trajectories, void tables and autoplay change later observations.",
+    "Minimax alias returned two different model names.",
+    "Two Qwen failed calls have unknown usage; zero price is user-confirmed, not an audited provider bill.",
+    "Self-play does not establish competitive superiority.",
+    "Workspace changes remain uncommitted; no remote CI result."
+  ]
+}

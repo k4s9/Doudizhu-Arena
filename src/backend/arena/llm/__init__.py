@@ -16,7 +16,7 @@ def create_provider(
     """Factory function to create an LLM provider from config values."""
     p = provider.lower()
     if p == "claude":
-        return ClaudeProvider(model=model, api_key=api_key)
+        return ClaudeProvider(model=model, api_key=api_key, base_url=base_url)
     if p == "openai":
         return OpenAIProvider(model=model, api_key=api_key, base_url=base_url)
     raise ValueError(f"Unknown provider: {provider!r}")

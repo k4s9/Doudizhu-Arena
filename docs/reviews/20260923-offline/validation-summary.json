@@ -1,0 +1,106 @@
+{
+  "kind": "offline-gateway-and-backend-verification",
+  "session_date": "2026-09-23",
+  "head": "3bb8d2bbd948f0e5291d3500af1b1ee9ebf34a88",
+  "uncommitted_worktree": true,
+  "backend_source_sha256": "c9bb8b902a1d076cee263a98929d9ab886ee3714dd9bd713c0dcc49f723730f9",
+  "backend_suite": {
+    "passed": 338,
+    "failed": 0,
+    "unique_test_cases": 338,
+    "partitions": {
+      "main": {
+        "tests": "335",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "87.662",
+        "network_attempts": 0
+      },
+      "full-match": {
+        "tests": "1",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "150.102",
+        "network_attempts": 0
+      },
+      "reflection": {
+        "tests": "1",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "140.528",
+        "network_attempts": 0
+      },
+      "summary": {
+        "tests": "1",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "142.855",
+        "network_attempts": 0
+      }
+    },
+    "network_attempts": 0
+  },
+  "gateway_contract_cases": 23,
+  "initial_contract_probe": {
+    "passed": 12,
+    "failed": 6,
+    "note": "pre-fix evidence, not the current result"
+  },
+  "affected_regression": {
+    "passed": 65,
+    "failed": 0
+  },
+  "browser": {
+    "kind": "mock-browser-acceptance",
+    "mock_delay_seconds": 0.06,
+    "real_providers_disabled": true,
+    "stage": "complete",
+    "identical_live_events": 6,
+    "terminal_reconnect": {
+      "match_id": "287414bb40ec43ebb80586139e90a31e",
+      "status": "finished",
+      "score": {
+        "red": 0,
+        "blue": 0
+      },
+      "watermark": 281
+    },
+    "terminal_reload": true,
+    "run_id": "6bb8ab7304684d918568901ef696845d",
+    "task_counts": {
+      "planned": 0,
+      "running": 0,
+      "finished": 6,
+      "failed": 0,
+      "cancelled": 0
+    },
+    "integrity_complete": true,
+    "page_errors": []
+  },
+  "local_gateway_configuration": {
+    "base_url": "https://uni-api.cstcloud.cn/v1",
+    "provider": "openai",
+    "configured_models": [
+      "qwen3.5",
+      "minimax-m27"
+    ],
+    "credential_variable": "CSTCLOUD_API_KEY",
+    "credential_present_in_inspected_process": false,
+    "project_env_files_exist": false,
+    "default_database_exists": false
+  },
+  "real_gateway_requests": 0,
+  "real_model_calls": 0,
+  "frontend_build": "passed by browser harness",
+  "remote_ci_executed": false,
+  "limits": [
+    "SDK requests use HTTPX in-process mock transport and synthetic credentials.",
+    "No confirmation of Uni API connectivity, live model availability, account access or pricing.",
+    "Offline socket guard covers pytest processes; CLI subprocesses explicitly use --mock.",
+    "Browser uses localhost services with real providers disabled."
+  ]
+}

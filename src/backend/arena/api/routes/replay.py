@@ -85,7 +85,7 @@ def _build_table_detail(
     # Bidding
     bidding_records = repo.get_bidding_records(th_id)
     bidding = [
-        {"seat": r["seat"], "bid": r["bid"], "timestamp_ms": r["timestamp_ms"]}
+        {"seq": r["seq"], "seat": r["seat"], "bid": r["bid"], "timestamp_ms": r["timestamp_ms"]}
         for r in bidding_records
     ]
 
@@ -97,6 +97,7 @@ def _build_table_detail(
         if isinstance(cards, str):
             cards = json.loads(cards)
         play_history.append({
+            "seq": a["seq"],
             "round": a["round"],
             "sub_round": a["sub_round"],
             "seat": a["seat"],
@@ -176,6 +177,7 @@ def _build_table_detail(
 
     return {
         "table_id": table,
+        "is_void": bool(table_hand.get("void")),
         "players": players,
         "bidding": bidding,
         "landlord": landlord_seat,
@@ -377,3 +379,15 @@ async def get_single_table_hand(
         repo, target_th, match_id, hand_num,
         hand["dealer"], hand["idle_seat"], hand["seed"],
     )
+
+
+@router.get("/matches/{match_id}/events")
+async def get_events(match_id: str, request: Request, after: int = 0, limit: int = 500):
+    repo = _repo(request)
+    if not repo.get_match(match_id):
+        raise HTTPException(404, detail="match not found")
+    if after < 0 or limit < 1 or limit > 1000:
+        raise HTTPException(400, detail="invalid cursor or limit")
+    rows = repo.conn.execute("SELECT event_json FROM match_events WHERE match_id=? AND seq>? ORDER BY seq LIMIT ?", (match_id, after, limit)).fetchall()
+    watermark = repo.conn.execute("SELECT COALESCE(MAX(seq),0) FROM match_events WHERE match_id=?", (match_id,)).fetchone()[0]
+    return {"stream_id": match_id, "watermark": watermark, "events": [json.loads(r[0]) for r in rows]}

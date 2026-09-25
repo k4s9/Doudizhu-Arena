@@ -1,0 +1,14 @@
+{
+  "call_count": 2,
+  "distinct_decisions": 2,
+  "both_expected_decisions_present": true,
+  "third_is_autoplay": true,
+  "unordered_select_plan": [
+    [
+      2,
+      0,
+      209,
+      "SCAN llm_call_logs USING COVERING INDEX idx_llm_logs_decision"
+    ]
+  ]
+}

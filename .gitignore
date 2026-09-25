@@ -5,4 +5,9 @@ src/backend/logs/
 # SQLite database directory
 data/
 CLAUDE.md
-.claude/
+.claude/# Runtime/build artifacts (historically tracked bytecode is left in place)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+dist/

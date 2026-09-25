@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
+import re
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -18,6 +19,11 @@ class CredentialError(RuntimeError):
 
 def master_key_configured() -> bool:
     return bool(os.getenv(MASTER_KEY_ENV))
+
+
+def has_usable_credential(value: str | None) -> bool:
+    """An unresolved YAML environment reference is not an API credential."""
+    return isinstance(value, str) and bool(value.strip()) and not re.search(r'\$\{\w+\}', value)
 
 
 def encrypt_secret(value: str) -> str:

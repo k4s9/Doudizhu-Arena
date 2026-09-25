@@ -190,6 +190,7 @@ class TestPlayParser:
         cards, reasoning = parse_play_response(
             '{"reasoning": "cannot beat", "action": {"type": "pass"}}',
             hand,
+            current_trick=Trick(pattern=PatternType.SINGLE, main_cards=(make_card("2", "♠"),), main_rank=Rank.TWO),
         )
         assert cards == []
 
@@ -474,8 +475,8 @@ class TestLLMAgent:
         assert agent.consecutive_failures == 0
         ctx = make_basic_context()
         asyncio.run(agent.decide_bid(ctx))
-        # Each LLM error increments failures; MAX_RETRIES+1 = 4 attempts
-        assert agent.consecutive_failures == MAX_RETRIES + 1
+        # One exhausted decision is one failure, regardless of provider attempts.
+        assert agent.consecutive_failures == 1
         agent.reset_failures()
         assert agent.consecutive_failures == 0
 

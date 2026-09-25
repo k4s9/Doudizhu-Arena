@@ -69,7 +69,11 @@ class LoggingLLMProvider(AbstractLLMProvider):
         agent_id: str = "",
         repo: object | None = None,
         table_hand_id: str = "",
+        budget=None,
+        execution_scope=None,
     ) -> None:
+        self.budget = budget
+        self.execution_scope = execution_scope
         self._inner = inner
         self._agent_id = agent_id
         self._repo = repo
@@ -95,7 +99,7 @@ class LoggingLLMProvider(AbstractLLMProvider):
         self, *, agent_id: str | None = None, table_hand_id: str | None = None,
         run_id: str | None = None, variant_id: str | None = None,
         match_id: str | None = None, decision_id: str | None = None,
-        attempt: int | None = None, phase: str | None = None,
+        attempt: int | None = None, phase: str | None = None, **context,
     ) -> None:
         """Update logging context between calls."""
         if agent_id is not None:
@@ -120,100 +124,69 @@ class LoggingLLMProvider(AbstractLLMProvider):
         user_prompt: str,
         system_prompt: str = "",
     ) -> str:
+        import asyncio
+        from ..evaluation.budget import EvidenceError
         phase = self._phase or self._detect_phase(system_prompt)
+        reservation = self.budget.reserve(system_prompt, user_prompt) if self.budget else None
         start = time.monotonic()
-        success = False
-        error_msg: str | None = None
+        raw, error, status = None, None, "error"
         self.last_usage = None
         self.last_thinking = None
+        completed = False
 
-        try:
-            text = await self._inner.generate(user_prompt, system_prompt)
-            success = True
-            # Capture usage from inner provider
-            if hasattr(self._inner, 'last_usage'):
-                self.last_usage = self._inner.last_usage
-            # Capture thinking/reasoning content if available
-            if hasattr(self._inner, 'last_thinking'):
-                self.last_thinking = self._inner.last_thinking
-            return text
-        except (LLMError, Exception) as e:
-            error_msg = str(e)
-            raise
-        finally:
-            elapsed_ms = int((time.monotonic() - start) * 1000)
-
-            # Build truncated versions for the standard log entry
-            sys_trunc = system_prompt[:_PROMPT_TRUNCATION]
-            usr_trunc = user_prompt[:_PROMPT_TRUNCATION]
-            if len(system_prompt) > _PROMPT_TRUNCATION:
-                sys_trunc += "..."
-            if len(user_prompt) > _PROMPT_TRUNCATION:
-                usr_trunc += "..."
-
-            # Log to file (INFO: truncated prompts)
-            log_entry = (
-                f"\n{'='*60}\n"
-                f"LLM Call | agent={self._agent_id} | phase={phase} | "
-                f"success={success} | latency={elapsed_ms}ms\n"
-                f"Provider: {self.provider_name}/{self.model}\n"
-                f"Usage: {self.last_usage}\n"
-                f"System ({len(system_prompt)} chars): {sys_trunc}\n"
-                f"User ({len(user_prompt)} chars): {usr_trunc}\n"
-            )
-            if self.last_thinking:
-                log_entry += f"Thinking: {self.last_thinking[:_PROMPT_TRUNCATION]}...\n" if len(self.last_thinking) > _PROMPT_TRUNCATION else f"Thinking: {self.last_thinking}\n"
-            if error_msg:
-                log_entry += f"ERROR: {error_msg}\n"
-            logger.info(log_entry)
-
-            # DEBUG: full untruncated prompts (only when DEBUG is enabled)
-            if logger.isEnabledFor(logging.DEBUG):
-                debug_entry = (
-                    f"\n{'='*60}\n"
-                    f"DEBUG FULL PROMPT | agent={self._agent_id} | phase={phase}\n"
-                    f"--- SYSTEM ({len(system_prompt)} chars) ---\n"
-                    f"{system_prompt}\n"
-                    f"--- USER ({len(user_prompt)} chars) ---\n"
-                    f"{user_prompt}\n"
-                    f"--- END DEBUG FULL PROMPT ---\n"
-                )
-                logger.debug(debug_entry)
-
-            # Always write raw prompts to the raw_prompts logger (only
-            # emits when the raw_prompts logger is configured at DEBUG).
-            log_raw_prompt(
-                phase=phase,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                agent_id=self._agent_id,
-            )
-
-            # Log to DB
+        def persist(call_raw, call_error, call_status, usage):
+            nonlocal completed
+            if completed:
+                return
+            call_id = None
             if self._repo is not None:
                 try:
-                    self._repo.add_llm_call_log(
-                        player_id=self._agent_id,
-                        phase=phase,
-                        provider=self.provider_name,
-                        model=self.model,
-                        success=success,
-                        run_id=self._run_id or None,
-                        variant_id=self._variant_id or None,
-                        match_id=self._match_id or None,
-                        decision_id=self._decision_id or None,
-                        attempt=self._attempt,
-                        table_hand_id=self._table_hand_id or None,
-                        response_model=getattr(self._inner, "last_response_model", None),
-                        system_fingerprint=getattr(self._inner, "last_system_fingerprint", None),
-                        prompt_tokens=self.last_usage.prompt_tokens if self.last_usage else None,
-                        completion_tokens=self.last_usage.completion_tokens if self.last_usage else None,
-                        total_tokens=self.last_usage.total_tokens if self.last_usage else None,
-                        latency_ms=elapsed_ms,
-                        error_message=error_msg,
-                    )
-                except Exception:
-                    pass  # DB logging should never crash the main flow
+                    with self._repo.atomic():
+                        call_id = self._repo.add_llm_call_log(
+                            player_id=self._agent_id, phase=phase, provider=self.provider_name, model=self.model,
+                            success=call_status == 'returned', run_id=self._run_id or None, variant_id=self._variant_id or None,
+                            match_id=self._match_id or None, decision_id=self._decision_id or None,
+                            attempt=self._attempt, table_hand_id=self._table_hand_id or None,
+                            response_model=getattr(self._inner, 'last_response_model', None),
+                            system_fingerprint=getattr(self._inner, 'last_system_fingerprint', None),
+                            prompt_tokens=usage.prompt_tokens if usage else None,
+                            completion_tokens=usage.completion_tokens if usage else None,
+                            total_tokens=usage.total_tokens if usage else None,
+                            latency_ms=int((time.monotonic()-start)*1000), error_message=call_error)
+                        self._repo.conn.execute('INSERT INTO call_evidence(call_id,system_prompt,user_prompt,raw_output,provider_status) VALUES(?,?,?,?,?)',
+                            (call_id, system_prompt, user_prompt, call_raw, call_status))
+                except Exception as exc:
+                    raise EvidenceError('provider call evidence could not be persisted') from exc
+            completed = True
+            if reservation:
+                self.budget.settle(reservation, call_id, usage)
+
+        def expire():
+            persist(None, 'cancellation deadline exceeded; late result discarded', 'cancelled', None)
+
+        if self.execution_scope:
+            self.execution_scope.check()
+            self.execution_scope.pending.add(expire)
+        try:
+            raw = await self._inner.generate(user_prompt, system_prompt)
+            if self.execution_scope:
+                self.execution_scope.check_result()
+            status = "returned"  # empty text is returned output, subsequently invalidated
+            return raw
+        except asyncio.CancelledError:
+            status, error = "cancelled", "call cancelled or deadline exceeded"
+            raise
+        except Exception as exc:
+            error = str(exc)
+            raise
+        finally:
+            self.last_usage = getattr(self._inner, "last_usage", None)
+            self.last_thinking = getattr(self._inner, "last_thinking", None)
+            try:
+                persist(raw, error, status, self.last_usage)
+            finally:
+                if self.execution_scope:
+                    self.execution_scope.pending.discard(expire)
 
     @staticmethod
     def _detect_phase(system_prompt: str) -> str:

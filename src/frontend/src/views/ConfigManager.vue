@@ -114,6 +114,7 @@ onMounted(loadConfigs);
             <th class="text-left px-4 py-2 font-medium">提供商</th>
             <th class="text-left px-4 py-2 font-medium">模型</th>
             <th class="text-left px-4 py-2 font-medium">接口地址</th>
+            <th class="text-center px-4 py-2 font-medium">凭据</th>
             <th class="text-center px-4 py-2 font-medium">玩家数</th>
             <th class="text-right px-4 py-2 font-medium"></th>
           </tr>
@@ -134,6 +135,9 @@ onMounted(loadConfigs);
             </td>
             <td class="px-4 py-2 text-slate-400">{{ c.model }}</td>
             <td class="px-4 py-2 text-slate-500 text-xs max-w-[200px] truncate">{{ c.base_url || '默认' }}</td>
+            <td class="px-4 py-2 text-center" :class="c.has_api_key ? 'text-green-400' : 'text-slate-400'">
+              {{ c.provider === 'random' ? '无需密钥' : c.has_api_key ? '已配置' : '未配置' }}
+            </td>
             <td class="px-4 py-2 text-center text-slate-300">{{ c.player_count }}</td>
             <td class="px-4 py-2 text-right space-x-2">
               <button
@@ -153,7 +157,7 @@ onMounted(loadConfigs);
             </td>
           </tr>
           <tr v-if="configs.length === 0">
-            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+            <td colspan="7" class="px-4 py-8 text-center text-slate-500">
               暂无配置。请通过 API 创建或添加到 agents.yaml 后重新加载。
             </td>
           </tr>

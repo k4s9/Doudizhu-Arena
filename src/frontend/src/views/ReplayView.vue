@@ -31,7 +31,8 @@ onMounted(async () => {
       matchInfo.value = await api.getMatch(matchId);
     } catch (e) { /* fallback */ }
     if (data?.hands?.length) {
-      handNum.value = data.hands[0].hand_num;
+      const requested = Number(route.params.handNum);
+      handNum.value = data.hands.some(h => h.hand_num === requested) ? requested : data.hands[0].hand_num;
       await loadHand();
     }
   } catch (e) {

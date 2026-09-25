@@ -1,0 +1,112 @@
+{
+  "model": "minimax-m27",
+  "variant": "generic_retry",
+  "match_id": "ee602e8570e043c2854fe88221ef2ebb",
+  "replay_issues": [],
+  "terminal_state_hashes": {
+    "a5139f2036254abeab28596f31524138": "083201f00a7a23b477e9a0863a7bd548119efbdf2db0dda5d96233feab406645",
+    "bf3dcb6bd8d04a3ba8fe3acb096a9931": "999301ae139ab061b64ba42c887b1d517dc0e80a211d806af161c5a95b5e65b3"
+  },
+  "metrics": {
+    "D": 126,
+    "L": 126,
+    "calls": 154,
+    "resolutions": {
+      "model_first": 106,
+      "model_retry": 17,
+      "system_fallback": 3
+    },
+    "first_availability": {
+      "numerator": 126,
+      "denominator": 126,
+      "value": 1.0
+    },
+    "first_output_legality": {
+      "numerator": 106,
+      "denominator": 126,
+      "value": 0.8412698412698413
+    },
+    "first_decision_success": {
+      "numerator": 106,
+      "denominator": 126,
+      "value": 0.8412698412698413
+    },
+    "model_success": {
+      "numerator": 123,
+      "denominator": 126,
+      "value": 0.9761904761904762
+    },
+    "illegal_recovery": {
+      "numerator": 17,
+      "denominator": 20,
+      "value": 0.85
+    },
+    "provider_error_recovery": {
+      "numerator": 0,
+      "denominator": 0,
+      "value": null
+    },
+    "fallback": {
+      "numerator": 3,
+      "denominator": 126,
+      "value": 0.023809523809523808
+    },
+    "autoplay": {
+      "numerator": 0,
+      "denominator": 126,
+      "value": 0.0
+    },
+    "retry": {
+      "numerator": 20,
+      "denominator": 126,
+      "value": 0.15873015873015872
+    },
+    "attempt_distribution": {
+      "1": 106,
+      "2": 12,
+      "3": 8
+    },
+    "provider_latency_ms": {
+      "n": 154,
+      "p50": 18068,
+      "p95": 45543,
+      "mean": 21564.51948051948,
+      "max": 84808
+    },
+    "decision_latency_ms": {
+      "n": 126,
+      "p50": 20671.298503875732,
+      "p95": 65218.95098686218,
+      "mean": 26362.1323089751,
+      "max": 90603.62577438354
+    },
+    "success_latency_ms": {
+      "n": 123,
+      "p50": 20523.056030273438,
+      "p95": 65218.95098686218,
+      "mean": 25843.38172470651,
+      "max": 90603.62577438354
+    },
+    "failure_latency_ms": {
+      "n": 3,
+      "p50": 48021.18253707886,
+      "p95": 49840.38019180298,
+      "mean": 47630.90626398722,
+      "max": 49840.38019180298
+    },
+    "timeout_latency_ms": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "mean": null,
+      "max": null
+    },
+    "usage_coverage": {
+      "numerator": 154,
+      "denominator": 154,
+      "value": 1.0
+    },
+    "prompt_tokens_known": 181951,
+    "completion_tokens_known": 96946
+  }
+}

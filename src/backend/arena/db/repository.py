@@ -8,6 +8,7 @@ for persistence during match execution.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +50,29 @@ class DatabaseRepository:
         if self._conn:
             self._conn.close()
             self._conn = None
+
+    @contextmanager
+    def atomic(self):
+        """One transaction for committed action, thought and resolution."""
+        conn = self.conn
+        conn.execute("SAVEPOINT reliability_commit")
+        conn.atomic_depth += 1
+        try:
+            yield
+        except BaseException:
+            conn.execute("ROLLBACK TO reliability_commit")
+            raise
+        finally:
+            conn.execute("RELEASE reliability_commit")
+            conn.atomic_depth -= 1
+
+    def begin_decision(self, **data):
+        from .reliability import begin_decision
+        return begin_decision(self, **data)
+
+    def resolve_decision(self, decision_id, **data):
+        from .reliability import resolve_decision
+        return resolve_decision(self, decision_id, **data)
 
     @property
     def conn(self) -> sqlite3.Connection:

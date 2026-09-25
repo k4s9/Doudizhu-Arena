@@ -371,9 +371,17 @@ def _player_row_to_dict(row: tuple) -> dict:
 
 # ── initialization + migration ───────────────────────────────────────────────────
 
+class AtomicConnection(sqlite3.Connection):
+    atomic_depth = 0
+
+    def commit(self):
+        if not self.atomic_depth:
+            super().commit()
+
+
 def init_db(path: str) -> sqlite3.Connection:
     """Create all tables and return a connection with WAL mode + foreign keys."""
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, factory=AtomicConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=OFF")
@@ -388,6 +396,9 @@ def init_db(path: str) -> sqlite3.Connection:
     # The SCHEMA_DDL handles both fresh DBs (all tables new) and migrated DBs
     # (tables exist, CREATE IF NOT EXISTS is a no-op, but new indexes are created).
     conn.executescript(SCHEMA_DDL)
+
+    from .reliability import init as init_reliability
+    init_reliability(conn)
 
     conn.execute("PRAGMA foreign_keys=ON")
     conn.commit()
@@ -1349,11 +1360,11 @@ def insert_experiment(conn: sqlite3.Connection, experiment_id: str, spec: dict, 
 def insert_evaluation_run(conn: sqlite3.Connection, experiment_id: str, manifest: dict, manifest_sha256: str) -> str:
     rid = _uid()
     conn.execute(
-        "INSERT OR IGNORE INTO evaluation_runs (id, experiment_id, manifest_json, manifest_sha256, created_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO evaluation_runs (id, experiment_id, manifest_json, manifest_sha256, created_at) VALUES (?, ?, ?, ?, ?)",
         (rid, experiment_id, json.dumps(manifest, ensure_ascii=False, sort_keys=True), manifest_sha256, _now()),
     )
     conn.commit()
-    return conn.execute("SELECT id FROM evaluation_runs WHERE manifest_sha256 = ?", (manifest_sha256,)).fetchone()[0]
+    return rid
 
 
 def insert_evaluation_task(conn: sqlite3.Connection, run_id: str, variant_id: str, seed: str, seat_rotation: int) -> str:

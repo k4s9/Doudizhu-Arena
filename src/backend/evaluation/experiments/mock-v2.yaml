@@ -1,0 +1,37 @@
+experiment_id: reliability-mock-v2
+seed_set_path: src/backend/evaluation/seed_sets/mock-v2.json
+total_hands: 1
+max_tiebreaker_hands: 0
+ko_enabled: false
+seat_rotations: 1
+max_calls: 2000
+max_input_tokens: 65536
+task_timeout_seconds: 60
+cancellation_deadline_seconds: 5
+timeout_config:
+  bidding_seconds: 2
+  individual_play_seconds: 2
+  team_pool_seconds: 60
+  exhausted_individual_seconds: 1
+  max_consecutive_llm_failures: 3
+pricing_version: mock-zero-v1
+budget_limit_usd: 0.01
+models:
+  - config_name: reliability-mock-v1
+    provider: mock
+    model: reliability-mock-v1
+    base_url: mock://local
+    system_prompt: "本地合成数据，仅用于可靠性工程验收。"
+    parameters:
+      max_tokens: 512
+      temperature: 0
+      seed: 42
+    pricing:
+      input_per_million: 0
+      output_per_million: 0
+      source: synthetic-no-provider-charge
+      effective_date: "2026-09-21"
+variants:
+  - {variant_id: single_generation, retry_limit: 0, rule_feedback: false, enable_reflection: false, memory_mode: disabled}
+  - {variant_id: generic_retry, retry_limit: 2, rule_feedback: false, enable_reflection: false, memory_mode: disabled}
+  - {variant_id: rule_feedback, retry_limit: 2, rule_feedback: true, enable_reflection: false, memory_mode: disabled}

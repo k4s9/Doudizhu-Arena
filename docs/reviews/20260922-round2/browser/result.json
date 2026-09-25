@@ -1,0 +1,27 @@
+{
+  "kind": "mock-browser-acceptance",
+  "mock_delay_seconds": 0.06,
+  "real_providers_disabled": true,
+  "stage": "complete",
+  "identical_live_events": 10,
+  "terminal_reconnect": {
+    "match_id": "2a97986943624232a46deae358f61280",
+    "status": "finished",
+    "score": {
+      "red": 0,
+      "blue": 0
+    },
+    "watermark": 281
+  },
+  "terminal_reload": true,
+  "run_id": "e6e32ef11e0c49109bc612d173545867",
+  "task_counts": {
+    "planned": 0,
+    "running": 0,
+    "finished": 6,
+    "failed": 0,
+    "cancelled": 0
+  },
+  "integrity_complete": true,
+  "page_errors": []
+}

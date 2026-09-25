@@ -1,0 +1,32 @@
+{
+  "kind": "real-uni-api-probe",
+  "ok": false,
+  "results": [
+    {
+      "name": "Qwen-Balanced",
+      "provider": "openai",
+      "model": "qwen3.5",
+      "base_url": "https://uni-api.cstcloud.cn/v1",
+      "timeout_seconds": 600.0,
+      "max_tokens": 2048,
+      "sdk_retries": 0,
+      "ok": false,
+      "error_type": "APIConnectionError",
+      "http_status": null,
+      "elapsed_seconds": 0.68
+    },
+    {
+      "name": "Minimax-Balanced",
+      "provider": "openai",
+      "model": "minimax-m27",
+      "base_url": "https://uni-api.cstcloud.cn/v1",
+      "timeout_seconds": 600.0,
+      "max_tokens": 2048,
+      "sdk_retries": 0,
+      "ok": false,
+      "error_type": "APIConnectionError",
+      "http_status": null,
+      "elapsed_seconds": 0.014
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+name: doudizhu-arena
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - nodejs>=22.12,<23
+  - pip
+  - pip:
+      - -r src/backend/requirements.txt
+      - -e ./src/backend[dev]

@@ -142,6 +142,10 @@ class TimeoutManager:
         ps = self._player_states.get(seat)
         return ps.auto_play_enabled if ps else False
 
+    def consecutive_failures(self, seat: str) -> int:
+        state = self._player_states.get(seat)
+        return state.consecutive_failures if state else 0
+
     # ── auto-play ───────────────────────────────────────────────────────
 
     @staticmethod

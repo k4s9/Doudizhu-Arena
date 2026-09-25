@@ -10,11 +10,11 @@
 
 set -e
 
-PROJECT_DIR="/home/k4s9/Doudizhu-Arena"
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/src/backend"
 FRONTEND_DIR="$PROJECT_DIR/src/frontend"
 CONDA_ENV="doudizhu-arena"
-CONDA_PREFIX="/home/k4s9/miniconda3/envs/$CONDA_ENV"
+ARENA_ENV_PREFIX="${DOUDIZHU_ENV_PREFIX:-$(conda run -n "$CONDA_ENV" python -I -c 'import sys; print(sys.prefix)')}"
 
 # Colors
 GREEN='\033[0;32m'
@@ -38,18 +38,23 @@ mkdir -p "$PROJECT_DIR/data"
 # misleading state where Vite is available but every API request fails.
 echo -e "${GREEN}=== Validating configuration ===${NC}"
 cd "$BACKEND_DIR"
-"$CONDA_PREFIX/bin/python" -c 'from pathlib import Path; import yaml; yaml.safe_load(Path("arena/config/agents.yaml").read_text(encoding="utf-8"))' || {
+"$ARENA_ENV_PREFIX/bin/python" -I -c 'from pathlib import Path; import yaml; yaml.safe_load(Path("arena/config/agents.yaml").read_text(encoding="utf-8"))' || {
     echo -e "${RED}Invalid agents.yaml; services were not started.${NC}"
     exit 1
 }
 
 # Clean up function
+BACKEND_PID=""
+FRONTEND_PID=""
 cleanup() {
+    trap - EXIT INT TERM
     echo -e "\n${YELLOW}Shutting down...${NC}"
-    [ -n "$BACKEND_PID" ] && kill "$BACKEND_PID" 2>/dev/null
-    [ -n "$FRONTEND_PID" ] && kill "$FRONTEND_PID" 2>/dev/null
-    wait "$BACKEND_PID" 2>/dev/null
-    wait "$FRONTEND_PID" 2>/dev/null
+    for pid in "$BACKEND_PID" "$FRONTEND_PID"; do
+        if [[ -n "$pid" ]]; then kill "$pid" 2>/dev/null || true; fi
+    done
+    for pid in "$BACKEND_PID" "$FRONTEND_PID"; do
+        if [[ -n "$pid" ]]; then wait "$pid" 2>/dev/null || true; fi
+    done
     echo -e "${GREEN}All processes stopped.${NC}"
 }
 trap cleanup EXIT INT TERM
@@ -57,10 +62,10 @@ trap cleanup EXIT INT TERM
 # ── Backend ──────────────────────────────────────────────────────────────
 echo -e "${GREEN}=== Starting Backend (port 8000) ===${NC}"
 
-export PATH="$CONDA_PREFIX/bin:$PATH"
+export PATH="$ARENA_ENV_PREFIX/bin:$PATH"
 
 cd "$BACKEND_DIR"
-"$CONDA_PREFIX/bin/python" -m uvicorn main:app \
+"$ARENA_ENV_PREFIX/bin/python" -I -B -m uvicorn main:app --app-dir "$BACKEND_DIR" \
     --host 0.0.0.0 \
     --port 8000 \
     $RELOAD_FLAG \
@@ -73,9 +78,9 @@ echo "  Backend PID: $BACKEND_PID"
 echo -e "${GREEN}=== Starting Frontend (port 5173) ===${NC}"
 
 cd "$FRONTEND_DIR"
-"$CONDA_PREFIX/bin/node" ./node_modules/.bin/vite \
+"$ARENA_ENV_PREFIX/bin/node" ./node_modules/.bin/vite \
     --host 0.0.0.0 \
-    --port 5173 &
+    --port 5173 --strictPort &
 FRONTEND_PID=$!
 
 echo "  Frontend PID: $FRONTEND_PID"
@@ -89,4 +94,4 @@ echo -e "  API Docs:     ${YELLOW}http://localhost:8000/docs${NC}"
 echo -e "\n  Press Ctrl+C to stop both.\n"
 
 # Wait for either process to exit
-wait
+wait -n

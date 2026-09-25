@@ -1,0 +1,14 @@
+[
+  {
+    "model": "qwen",
+    "completed_decisions_checked": 17,
+    "issues": [],
+    "scope": "committed prefix only, not terminal match audit"
+  },
+  {
+    "model": "minimax",
+    "completed_decisions_checked": 29,
+    "issues": [],
+    "scope": "committed prefix only, not terminal match audit"
+  }
+]
