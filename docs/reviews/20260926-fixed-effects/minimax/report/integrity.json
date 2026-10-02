@@ -1,0 +1,11 @@
+{
+  "complete": true,
+  "issues": [],
+  "run_id": "6a98c31fae1a409b90d83423776837f8",
+  "manifest_sha256": "22a860a35cc7b94a598404a040229b74b5242ee84ae918b4541a55771f789154",
+  "planned_observations": 192,
+  "finished_observations": 192,
+  "physical_calls": 292,
+  "usage_known_calls": 292,
+  "source_replay": true
+}

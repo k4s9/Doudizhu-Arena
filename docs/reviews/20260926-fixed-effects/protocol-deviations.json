@@ -1,0 +1,26 @@
+[
+  {
+    "model": "qwen",
+    "kind": "unknown_usage",
+    "id": "f7b75a6e4bd74167a2644b91ec5dee8a",
+    "decision_id": "22d14bd6e12ae71d670092492a2a84bf341e580085f70cab8878558568d127ab",
+    "error_message": "OpenAI API call failed: stream timeout",
+    "latency_ms": 180250,
+    "handling": "Usage stays unknown in ledger; failure remains in all denominators."
+  },
+  {
+    "model": "qwen",
+    "kind": "reported_output_exceeds_requested_limit",
+    "requested_max_tokens": 8192,
+    "id": "6611e393654046e7ad6ed30895b476a1",
+    "decision_id": "369f4e2292f85a49c62bbdc1e97530fd818b509c8c22956dfb8b4317ce2e36fe",
+    "variant_id": "shared_first",
+    "attempt": 1,
+    "response_model": "Qwen3.5-397B-A17B",
+    "prompt_tokens": 1260,
+    "completion_tokens": 9142,
+    "total_tokens": 10402,
+    "latency_ms": 152721,
+    "handling": "All observations retained; original audit remains failed; no inferential effect interval emitted."
+  }
+]

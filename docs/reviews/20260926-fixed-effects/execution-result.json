@@ -1,0 +1,12 @@
+[
+  {
+    "model": "minimax",
+    "complete": true,
+    "calls": 292
+  },
+  {
+    "model": "qwen",
+    "complete": false,
+    "calls": 198
+  }
+]

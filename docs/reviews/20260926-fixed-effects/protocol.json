@@ -1,0 +1,18 @@
+{
+  "version": "shared-first-response-v1",
+  "split": "test",
+  "concurrency": 2,
+  "call_timeout_seconds": 300.0,
+  "decision_timeout_seconds": 600.0,
+  "cancellation_deadline_seconds": 5.0,
+  "retry_limit": 2,
+  "schedule_seed": "fixed-feedback-order-20260926-v1",
+  "bootstrap_seed": "fixed-feedback-bootstrap-20260926-v1",
+  "bootstrap_resamples": 20000,
+  "primary_phase": "playing",
+  "primary_contrast": "rule_feedback_minus_generic_retry",
+  "first_response": "one physical response shared across all protocols",
+  "provider_errors": "same generic retry in both branches",
+  "latency_estimand": "sum of own provider call durations, including shared first; excludes queue and branch scheduling",
+  "model_version_policy": "freeze requested model; record all returned names/fingerprints; mixed names limit version-specific conclusions"
+}

@@ -1,0 +1,13 @@
+{
+  "complete": false,
+  "issues": [
+    "output allowance"
+  ],
+  "run_id": "59d7e994187a45a7bc56916dc34450a1",
+  "manifest_sha256": "6e04f7437d7d42ef0e9fb5eaef7c8cc1aea2616b1509772bc19ad291c874559e",
+  "planned_observations": 192,
+  "finished_observations": 192,
+  "physical_calls": 198,
+  "usage_known_calls": 197,
+  "source_replay": true
+}

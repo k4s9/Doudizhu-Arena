@@ -1,0 +1,103 @@
+{
+  "verified_at": "2026-09-26T12:16:31.473089+00:00",
+  "execution_completed": true,
+  "all_protocols_passed": false,
+  "independent_source_test_seeds": 24,
+  "test_observations_per_model": 192,
+  "playing_observations_per_model": 168,
+  "physical_calls": 490,
+  "usage_known_calls": 489,
+  "models": {
+    "minimax": {
+      "run_id": "6a98c31fae1a409b90d83423776837f8",
+      "execution_finished_observations": 192,
+      "protocol_audit_passed": true,
+      "issues": [],
+      "physical_calls": 292,
+      "known_usage_calls": 292,
+      "source_sha256": "b21ed455aaa8453e55920c8a012cc18c6ba00866d1f7a3426b7b814e699427b4",
+      "manifest_sha256": "22a860a35cc7b94a598404a040229b74b5242ee84ae918b4541a55771f789154",
+      "independent_and_public_reports_byte_identical": true,
+      "verified_report_files": 8,
+      "returned_models": {
+        "minimax-m27-eic": 154,
+        "minimax-m27": 138
+      }
+    },
+    "qwen": {
+      "run_id": "59d7e994187a45a7bc56916dc34450a1",
+      "execution_finished_observations": 192,
+      "protocol_audit_passed": false,
+      "issues": [
+        "output allowance"
+      ],
+      "physical_calls": 198,
+      "known_usage_calls": 197,
+      "source_sha256": "b21ed455aaa8453e55920c8a012cc18c6ba00866d1f7a3426b7b814e699427b4",
+      "manifest_sha256": "6e04f7437d7d42ef0e9fb5eaef7c8cc1aea2616b1509772bc19ad291c874559e",
+      "independent_and_public_reports_byte_identical": true,
+      "verified_report_files": 8,
+      "returned_models": {
+        "Qwen3.5-397B-A17B": 197
+      }
+    }
+  },
+  "tests": {
+    "unique_test_identities": 120,
+    "final_known_passes": 120,
+    "final_known_failures_or_skips": 0,
+    "history": [
+      {
+        "file": "regression-initial.xml",
+        "name": "pytest",
+        "errors": "0",
+        "failures": "2",
+        "skipped": "0",
+        "tests": "118",
+        "time": "44.508",
+        "timestamp": "2026-09-26T19:14:47.193559+08:00",
+        "hostname": "Taishan200"
+      },
+      {
+        "file": "final-fixed-tests.xml",
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "14",
+        "time": "7.382",
+        "timestamp": "2026-09-26T19:16:02.993377+08:00",
+        "hostname": "Taishan200"
+      },
+      {
+        "file": "archive-tests.xml",
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "1",
+        "time": "0.317",
+        "timestamp": "2026-09-26T19:38:40.606293+08:00",
+        "hostname": "Taishan200"
+      },
+      {
+        "file": "output-overrun-test.xml",
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "1",
+        "time": "1.145",
+        "timestamp": "2026-09-26T20:17:11.207915+08:00",
+        "hostname": "Taishan200"
+      }
+    ],
+    "note": "104 related regressions passed before the audit JSON round-trip fix; 14 final study tests, 1 archive-secret test and 1 additional output-overrun regression passed. Not a full repository regression run."
+  },
+  "interpretation": "Minimax primary estimate +2.976 pp with 95% CI [-1.190,6.548] crosses zero. Qwen is protocol-nonconforming; descriptive results retained. No stable uplift claim.",
+  "public_credentials": "Only required configurations copied; api_key blanked before insertion into a new database, never copied encrypted or plaintext.",
+  "source_databases_modified": false,
+  "additional_real_calls_during_audit": 0,
+  "public_plaintext_and_encrypted_secret_scan": "passed",
+  "frozen_source_snapshot_files_match": 72
+}

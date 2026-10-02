@@ -1,0 +1,59 @@
+{
+  "date": "2026-09-28",
+  "scope": "Resume suitability review for AI application / Agent development",
+  "base_commit": "204f47afa461f98208a9b9ad31e5999b883305d0",
+  "uncommitted_implementation_included": true,
+  "backend": {
+    "tests": 387,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 554.785,
+    "offline_guard_connection_attempts": 0
+  },
+  "backend_initial_sandbox_attempt": "Interrupted after sustained stall; full offline suite then passed outside sandbox.",
+  "backend_diagnostics": "120-second faulthandler traces occurred in three long integration tests; all tests subsequently passed.",
+  "frontend": {
+    "test_files": 4,
+    "passed": 8,
+    "production_build": "passed; output in new /tmp directory"
+  },
+  "fixed_archive": {
+    "checked_files": 41,
+    "mismatches": [],
+    "source_files": 72,
+    "source_mismatches": [],
+    "rebuilt_reports": {
+      "minimax": {
+        "complete": true,
+        "issues": [],
+        "physical_calls": 292,
+        "files": 8,
+        "different_files": []
+      },
+      "qwen": {
+        "complete": false,
+        "issues": [
+          "output allowance"
+        ],
+        "physical_calls": 198,
+        "files": 8,
+        "different_files": []
+      }
+    }
+  },
+  "real_model_calls_this_review": 0,
+  "github_current_commit_ci": {
+    "url": "https://github.com/k4s9/Doudizhu-Arena/actions/runs/36131096802",
+    "conclusion": "failure",
+    "failed_steps": [
+      "Backend regression suite",
+      "Create mock experiment through Nginx and verify report, replay and WebSocket",
+      "Capture logs and stop test services"
+    ],
+    "log_download": "Unauthenticated API returned 403; root causes not established from annotations."
+  },
+  "browser_acceptance_this_review": "not run; historical evidence inspected",
+  "docker_acceptance_this_review": "not run; remote step statuses inspected",
+  "business_code_changes": false
+}
