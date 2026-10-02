@@ -14,6 +14,7 @@ function statusClass(status) {
     case 'running': return 'text-green-400 bg-green-400/10';
     case 'finished': return 'text-slate-400 bg-slate-400/10';
     case 'paused': return 'text-amber-400 bg-amber-400/10';
+    case 'interrupted': return 'text-rose-400 bg-rose-400/10';
     default: return 'text-blue-400 bg-blue-400/10';
   }
 }
@@ -23,6 +24,7 @@ function statusLabel(status) {
     case 'running': return '进行中';
     case 'finished': return '已结束';
     case 'paused': return '已暂停';
+    case 'interrupted': return '已中断';
     case 'created': return '已创建';
     default: return status;
   }
@@ -65,7 +67,7 @@ async function handleDelete(match) {
         class="bg-slate-800 border border-slate-700 rounded-lg p-4 hover:border-slate-600 transition-colors"
       >
         <div class="flex items-center justify-between">
-          <router-link :to="m.status === 'finished' ? `/replay/${m.id}` : `/match/${m.id}`" class="block flex-1">
+          <router-link :to="['finished', 'interrupted'].includes(m.status) && m.current_hand > 0 ? `/replay/${m.id}` : `/match/${m.id}`" class="block flex-1">
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="font-semibold text-white">{{ m.name }}</h3>

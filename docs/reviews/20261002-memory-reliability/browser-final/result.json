@@ -1,0 +1,35 @@
+{
+  "kind": "mock-browser-acceptance",
+  "mock_delay_seconds": 0.06,
+  "real_providers_disabled": true,
+  "chromium_args": [
+    "--js-flags=--jitless"
+  ],
+  "stage": "complete",
+  "identical_live_events": 10,
+  "terminal_reconnect": {
+    "match_id": "4199a6c59f9f43e491e187746a4177b8",
+    "status": "finished",
+    "score": {
+      "red": 0,
+      "blue": 0
+    },
+    "watermark": 281
+  },
+  "terminal_reload": true,
+  "player_memory": {
+    "player_id": "9f29499230b1454db96bd810cb340a0c",
+    "revision": 2,
+    "reload_persisted": true
+  },
+  "run_id": "a484d6ef73c7422e8f1ecb27b92c3355",
+  "task_counts": {
+    "planned": 0,
+    "running": 0,
+    "finished": 6,
+    "failed": 0,
+    "cancelled": 0
+  },
+  "integrity_complete": true,
+  "page_errors": []
+}

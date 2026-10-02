@@ -11,6 +11,7 @@ from ...evaluation.runner import EvaluationRunner
 from ...evaluation.spec import ExperimentSpec, PreflightError, RunManifest, build_run_manifest
 from ...security.credentials import has_usable_credential
 from ...config.paths import PROJECT_ROOT as ROOT, EVALUATION_DIR
+from ..match_lifecycle import consume_task_result, ensure_task_registry
 
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 
@@ -125,6 +126,9 @@ def _load_spec(repo, run_id: str):
 
 @router.post("/{run_id}/start")
 async def start_evaluation(run_id: str, request: Request):
+    ensure_task_registry(request.app)
+    if getattr(request.app.state, "shutting_down", False):
+        raise HTTPException(503, detail="Server is stopping")
     body = await request.json()
     run, spec, manifest = _load_spec(_repo(request), run_id)
     mock = manifest.models[0].provider == "mock"
@@ -145,8 +149,11 @@ async def start_evaluation(run_id: str, request: Request):
             await runner.run(run_id, spec, manifest, real_models=not mock, mock=mock)
         finally:
             request.app.state.active_evaluations.pop(run_id, None)
+            request.app.state.evaluation_tasks.pop(run_id, None)
 
-    asyncio.create_task(execute())
+    task = asyncio.create_task(execute())
+    request.app.state.evaluation_tasks[run_id] = task
+    task.add_done_callback(consume_task_result)
     return {"run_id": run_id, "status": "running"}
 
 

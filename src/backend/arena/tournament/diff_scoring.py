@@ -44,7 +44,8 @@ class MatchScoreboard:
 
     @property
     def total_hands_played(self) -> int:
-        return len(self.hand_results) + self.tiebreaker_count
+        # Tiebreakers are already included by record_hand.
+        return len(self.hand_results)
 
     def record_hand(
         self,

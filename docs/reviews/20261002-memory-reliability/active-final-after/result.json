@@ -1,0 +1,29 @@
+{
+  "kind": "active-match-restart",
+  "prepared": true,
+  "match_id": "806254311b754969a57cb1f913f7cedb",
+  "players": [
+    "bcfeee394397449498b6d75f12f415d2",
+    "8cd6a7c385fc4ba28b06b45cd5c22c8c",
+    "e6ace8f62eaf4ec88dcabf466c547b09",
+    "691daaf7fbc54fd8ae42a11f2fad791e",
+    "b047cd13684d4550a2c8f598d1908963",
+    "2bfed92003f54ce2b7dfce214e1316f4",
+    "64eec6839eb8402eb25b057d96921887",
+    "25f11f6e942f43be94f64fad89434a5f"
+  ],
+  "memory": "重启前保存的经验；随机基线不使用模型记忆。",
+  "score": {
+    "red": 0,
+    "blue": 1
+  },
+  "current_hand": 1,
+  "complete": true,
+  "status_after_restart": "interrupted",
+  "next_match_id": "51cba2d3671d4d879fa5b29878c57ac1",
+  "next_match_finished": true,
+  "preserved_score": true,
+  "preserved_memory": true,
+  "released_player_claims": true,
+  "settled_matches_per_player": 1
+}

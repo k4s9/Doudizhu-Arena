@@ -7,11 +7,17 @@ Each table runs independently via asyncio.gather.
 from __future__ import annotations
 
 import asyncio
+import logging
+import math
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from ..agent.base import Agent
+from ..agent.learning import run_learning, record_learning_failure
+from ..agent.memory import validate_memory_text, MAX_LONG_TERM_CHARS
+from ..agent.random_agent import RandomAgent
 from ..engine.deck import Deck, DealResult
 from ..engine.pause import PauseManager
 from ..engine.timeout import TimeoutConfig, TimeoutManager
@@ -22,6 +28,8 @@ from .table import HandResult, TableRunner
 if TYPE_CHECKING:
     from ..db.repository import DatabaseRepository
     from ..api.event_bus import MatchEventBus
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -35,6 +43,13 @@ class MatchConfig:
     enable_reflection: bool = True
     enable_summary: bool = True
     persist_long_term_memory: bool = True
+    reflection_timeout_seconds: float = 30.0
+    summary_timeout_seconds: float = 45.0
+
+    def __post_init__(self):
+        for value in (self.reflection_timeout_seconds, self.summary_timeout_seconds):
+            if not math.isfinite(value) or value <= 0:
+                raise ValueError("learning timeouts must be finite and positive")
 
 
 @dataclass
@@ -93,6 +108,7 @@ class MatchRunner:
         self.db_repo = db_repo
         self.match_name = match_name
         self.match_id = ""  # Set when match is created in DB
+        self.learning_failures: list[dict] = []
         self.pause = pause_manager or PauseManager("match")
 
         # Event bus for WebSocket broadcasting (lazy init — needs match_id)
@@ -122,17 +138,37 @@ class MatchRunner:
             "A", table_a_agents, seating.table_a_teams,
             pause_a, timeout_a, db_repo=db_repo, match_id=self.match_id,
             enable_reflection=config.enable_reflection,
+            reflection_timeout_seconds=config.reflection_timeout_seconds,
         )
         self.table_b = TableRunner(
             "B", table_b_agents, seating.table_b_teams,
             pause_b, timeout_b, db_repo=db_repo, match_id=self.match_id,
             enable_reflection=config.enable_reflection,
+            reflection_timeout_seconds=config.reflection_timeout_seconds,
         )
 
         self.scoreboard = MatchScoreboard()
         self._hand_records: list[MatchHandRecord] = []
 
     async def run(self) -> MatchResult:
+        try:
+            return await self._run()
+        except BaseException:
+            if self.db_repo and self.match_id:
+                try:
+                    match = self.db_repo.get_match(self.match_id)
+                    if match and match["status"] in ("created", "running", "paused"):
+                        self.db_repo.update_match_status(self.match_id, "interrupted")
+                except (Exception, asyncio.CancelledError) as exc:
+                    logger.warning("Could not mark interrupted match: %s", type(exc).__name__)
+            raise
+        finally:
+            for agent in self.agents.values():
+                agent.memory.end_match()
+            if self.event_bus:
+                self.event_bus.close()
+
+    async def _run(self) -> MatchResult:
         """Run the full match: 20 hands (plus tiebreakers) across AB tables."""
         started_at = self._now_iso()
 
@@ -152,6 +188,10 @@ class MatchRunner:
             )
             self.table_a.match_id = self.match_id
             self.table_b.match_id = self.match_id
+
+        if not self.match_id:
+            self.match_id = uuid.uuid4().hex
+        self.table_a.match_id = self.table_b.match_id = self.match_id
 
         # Initialize event bus for WebSocket broadcasting
         from ..api.event_bus import MatchEventBus
@@ -175,9 +215,13 @@ class MatchRunner:
                 self._db_initialized = True
 
         # Initialize per-match short-term memory
-        if self.match_id:
-            for agent in self.agents.values():
-                agent.memory.start_match(self.match_id)
+        for agent in self.agents.values():
+            agent.memory.start_match(self.match_id)
+            if self.db_repo:
+                version = self.db_repo.freeze_match_memory(
+                    self.match_id, agent.agent_id, agent.memory.get_long_term(),
+                )
+                agent.memory.long_term_version_id = version["id"]
 
         for hand_num in range(1, self.config.total_hands + 1):
             # Check pause before each hand
@@ -245,8 +289,27 @@ class MatchRunner:
 
         finished_at = self._now_iso()
 
-        # Emit match_ended FIRST (before potentially slow summary/DB operations)
+        # Commit deterministic results before announcing completion. Learning
+        # follows separately and cannot prevent settlement or double-count it.
         ko_triggered = self.scoreboard.ko_status is not None and self.scoreboard.ko_status.triggered
+        if self.db_repo and self.match_id:
+            ko_json = None
+            if self.scoreboard.ko_status and self.scoreboard.ko_status.triggered:
+                import json
+                ko_json = json.dumps({
+                    "winner_team": self.scoreboard.ko_status.winner_team,
+                    "lead": self.scoreboard.ko_status.lead,
+                    "threshold": self.scoreboard.ko_status.threshold,
+                })
+            self.db_repo.settle_match(
+                self.match_id, winner_team, self.seating.agent_teams,
+                finished_at=finished_at,
+                current_hand=self._hand_records[-1].hand_num if self._hand_records else 0,
+                score_red=self.scoreboard.red_total,
+                score_blue=self.scoreboard.blue_total,
+                ko_result=ko_json,
+            )
+
         if self.event_bus:
             await self.event_bus.emit_match_ended(
                 winner_team=winner_team,
@@ -257,39 +320,10 @@ class MatchRunner:
                 finished_at=finished_at,
             )
 
-        # Finalize match in DB
-        if self.db_repo and self.match_id:
-            ko_json = None
-            if self.scoreboard.ko_status and self.scoreboard.ko_status.triggered:
-                import json
-                ko_json = json.dumps({
-                    "winner_team": self.scoreboard.ko_status.winner_team,
-                    "lead": self.scoreboard.ko_status.lead,
-                    "threshold": self.scoreboard.ko_status.threshold,
-                })
-            self.db_repo.update_match_status(
-                self.match_id, "finished",
-                finished_at=finished_at,
-                current_hand=hand_num,
-                score_red=self.scoreboard.red_total,
-                score_blue=self.scoreboard.blue_total,
-                ko_result=ko_json,
-            )
-
         # Run match summary for all agents (updates long-term memory)
         # This can be slow (LLM calls) — does NOT block match_ended emission above
         if self.config.enable_summary:
-            try:
-                await self._run_match_summary(winner_team, finished_at)
-            except Exception:
-                pass  # Summary failure should not affect match completion
-
-        for agent in self.agents.values():
-            agent.memory.end_match()
-
-        # Close event bus after everything is done
-        if self.event_bus:
-            self.event_bus.close()
+            await self._run_match_summary(winner_team, finished_at)
 
         return MatchResult(
             match_name=self.match_name,
@@ -497,36 +531,8 @@ class MatchRunner:
     # ── match summary ─────────────────────────────────────────────────────
 
     async def _run_match_summary(self, winner_team: str, finished_at: str) -> None:
-        """Run post-match summary for all agents, updating long-term memory and stats."""
+        """Summarize actual played hands; settlement is independent of learning."""
         from ..agent.base import AgentContext
-        from ..engine.card import SEATS
-
-        # ── Update player stats ──────────────────────────────────────────────
-        # Increment matches_played for every participant, and matches_won for
-        # players on the winning team.  Also update total_score from the
-        # cumulative match score (red vs blue).
-        if self.db_repo:
-            for agent_id, team in self.seating.agent_teams.items():
-                won = (team == winner_team)
-                self.db_repo.update_player_stats(
-                    agent_id,
-                    matches_played_delta=1,
-                    matches_won_delta=1 if won else 0,
-                    total_score_delta=(
-                        self.scoreboard.red_total if team == "red"
-                        else self.scoreboard.blue_total
-                    ),
-                )
-
-        # ── Build match summary context ──────────────────────────────────────
-        match_summary: dict[int, dict[str, str]] = {}
-        for record in self._hand_records:
-            for seat in SEATS:
-                aid = self.seating.table_a.get(seat) or self.seating.table_b.get(seat)
-                if aid:
-                    match_summary.setdefault(record.hand_num, {})[
-                        seat
-                    ] = record.table_a.remaining_hands.get(seat, ())
 
         # ── Summarize for each unique agent ──────────────────────────────────
         seen_agents: set[str] = set()
@@ -535,38 +541,57 @@ class MatchRunner:
                 continue
             seen_agents.add(agent.agent_id)
 
+            table, seat = self.seating.agent_seats.get(agent.agent_id, ("A", agent.seat))
+            team = self.seating.agent_teams.get(agent.agent_id, "")
+            hands = {}
+            for record in self._hand_records:
+                hand = record.table_a if table == "A" else record.table_b
+                role = ("void" if hand.void else "idle" if seat == hand.effective_idle
+                        else "landlord" if seat == hand.landlord else "farmer")
+                hands[record.hand_num] = {
+                    "table": table, "seat": seat, "role": role,
+                    "winner_team": hand.score.winner_team,
+                    "outcome": role if role in ("void", "idle") else
+                               "win" if hand.score.winner_team == team else "loss",
+                    "table_score": hand.score.final_score,
+                    "team_score": record.red_diff if team == "red" else record.blue_diff,
+                    "is_tiebreaker": record.is_tiebreaker,
+                }
             ctx = AgentContext(
                 seat=agent.seat,
                 role="",
                 hand_cards=[],
                 hand_size=0,
                 match_id=self.match_id,
-                match_summary={
-                    h: {"role": "participant"}
-                    for h in range(1, self.config.total_hands + 1)
-                },
+                match_summary=hands,
+                winner_team=winner_team,
             )
+            stage = "generation"
             try:
-                summary_result = await agent.summarize(ctx)
+                previous = agent.memory.get_long_term()
+                summary_result = await run_learning(
+                    agent, "summarize", ctx, self.config.summary_timeout_seconds,
+                )
                 long_term = summary_result.get("long_term_memory", "")
-
-                if long_term:
-                    agent.memory.update_long_term(long_term)
+                if not long_term and type(agent).summarize is RandomAgent.summarize:
+                    continue
+                long_term = validate_memory_text(long_term, max_chars=MAX_LONG_TERM_CHARS)
+                stage = "persistence"
                 if (
-                    long_term and self.config.persist_long_term_memory
+                    self.config.persist_long_term_memory
                     and self.db_repo and self.match_id
                 ):
-                    self.db_repo.update_player_long_term_memory(
-                        agent.agent_id, long_term,
+                    version = self.db_repo.save_long_term_memory(
+                        agent.agent_id, long_term, self.match_id,
+                        expected_content=previous, source={"kind": "match_summary"},
                     )
-                    self.db_repo.add_agent_memory(
-                        agent.agent_id,
-                        "long_term",
-                        long_term,
-                        match_id=self.match_id or None,
-                    )
-            except Exception:
-                pass  # Summary failure shouldn't crash
+                    agent.memory.long_term_version_id = version["id"]
+                agent.memory.update_long_term(long_term)
+            except Exception as exc:
+                record_learning_failure(
+                    self.db_repo, self.learning_failures, player_id=agent.agent_id,
+                    match_id=self.match_id, phase="summary", stage=stage, error=exc,
+                )
 
     def request_pause(self, reason: str = "user_requested") -> None:
         """Request pause at match level AND both tables."""

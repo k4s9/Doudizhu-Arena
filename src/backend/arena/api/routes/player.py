@@ -249,6 +249,7 @@ async def get_player(player_id: str, request: Request):
 
     statistics = build_player_statistics(repo.get_player_hand_records(player_id))
     memories = repo.get_agent_memories(player_id, memory_type="long_term")
+    versions = repo.list_memory_versions(player_id)
     return {
         "id": player["id"],
         "display_name": player["display_name"],
@@ -259,6 +260,14 @@ async def get_player(player_id: str, request: Request):
         "base_url": player.get("base_url"),
         "system_prompt": player.get("system_prompt"),
         "long_term_memory": player.get("long_term_memory", ""),
+        "memory_versions": versions,
+        "memory_failures": repo.list_memory_failures(player_id=player_id),
+        "memory_usage": [dict(row) for row in repo.conn.execute(
+            """SELECT u.match_id, u.version_id, v.revision, u.created_at
+               FROM match_memory_usage u JOIN memory_versions v ON v.id=u.version_id
+               WHERE u.player_id=? ORDER BY u.created_at DESC, u.id DESC LIMIT 100""",
+            (player_id,),
+        )],
         "matches_played": player.get("matches_played", 0),
         "matches_won": player.get("matches_won", 0),
         "total_score": player.get("total_score", 0),
@@ -278,8 +287,10 @@ async def get_player(player_id: str, request: Request):
 
 @router.put("/{player_id}")
 async def update_player(player_id: str, request: Request):
-    """Update a player's display_name."""
+    """Update the name or replace memory with a validated, audited version."""
     body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(400, detail={"error": {"code": "INVALID_REQUEST", "message": "Request must be an object"}})
     repo = _repo(request)
 
     player = repo.get_player(player_id)
@@ -290,8 +301,34 @@ async def update_player(player_id: str, request: Request):
     if "display_name" in body:
         updates["display_name"] = body["display_name"]
 
-    if updates:
-        repo.update_player_by_id(player_id, **updates)
+    version = None
+    with repo.atomic():
+        if "long_term_memory" in body:
+            from ..match_lifecycle import player_memory_is_claimed
+            from ...db.repository import MemoryConflictError
+            from ...agent.memory import MAX_LONG_TERM_CHARS
+
+            if player_memory_is_claimed(repo, player_id):
+                raise HTTPException(409, detail={"error": {
+                    "code": "PLAYER_BUSY", "message": "该选手正在比赛或保存总结，请结束后再修改记忆。",
+                }})
+            try:
+                version = repo.save_long_term_memory(
+                    player_id, body["long_term_memory"], None,
+                    expected_content=body.get("expected_long_term_memory", player.get("long_term_memory") or ""),
+                )
+            except MemoryConflictError as exc:
+                raise HTTPException(409, detail={"error": {
+                    "code": "MEMORY_CONFLICT", "message": "选手记忆已更新，请刷新后重新编辑。",
+                }}) from exc
+            except ValueError as exc:
+                raise HTTPException(422, detail={"error": {
+                    "code": "PLAYER_MEMORY_INVALID",
+                    "message": f"长期记忆必须是 1–{MAX_LONG_TERM_CHARS} 字符的文本。",
+                    "max_chars": MAX_LONG_TERM_CHARS,
+                }}) from exc
+        if updates:
+            repo.update_player_by_id(player_id, **updates)
 
     updated = repo.get_player_with_config(player_id)
     return {
@@ -302,6 +339,9 @@ async def update_player(player_id: str, request: Request):
         "matches_played": updated.get("matches_played", 0),
         "matches_won": updated.get("matches_won", 0),
         "total_score": updated.get("total_score", 0),
+        "long_term_memory": updated.get("long_term_memory", ""),
+        "memory_version_id": version["id"] if version else None,
+        "memory_revision": version["revision"] if version else None,
         "created_at": updated["created_at"],
         "updated_at": updated["updated_at"],
     }

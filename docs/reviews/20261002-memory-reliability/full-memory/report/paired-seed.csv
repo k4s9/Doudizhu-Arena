@@ -1,0 +1,4 @@
+seed,arm,matches,wins,ties,losses,win_rate,mean_diff_score,known_cost_usd,accounted_cost_usd
+memory-match-test-v1-001,no_memory,2,0,0,2,0.0,-6,0.0,0.0
+memory-match-test-v1-001,fixed_initial,2,0,0,2,0.0,-6,0.0,0.0
+memory-match-test-v1-001,frozen_memory,2,0,0,2,0.0,-6,0.0,0.0

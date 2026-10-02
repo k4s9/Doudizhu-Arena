@@ -1,0 +1,7 @@
+source_seed,arm,decisions,first_valid_rate,final_valid_rate,mean_retries,fallback_required_rate,known_cost_usd,accounted_cost_usd
+memory-test-v1-001,no_memory,8,0.125,1,0.875,0,0.0,0.0
+memory-test-v1-001,fixed_initial,8,0.125,1,0.875,0,0.0,0.0
+memory-test-v1-001,frozen_memory,8,0.125,1,0.875,0,0.0,0.0
+memory-test-v1-002,no_memory,8,0.125,1,0.875,0,0.0,0.0
+memory-test-v1-002,fixed_initial,8,0.125,1,0.875,0,0.0,0.0
+memory-test-v1-002,frozen_memory,8,0.125,1,0.875,0,0.0,0.0

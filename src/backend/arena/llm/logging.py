@@ -95,6 +95,21 @@ class LoggingLLMProvider(AbstractLLMProvider):
     def model(self) -> str:
         return self._inner.model
 
+    def set_observability_context(self, repo, **context) -> None:
+        """Rebind the evidence sink and discard identifiers from the previous hand.
+
+        Budget and execution guards belong to the surrounding task and survive
+        hand changes. The supplied repository may itself be guarded.
+        """
+        self._repo = repo
+        for name in ("agent_id", "table_hand_id", "run_id", "variant_id", "match_id"):
+            setattr(self, f"_{name}", context.get(name, ""))
+        self._decision_id = ""
+        self._attempt = None
+        self._phase = ""
+        self.last_usage = None
+        self.last_thinking = None
+
     def set_context(
         self, *, agent_id: str | None = None, table_hand_id: str | None = None,
         run_id: str | None = None, variant_id: str | None = None,

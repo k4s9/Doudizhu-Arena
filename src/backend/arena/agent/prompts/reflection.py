@@ -30,6 +30,7 @@ REFLECTION_SYSTEM_PROMPT = """你是斗地主AI选手 [{agent_name}]。请对本
 ```
 
 short_term_memory 将替换你当前的短期记忆，所以它应该包含本副牌的新经验以及之前记忆中的重要信息。
+reflection 和 short_term_memory 各不超过4000个字符；优先保留有具体对局证据、可用于下一副牌的经验。
 如果之前的短期记忆为空，直接创建新的短期记忆即可。"""
 
 

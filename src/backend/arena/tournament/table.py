@@ -8,12 +8,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING
 
 from ..agent.base import Agent, AgentContext, AgentError
+from ..agent.learning import run_learning, record_learning_failure
+from ..agent.memory import validate_memory_text, MAX_SHORT_TERM_CHARS
+from ..agent.random_agent import RandomAgent
 from ..engine.card import SEATS, Card
 from ..engine.deck import DealResult
 from ..engine.pause import PauseManager, PauseState
@@ -84,17 +88,22 @@ class TableRunner:
         db_repo: DatabaseRepository | None = None,
         match_id: str = "",
         enable_reflection: bool = True,
+        reflection_timeout_seconds: float = 30.0,
     ) -> None:
         if table not in ("A", "B"):
             raise ValueError(f"Table must be 'A' or 'B', got {table!r}")
+        if not math.isfinite(reflection_timeout_seconds) or reflection_timeout_seconds <= 0:
+            raise ValueError("reflection timeout must be finite and positive")
         self.table = table
         self.agents = agents
         self.teams = teams
         self.pause = pause_manager or PauseManager(table)
         self.timeout = timeout_manager or TimeoutManager()
         self.db_repo = db_repo
-        self.match_id = match_id
+        self.match_id = match_id or uuid.uuid4().hex
         self.enable_reflection = enable_reflection
+        self.reflection_timeout_seconds = reflection_timeout_seconds
+        self.learning_failures: list[dict] = []
         self.event_bus = None  # type: MatchEventBus | None — set by MatchRunner
         self._state = TableState(table=table)
         self._timeout_initialized = False
@@ -125,6 +134,9 @@ class TableRunner:
         """
         self._current_hand_id = hand_id
         self.active_turn = None
+        for agent in self.agents.values():
+            if agent.memory._current_match_id != self.match_id:
+                agent.memory.start_match(self.match_id)
 
         # 1. Initialize
         GameEngine.init_hand(
@@ -147,19 +159,26 @@ class TableRunner:
         self._current_table_hand_id = ""
         if self.db_repo and hand_id:
             self._current_table_hand_id = self.db_repo.create_table_hand(hand_id, self.table)
-            for agent in self.agents.values():
-                if hasattr(agent, "set_observability_context"):
-                    agent.set_observability_context(
-                        self.db_repo,
-                        match_id=self.match_id,
-                        table_hand_id=self._current_table_hand_id,
-                    )
+        for agent in self.agents.values():
+            if hasattr(agent, "set_observability_context"):
+                agent.set_observability_context(
+                    self.db_repo,
+                    match_id=self.match_id,
+                    table_hand_id=self._current_table_hand_id,
+                )
+            else:
                 provider = getattr(agent, "_provider", None)
-                if hasattr(provider, "set_context"):
+                if hasattr(provider, "set_observability_context"):
+                    provider.set_observability_context(
+                        self.db_repo, agent_id=agent.agent_id,
+                        match_id=self.match_id, table_hand_id=self._current_table_hand_id,
+                    )
+                elif hasattr(provider, "set_context"):
                     provider.set_context(
-                        agent_id=agent.agent_id,
+                        agent_id=agent.agent_id, match_id=self.match_id,
                         table_hand_id=self._current_table_hand_id,
                     )
+        if self.db_repo and hand_id:
             # Write initial hands
             for seat, cards in self._state.initial_hands.items():
                 self.db_repo.add_initial_hand(
@@ -172,12 +191,17 @@ class TableRunner:
 
         # 3. If void, return early
         if self._state.void:
+            remaining = GameEngine.get_remaining_hands(self._state)
             if self.db_repo and self._current_table_hand_id:
                 self.db_repo.update_table_hand_result(
                     self._current_table_hand_id,
                     status="void",
                     void=True,
                 )
+                for seat, cards in remaining.items():
+                    self.db_repo.add_remaining_hand(
+                        self._current_table_hand_id, seat, list(cards),
+                    )
             # Emit hand_ended for void tables too (so frontend knows this table is done)
             if self.event_bus:
                 await self.event_bus.emit_hand_ended(
@@ -186,9 +210,11 @@ class TableRunner:
                     winner_team="",
                     winner_role="void",
                     score={"base": 0, "multiplier": 0, "total": 0, "breakdown": {}},
-                    remaining_hands={s: [str(c) for c in self._state.initial_hands.get(s, ())] for s in SEATS},
+                    remaining_hands={s: [str(c) for c in cards] for s, cards in remaining.items()},
                     timestamp_ms=self._now_ms(),
                 )
+            if self.enable_reflection:
+                await self._run_reflections(hand_num, dealer, idle_seat, remaining)
             return HandResult(
                 table=self.table,
                 hand_num=hand_num,
@@ -203,7 +229,7 @@ class TableRunner:
                 effective_idle=idle_seat,
                 initial_hands=dict(self._state.initial_hands),
                 play_history=[],
-                remaining_hands={s: () for s in SEATS},
+                remaining_hands=remaining,
                 score=calculate_hand_score(
                     final_bid=0, winner_seat="", winner_team="",
                     landlord_seat="", bombs_played=0,
@@ -267,9 +293,9 @@ class TableRunner:
                     self._current_table_hand_id, seat, list(cards),
                 )
 
-            # Trigger reflection for all participating agents
-            if self.enable_reflection:
-                await self._run_reflections(hand_num, idle_seat, dealer, remaining)
+        # Learning is optional independently of durable storage.
+        if self.enable_reflection:
+            await self._run_reflections(hand_num, dealer, idle_seat, remaining)
 
         return HandResult(
             table=self.table,
@@ -632,7 +658,7 @@ class TableRunner:
         remaining: dict[str, tuple[Card, ...]],
     ) -> None:
         """Run reflection for all agents that participated in this hand."""
-        if not self.db_repo or not self._current_table_hand_id:
+        if not self.enable_reflection:
             return
 
         for seat in SEATS:
@@ -640,7 +666,7 @@ class TableRunner:
             if agent is None:
                 continue
 
-            actual_role = self._state.role_of(seat)
+            actual_role = "void" if self._state.void else self._state.role_of(seat)
             is_idle = seat == self._state.effective_idle and actual_role == "idle"
 
             # Build reflection context
@@ -648,33 +674,37 @@ class TableRunner:
                 seat, actual_role, is_idle, hand_num, dealer, idle_seat, remaining,
             )
 
+            stage = "generation"
             try:
-                reflection_result = await agent.reflect(ctx)
+                reflection_result = await run_learning(
+                    agent, "reflect", ctx, self.reflection_timeout_seconds,
+                )
                 reflection_text = reflection_result.get("reflection", "")
                 short_term = reflection_result.get("short_term_memory", "")
-
-                # Update in-memory short-term memory
-                if short_term:
-                    agent.memory.update_short_term(short_term)
-
-                # Persist reflection
-                self.db_repo.add_reflection(
-                    self._current_table_hand_id,
-                    player_id=agent.agent_id,
-                    seat=seat,
-                    actual_role=actual_role,
-                    reflection=reflection_text,
-                    short_term_memory=short_term,
+                reflection_text = validate_memory_text(
+                    reflection_text, max_chars=MAX_SHORT_TERM_CHARS, allow_empty=True,
                 )
-                if short_term:
-                    self.db_repo.add_agent_memory(
-                        agent.agent_id,
-                        "short_term",
-                        short_term,
-                        match_id=self.match_id,
+                short_term = validate_memory_text(
+                    short_term, max_chars=MAX_SHORT_TERM_CHARS, allow_empty=True,
+                )
+                if not reflection_text and not short_term:
+                    if type(agent).reflect is RandomAgent.reflect:
+                        continue
+                    raise ValueError("empty reflection")
+                stage = "persistence"
+                if self.db_repo and self._current_table_hand_id:
+                    self.db_repo.save_reflection_memory(
+                        self._current_table_hand_id, agent.agent_id, seat,
+                        actual_role, reflection_text, short_term, self.match_id,
                     )
-            except Exception:
-                pass  # Reflection failure shouldn't block the match
+                if short_term:
+                    agent.memory.update_short_term(short_term, self.match_id or None)
+            except Exception as exc:
+                record_learning_failure(
+                    self.db_repo, self.learning_failures, player_id=agent.agent_id,
+                    match_id=self.match_id, phase="reflection", stage=stage,
+                    error=exc, table_hand_id=self._current_table_hand_id or None,
+                )
 
     def _build_reflection_context(
         self,
@@ -713,10 +743,20 @@ class TableRunner:
             ],
             initial_hand=tuple(self._state.initial_hands.get(seat, ())),
             remaining_hands=remaining,
-            hand_score=self._state.final_bid,  # approximate
+            hand_score=calculate_hand_score(
+                final_bid=self._state.final_bid,
+                winner_seat=self._state.winner_seat,
+                winner_team=self._state.winner_team,
+                landlord_seat=self._state.landlord,
+                bombs_played=self._state.bombs_played,
+                spring=(self._state.winner_role == "landlord" and self._state.farmer_has_not_played),
+                anti_spring=(self._state.winner_role == "farmer" and self._state.landlord_play_count <= 1),
+                void=self._state.void,
+            ).final_score,
             winner_team=self._state.winner_team,
-            winner_role=self._state.winner_role,
+            winner_role="void" if self._state.void else self._state.winner_role,
             hand_num=hand_num,
+            match_id=self.match_id,
             landlord=self._state.landlord,
             active_players=list(self._state.active_order),
             player_hand_sizes={

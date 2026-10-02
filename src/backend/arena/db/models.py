@@ -400,6 +400,9 @@ def init_db(path: str) -> sqlite3.Connection:
     from .reliability import init as init_reliability
     init_reliability(conn)
 
+    from .memory import init as init_memory
+    init_memory(conn)
+
     conn.execute("PRAGMA foreign_keys=ON")
     conn.commit()
     return conn

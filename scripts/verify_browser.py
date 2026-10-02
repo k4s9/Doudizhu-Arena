@@ -50,6 +50,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--serve-backend', type=int)
+    parser.add_argument('--chromium-arg', action='append', default=[],
+                        help='Extra browser option, e.g. --chromium-arg=--js-flags=--jitless')
     args = parser.parse_args()
     if args.serve_backend:
         serve(args.output, args.serve_backend)
@@ -67,15 +69,17 @@ def main():
     logs = [(output / name).open('w') for name in ('backend.log', 'frontend.log')]
     processes = []
     viewers = []
-    result = {'kind': 'mock-browser-acceptance', 'mock_delay_seconds': 0.06, 'real_providers_disabled': True}
+    result = {'kind': 'mock-browser-acceptance', 'mock_delay_seconds': 0.06,
+              'real_providers_disabled': True, 'chromium_args': args.chromium_arg}
     def progress(stage):
         result['stage'] = stage
         (output / 'progress.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
     try:
-        subprocess.run([str(node), 'node_modules/vite/bin/vite.js', 'build'],
+        build_dir = output.resolve() / 'frontend-dist'
+        subprocess.run([str(node), 'node_modules/vite/bin/vite.js', 'build', '--outDir', str(build_dir)],
             cwd=ROOT / 'src/frontend', stdout=logs[1], stderr=subprocess.STDOUT, check=True)
         processes.append(subprocess.Popen([sys.executable, '-I', '-B', __file__, '--serve-backend', str(backend_port), '--output', str(output)], stdout=logs[0], stderr=subprocess.STDOUT))
-        processes.append(subprocess.Popen([str(node), 'node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', str(frontend_port), '--strictPort'],
+        processes.append(subprocess.Popen([str(node), 'node_modules/vite/bin/vite.js', 'preview', '--outDir', str(build_dir), '--host', '127.0.0.1', '--port', str(frontend_port), '--strictPort'],
             cwd=ROOT / 'src/frontend', env={**os.environ, 'DOUDIZHU_DEV_BACKEND': backend_url}, stdout=logs[1], stderr=subprocess.STDOUT))
         import httpx
         from playwright.sync_api import sync_playwright, expect
@@ -90,7 +94,7 @@ def main():
             else:
                 raise RuntimeError('Local servers did not become ready; inspect logs')
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
+                browser = p.chromium.launch(headless=True, args=args.chromium_arg)
                 context = browser.new_context(viewport={'width': 1440, 'height': 1000})
                 context.tracing.start(screenshots=True, snapshots=True)
                 page = context.new_page()
@@ -189,6 +193,30 @@ def main():
                 progress('replay')
                 expect(page.get_by_role('button', name='▶ 播放', exact=True)).to_be_visible(timeout=15000)
                 page.screenshot(path=str(output / 'replay.png'), full_page=True)
+                progress('player-memory')
+                config_response = client.post('/api/v1/configs', json={
+                    'name': 'Memory browser fixture', 'provider': 'random', 'model': 'random',
+                })
+                config_response.raise_for_status()
+                player_response = client.post('/api/v1/players', json={
+                    'config_id': config_response.json()['id'], 'display_name': '记忆验收牌手',
+                })
+                player_response.raise_for_status()
+                player_id = player_response.json()['id']
+                page.goto(frontend_url + '/players/' + player_id)
+                page.get_by_role('button', name='整理长期记忆', exact=True).click()
+                page.get_by_label('整理后的长期记忆').fill('先检查合法跟牌，再考虑保留对子。')
+                page.get_by_role('button', name='保存新版本', exact=True).click()
+                expect(page.get_by_role('button', name='整理长期记忆', exact=True)).to_be_visible()
+                page.reload()
+                expect(page.get_by_text('先检查合法跟牌，再考虑保留对子。', exact=True).first).to_be_visible()
+                saved = client.get('/api/v1/players/' + player_id).json()
+                assert saved['long_term_memory'] == '先检查合法跟牌，再考虑保留对子。'
+                assert saved['memory_versions'][0]['source']['kind'] == 'manual_update'
+                result['player_memory'] = {'player_id': player_id,
+                                           'revision': saved['memory_versions'][0]['revision'],
+                                           'reload_persisted': True}
+                page.screenshot(path=str(output / 'player-memory.png'), full_page=True)
                 result.update(run_id=rid, task_counts=run['counts'], integrity_complete=True, page_errors=errors)
                 assert not errors, errors
                 progress('complete')

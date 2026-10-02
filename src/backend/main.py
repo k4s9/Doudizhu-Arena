@@ -10,9 +10,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from arena.config.settings import settings
 from arena.logging_utils import setup_logging, get_logger
+from arena.security.credentials import CredentialError
 
 logger = get_logger("main")
 
@@ -29,35 +31,37 @@ async def lifespan(app: FastAPI):
     repo = DatabaseRepository(settings.database_path)
     repo.init()
     app.state.db_repo = repo
+    from arena.api.match_lifecycle import (
+        close_database_after_cleanup, ensure_task_registry,
+        recover_interrupted_matches, shutdown_matches,
+    )
+    ensure_task_registry(app)
+    app.state.shutting_down = False
     logger.info("Database initialized at %s", settings.database_url)
+
+    recovered = recover_interrupted_matches(repo)
+    if recovered:
+        logger.warning("Recovered %d interrupted matches; completed hand data retained", recovered)
 
     # Load configs + default players from YAML
     try:
         from arena.agent.loader import load_agents_from_yaml
-        player_ids = load_agents_from_yaml(repo)
+        with repo.atomic():
+            player_ids = load_agents_from_yaml(repo)
         logger.info("Loaded %d configs and %d default players from YAML",
-                     len(repo.list_player_configs()), len(player_ids))
+                     repo.conn.execute("SELECT COUNT(*) FROM player_configs").fetchone()[0], len(player_ids))
     except FileNotFoundError:
         logger.warning("agents.yaml not found — no configs loaded")
+    except CredentialError:
+        logger.warning("YAML configuration sync skipped: credential master key is unavailable "
+                       "or invalid; stored matches remain available")
 
-    # Mark orphaned matches as finished — server restart loses the in-memory
-    # MatchRunner, so these matches can never resume. Preserve all hand data
-    # for replay rather than destroying it.
-    orphaned_statuses = ("running", "paused")
-    for status in orphaned_statuses:
-        for m in repo.list_matches(status=status, page=1, page_size=1000)[0]:
-            logger.warning(
-                "Orphaned %s match '%s' (%s) — marking as 'interrupted' (server restarted)",
-                status, m["name"], m["id"],
-            )
-            repo.update_match_status(m["id"], "interrupted")
-
-    yield
-
-    # Shutdown
-    if hasattr(app.state, 'db_repo'):
-        app.state.db_repo.close()
-    logger.info("Doudizhu Arena backend stopped.")
+    try:
+        yield
+    finally:
+        pending_cleanup = await shutdown_matches(app)
+        close_database_after_cleanup(repo, pending_cleanup)
+        logger.info("Doudizhu Arena backend stopped.")
 
 
 def create_app() -> FastAPI:
@@ -67,6 +71,13 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    @app.exception_handler(CredentialError)
+    async def unavailable_credentials(request, exc):
+        return JSONResponse(status_code=503, content={"error": {
+            "code": "CREDENTIAL_UNAVAILABLE",
+            "message": "模型凭据暂时无法解密，请检查服务器 DOUDIZHU_CREDENTIAL_MASTER_KEY 后重试。",
+        }})
 
     app.add_middleware(
         CORSMiddleware,

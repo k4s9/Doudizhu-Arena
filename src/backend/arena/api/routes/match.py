@@ -12,6 +12,10 @@ from ...tournament.match import MatchConfig, MatchRunner
 from ...tournament.seating import MatchSeating, assign_seating
 from ...engine.timeout import TimeoutConfig
 from ...security.credentials import has_usable_credential
+from ..match_lifecycle import (
+    MatchStartConflict, claim_match_start, cleanup_match_claims, consume_task_result,
+    ensure_task_registry, match_is_claimed, recover_pending_match_cleanups,
+)
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
@@ -24,10 +28,28 @@ def _match_config_from_dict(d: dict) -> MatchConfig:
     """Build MatchConfig from request JSON, applying server defaults."""
     from ...config.settings import settings
 
+    if not isinstance(d, dict):
+        raise HTTPException(400, detail={"error": {"code": "INVALID_REQUEST", "message": "config must be an object"}})
+    for key in ("enable_reflection", "enable_summary", "persist_long_term_memory"):
+        if key in d and not isinstance(d[key], bool):
+            raise HTTPException(400, detail={"error": {"code": "INVALID_REQUEST", "message": f"{key} must be boolean"}})
+    import math
+    for key in ("reflection_timeout_seconds", "summary_timeout_seconds"):
+        if key in d and (
+            isinstance(d[key], bool) or not isinstance(d[key], (int, float))
+            or not math.isfinite(d[key]) or d[key] <= 0
+        ):
+            raise HTTPException(400, detail={"error": {"code": "INVALID_REQUEST", "message": f"{key} must be finite and positive"}})
+
     return MatchConfig(
         total_hands=d.get("total_hands", settings.total_hands),
         ko_enabled=d.get("ko_enabled", settings.ko_enabled),
         seed=d.get("seed", ""),
+        enable_reflection=d.get("enable_reflection", True),
+        enable_summary=d.get("enable_summary", True),
+        persist_long_term_memory=d.get("persist_long_term_memory", True),
+        reflection_timeout_seconds=d.get("reflection_timeout_seconds", 30.0),
+        summary_timeout_seconds=d.get("summary_timeout_seconds", 45.0),
         timeout_config=TimeoutConfig(
             bidding_seconds=d.get(
                 "timeout_bidding_seconds", settings.bidding_timeout_seconds
@@ -114,7 +136,7 @@ async def list_matches(
     status: str | None = None,
 ):
     """List matches with optional status filter and pagination."""
-    if status and status not in ("created", "running", "paused", "finished"):
+    if status and status not in ("created", "running", "paused", "finished", "interrupted"):
         raise HTTPException(400, detail={"error": {"code": "INVALID_REQUEST", "message": f"Invalid status: {status}"}})
     repo = _repo(request)
     matches, total = repo.list_matches(status=status, page=page, page_size=page_size)
@@ -167,14 +189,13 @@ async def create_match(request: Request):
     except ValueError as e:
         raise HTTPException(400, detail={"error": {"code": "INVALID_REQUEST", "message": str(e)}})
 
-    # Create match in DB
-    match_id = repo.create_match(name, config_dict, match_config.seed or "")
-
-    # Persist participants
-    for seat, aid in seating.table_a.items():
-        repo.add_participant(match_id, aid, seating.table_a_teams[seat], seat_table_a=seat)
-    for seat, aid in seating.table_b.items():
-        repo.add_participant(match_id, aid, seating.table_b_teams[seat], seat_table_b=seat)
+    # A partial participant insert must not leave a startable, incomplete match.
+    with repo.atomic():
+        match_id = repo.create_match(name, config_dict, match_config.seed or "")
+        for seat, aid in seating.table_a.items():
+            repo.add_participant(match_id, aid, seating.table_a_teams[seat], seat_table_a=seat)
+        for seat, aid in seating.table_b.items():
+            repo.add_participant(match_id, aid, seating.table_b_teams[seat], seat_table_b=seat)
 
     match = repo.get_match(match_id)
     return {
@@ -239,36 +260,70 @@ async def get_match(match_id: str, request: Request):
 async def start_match(match_id: str, request: Request, background_tasks: BackgroundTasks):
     """Start a match — runs the full match async in a background task."""
     repo = _repo(request)
+    ensure_task_registry(request.app)
+    if getattr(request.app.state, "shutting_down", False):
+        raise HTTPException(503, detail={"error": {"code": "SERVER_STOPPING", "message": "Server is stopping"}})
+    recover_pending_match_cleanups(request.app)
     match = repo.get_match(match_id)
     if not match:
         raise HTTPException(404, detail={"error": {"code": "MATCH_NOT_FOUND", "message": f"Match not found: {match_id}"}})
     if match["status"] != "created":
-        raise HTTPException(400, detail={"error": {"code": "MATCH_ALREADY_STARTED", "message": "Match already started"}})
+        raise HTTPException(409, detail={"error": {"code": "MATCH_ALREADY_STARTED", "message": "Match already started"}})
+
+    config = match.get("config")
+    if isinstance(config, str):
+        config = json.loads(config)
+    match_config = _match_config_from_dict(config if config else {})
 
     # Load players — each participant references a player ID
     from ...agent.llm_agent import LLMAgent
     from ...agent.random_agent import RandomAgent
+    from ...agent.memory import MAX_LONG_TERM_CHARS, validate_memory_text
     from ...llm.base import AbstractLLMProvider
     from ...llm.logging import LoggingLLMProvider
+    from ...evaluation.execution import ExecutionScope
+
+    scope = ExecutionScope()
+    guarded_repo = scope.guard(repo)
 
     player_ids_in_match: set[str] = set()
     for p in repo.get_participants(match_id):
         player_ids_in_match.add(p["player_id"])
 
-    # Build Agent instances — load player + config, create provider, instantiate agent
-    agents_dict: dict[str, Any] = {}
-    for pid in player_ids_in_match:
+    # Validate every saved input before allocating any provider clients.
+    player_inputs = {}
+    for pid in sorted(player_ids_in_match):
         player_row = repo.get_player_with_config(pid)
         if player_row is None:
             raise HTTPException(500, detail={"error": {"code": "INTERNAL_ERROR", "message": f"Player row not found: {pid}"}})
 
         provider_name = player_row["provider"]
+        initial_memory = ""
+        if provider_name != "random":
+            try:
+                initial_memory = validate_memory_text(
+                    player_row.get("long_term_memory", ""),
+                    max_chars=MAX_LONG_TERM_CHARS, allow_empty=True,
+                )
+            except ValueError as exc:
+                raise HTTPException(422, detail={"error": {
+                    "code": "PLAYER_MEMORY_INVALID",
+                    "message": f"选手原记忆已保留，请先将长期记忆整理为不超过 {MAX_LONG_TERM_CHARS} 字符的文本，再启动比赛。",
+                    "player_id": pid,
+                    "max_chars": MAX_LONG_TERM_CHARS,
+                }}) from exc
+            api_key = player_row.get("api_key", "")
+            if not has_usable_credential(api_key):
+                raise HTTPException(400, detail={"error": {"code": "CREDENTIAL_UNAVAILABLE", "message": "模型密钥尚未配置或环境变量未解析"}})
+        player_inputs[pid] = (player_row, initial_memory)
+
+    agents_dict: dict[str, Any] = {}
+    for pid, (player_row, initial_memory) in player_inputs.items():
+        provider_name = player_row["provider"]
         if provider_name == "random":
             agents_dict[pid] = RandomAgent(agent_id=pid)
         else:
             api_key = player_row.get("api_key", "")
-            if not has_usable_credential(api_key):
-                raise HTTPException(400, detail={"error": {"code": "CREDENTIAL_UNAVAILABLE", "message": "模型密钥尚未配置或环境变量未解析"}})
             base_url = player_row.get("base_url")
             if provider_name == "claude":
                 from ...llm.claude import ClaudeProvider
@@ -283,8 +338,9 @@ async def start_match(match_id: str, request: Request, background_tasks: Backgro
                 )
             agents_dict[pid] = LLMAgent(
                 agent_id=pid,
-                provider=LoggingLLMProvider(provider, repo=repo, agent_id=pid),
-                long_term_memory=player_row.get("long_term_memory", ""),
+                provider=LoggingLLMProvider(provider, repo=guarded_repo, agent_id=pid,
+                                            execution_scope=scope),
+                long_term_memory=initial_memory,
                 system_prompt_override=player_row.get("system_prompt"),
             )
 
@@ -318,16 +374,11 @@ async def start_match(match_id: str, request: Request, background_tasks: Backgro
         agent_teams=agent_teams,
     )
 
-    config = match.get("config")
-    if isinstance(config, str):
-        config = json.loads(config)
-    match_config = _match_config_from_dict(config if config else {})
-
     runner = MatchRunner(
         config=match_config,
         seating=seating,
         agents=agents_dict,
-        db_repo=repo,
+        db_repo=guarded_repo,
         match_name=match["name"],
     )
     # Override the match_id so it uses the existing DB match
@@ -335,22 +386,42 @@ async def start_match(match_id: str, request: Request, background_tasks: Backgro
     runner.table_a.match_id = match_id
     runner.table_b.match_id = match_id
     runner._db_initialized = True  # match + participants already in DB via API
+    scope.match_runner = runner
+
+    try:
+        started_at = claim_match_start(
+            repo, match_id, player_ids_in_match,
+            writes_memory=match_config.enable_summary and match_config.persist_long_term_memory,
+        )
+    except MatchStartConflict as exc:
+        raise HTTPException(409, detail={"error": {"code": exc.code, "message": str(exc)}}) from exc
 
     # Store the runner on app state so WebSocket handler can access it
     if not hasattr(request.app.state, "active_matches"):
         request.app.state.active_matches = {}
     request.app.state.active_matches[match_id] = runner
+    request.app.state.match_scopes[match_id] = scope
 
     async def run_and_cleanup():
+        reason = "completed"
         try:
             await runner.run()
+        except BaseException:
+            reason = "interrupted"
+            raise
         finally:
-            if hasattr(request.app.state, "active_matches"):
+            try:
+                await cleanup_match_claims(request.app, match_id, scope, reason)
+            finally:
                 request.app.state.active_matches.pop(match_id, None)
+                request.app.state.match_tasks.pop(match_id, None)
+                request.app.state.match_scopes.pop(match_id, None)
 
-    background_tasks.add_task(run_and_cleanup)
+    task = asyncio.create_task(run_and_cleanup())
+    request.app.state.match_tasks[match_id] = task
+    task.add_done_callback(consume_task_result)
 
-    return {"status": "running", "started_at": MatchRunner._now_iso()}
+    return {"status": "running", "started_at": started_at}
 
 
 @router.post("/{match_id}/pause")
@@ -407,7 +478,7 @@ async def delete_match(match_id: str, request: Request):
     match = repo.get_match(match_id)
     if not match:
         raise HTTPException(404, detail={"error": {"code": "MATCH_NOT_FOUND", "message": f"Match not found: {match_id}"}})
-    if match["status"] == "running":
+    if match["status"] in ("running", "paused") or match_is_claimed(repo, match_id):
         raise HTTPException(400, detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": "Cannot delete a running match — stop it first"}})
 
     if not repo.delete_match_from_db(match_id):

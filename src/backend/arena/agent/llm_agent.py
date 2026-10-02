@@ -113,9 +113,19 @@ class LLMAgent:
     def set_observability_context(self, repo: Any | None, **context: str) -> None:
         """Attach the table-scoped sink for privacy-preserving decision events."""
         self._repo = repo
-        self._decision_context.update({key: value for key, value in context.items() if value})
+        if repo is None:
+            self._decision_context.clear()
+        for key, value in context.items():
+            if value:
+                self._decision_context[key] = value
+            else:
+                self._decision_context.pop(key, None)
         provider = self._provider
-        if hasattr(provider, "set_context"):
+        if hasattr(provider, "set_observability_context"):
+            provider.set_observability_context(
+                repo, **{**self._decision_context, "agent_id": self._agent_id},
+            )
+        elif hasattr(provider, "set_context"):
             provider.set_context(**self._decision_context)
 
     def get_last_decision_meta(self) -> dict[str, Any]:

@@ -459,9 +459,9 @@ onUnmounted(() => {
             'text-amber-400': status === 'paused',
             'text-blue-400': status === 'created',
             'text-slate-400': status === 'finished',
-            'text-red-400': status === 'error',
+            'text-red-400': ['error', 'interrupted'].includes(status),
           }" class="font-semibold">
-            {{ { running: '进行中', paused: '已暂停', created: '已创建', finished: '已结束', error: '错误', loading: '加载中...' }[status] || status }}
+            {{ { running: '进行中', paused: '已暂停', created: '已创建', finished: '已结束', interrupted: '已中断', error: '错误', loading: '加载中...' }[status] || status }}
           </span>
         </div>
       </div>

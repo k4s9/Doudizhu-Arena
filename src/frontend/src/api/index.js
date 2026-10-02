@@ -14,7 +14,7 @@ async function request(path, options = {}) {
   if (!res.ok) {
     const detail = data?.error || data?.detail?.error;
     const err = new Error(detail?.message || (typeof data?.detail === 'string' ? data.detail : res.statusText));
-    err.code = data?.error?.code || 'UNKNOWN';
+    err.code = detail?.code || 'UNKNOWN';
     err.status = res.status;
     throw err;
   }

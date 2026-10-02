@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-02",
+  "task": "P0-P2 match learning and recovery; P3 tool design",
+  "branch": "codex/memory-reliability",
+  "original_base_commit": "204f47afa461f98208a9b9ad31e5999b883305d0",
+  "source_sha256": "c02b914756a5909ddd7166d2c5daffe72809fbdb39c645dd555f60e65039329e",
+  "backend": {
+    "tests": 502,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 502,
+    "seconds": 645.79,
+    "offline_network_attempts": 0
+  },
+  "frontend": {
+    "passed": 11,
+    "failed": 0,
+    "production_build": true
+  },
+  "browser": {
+    "complete": true,
+    "identical_live_events": 10,
+    "page_errors": [],
+    "memory_reload_persisted": true,
+    "chromium_args": [
+      "--js-flags=--jitless"
+    ]
+  },
+  "deployment": {
+    "final_image_build": true,
+    "finished_match_after_restart": true,
+    "active_match_after_restart": true,
+    "preserved_score": true,
+    "preserved_memory": true,
+    "released_player_claims": true,
+    "settled_matches_per_player": 1
+  },
+  "fixed_memory_mock": {
+    "complete": true,
+    "decisions": 48,
+    "calls": 90,
+    "issues": []
+  },
+  "full_memory_mock": {
+    "complete": true,
+    "matches": 6,
+    "table_hands": 12,
+    "calls": 288,
+    "issues": [],
+    "arms": {
+      "no_memory": {
+        "matches": 2,
+        "wins": 0,
+        "ties": 0,
+        "losses": 2,
+        "mean_diff_score": -6
+      },
+      "fixed_initial": {
+        "matches": 2,
+        "wins": 0,
+        "ties": 0,
+        "losses": 2,
+        "mean_diff_score": -6
+      },
+      "frozen_memory": {
+        "matches": 2,
+        "wins": 0,
+        "ties": 0,
+        "losses": 2,
+        "mean_diff_score": -6
+      }
+    }
+  },
+  "real_model_calls_in_this_task": 0,
+  "remote_ci": {
+    "rerun_for_this_change": false,
+    "last_public_run_id": 36131096802,
+    "last_public_head": "204f47afa461f98208a9b9ad31e5999b883305d0",
+    "last_public_conclusion": "failure",
+    "full_logs_access": "403 admin rights required"
+  },
+  "limits": [
+    "Mock results do not establish learning gains",
+    "Single execution server; interrupted games are retained, not resumed mid-action",
+    "Remote CI was not rerun",
+    "Historical tracked bytecode and egg-info left untouched"
+  ],
+  "backup": {
+    "path": "/home/guozy/.codex/backups/doudizhu-arena/daily-2026-10-02/project",
+    "size": "311 MB"
+  }
+}

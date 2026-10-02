@@ -281,7 +281,9 @@ class ContextBuilder:
                     parts.append(f"  {seat}：（无剩余）")
 
         # Hand result
-        if ctx.hand_score is not None:
+        if ctx.winner_role == "void":
+            parts.append("\n本副牌结果：流局（所有参与叫分者均不叫），得分 0，无获胜方。")
+        elif ctx.hand_score is not None:
             parts.append(f"\n本副牌结果：{ctx.winner_team}队 {ctx.winner_role} 获胜，得分 {ctx.hand_score}")
 
         return "\n".join(parts)
@@ -291,13 +293,24 @@ class ContextBuilder:
         """Build the full context text for a match summary prompt."""
         parts = []
 
-        parts.append(f"你的名字：{ctx.seat}")
+        parts.append(f"你的座位：{ctx.seat}")
         parts.append(f"比赛ID：{ctx.match_id}")
+        parts.append(f"实际完成副数：{len(ctx.match_summary or {})}")
+        if ctx.winner_team == "tie":
+            parts.append("比赛结果：平局")
+        elif ctx.winner_team:
+            parts.append(f"比赛获胜队：{ctx.winner_team}")
 
         if ctx.match_summary:
             parts.append("\n你在本场比赛中的每副牌角色：")
             for hand_num, info in sorted(ctx.match_summary.items()):
                 if isinstance(info, dict):
-                    parts.append(f"  第{hand_num}副：{info.get('role', '?')}")
+                    parts.append(
+                        f"  第{hand_num}副：{info.get('table', '')}桌 {info.get('seat', ctx.seat)}位，"
+                        f"角色 {info.get('role', '?')}，结果 {info.get('outcome', '?')}，"
+                        f"该桌结算分 {info.get('table_score', '?')}，"
+                        f"本队差分积分 {info.get('team_score', '?')}"
+                        + ("（加赛）" if info.get('is_tiebreaker') else "")
+                    )
 
         return "\n".join(parts)

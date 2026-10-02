@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from . import models
+from . import memory as memory_storage
+from .memory import MemoryConflictError
 from ..security.credentials import decrypt_secret, encrypt_secret, master_key_configured
 
 
@@ -195,6 +197,12 @@ class DatabaseRepository:
     ) -> None:
         models.update_match_status(self.conn, match_id, status, **kwargs)
 
+    def settle_match(self, match_id: str, winner_team: str,
+                     player_teams: dict[str, str], **finish_fields: Any) -> bool:
+        return memory_storage.settle_match(
+            self, match_id, winner_team, player_teams, **finish_fields,
+        )
+
     # ── participants ────────────────────────────────────────────────────────────
 
     def add_participant(
@@ -340,6 +348,55 @@ class DatabaseRepository:
         memory_type: str | None = None,
     ) -> list[dict]:
         return models.get_agent_memories(self.conn, player_id, match_id, memory_type)
+
+    def save_reflection_memory(self, table_hand_id: str, player_id: str, seat: str,
+                               actual_role: str, reflection: str,
+                               short_term_memory: str, match_id: str) -> str:
+        return memory_storage.save_reflection_memory(
+            self, table_hand_id, player_id, seat, actual_role, reflection,
+            short_term_memory, match_id,
+        )
+
+    def save_long_term_memory(self, player_id: str, content: str, match_id: str | None,
+                              expected_content: str | None = None,
+                              source: dict | str | None = None) -> dict:
+        return memory_storage.save_long_term_memory(
+            self, player_id, content, match_id, expected_content, source,
+        )
+
+    def freeze_match_memory(self, match_id: str, player_id: str,
+                            content: str | None = None,
+                            source: dict | str | None = None) -> dict:
+        return memory_storage.freeze_match_memory(self, match_id, player_id, content, source)
+
+    def get_memory_version(self, version_id: str) -> dict | None:
+        return memory_storage.get_memory_version(self, version_id)
+
+    def list_memory_versions(self, player_id: str, limit: int = 100) -> list[dict]:
+        return memory_storage.list_memory_versions(self, player_id, limit)
+
+    def list_match_memory_usage(self, match_id: str,
+                                player_id: str | None = None) -> list[dict]:
+        return memory_storage.list_match_memory_usage(self, match_id, player_id)
+
+    def record_memory_failure(self, player_id: str, match_id: str, phase: str,
+                               stage: str, error: BaseException | str,
+                               table_hand_id: str | None = None) -> str:
+        return memory_storage.record_memory_failure(
+            self, player_id, match_id, phase, stage, error, table_hand_id,
+        )
+
+    def resolve_memory_failures(self, player_id: str, match_id: str, phase: str,
+                                table_hand_id: str | None = None,
+                                version_id: str | None = None) -> None:
+        memory_storage.resolve_memory_failures(
+            self, player_id, match_id, phase, table_hand_id, version_id,
+        )
+
+    def list_memory_failures(self, player_id: str | None = None,
+                             match_id: str | None = None,
+                             unresolved_only: bool = False) -> list[dict]:
+        return memory_storage.list_memory_failures(self, player_id, match_id, unresolved_only)
 
     # ── llm_call_logs ───────────────────────────────────────────────────────────
 

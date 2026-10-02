@@ -10,8 +10,8 @@ from pathlib import Path
 from ..config.settings import settings
 from ..config.paths import PROJECT_ROOT
 from ..db.repository import DatabaseRepository
-from .memory_training import MemoryTrainingRunner, build_memory_training_plan
-from .spec import build_run_manifest, load_experiment_spec
+from .memory_training import MemoryTrainingRunner, build_memory_training_plan, load_training_inputs
+from .spec import PreflightError, build_run_manifest, canonical_hash, load_experiment_spec
 
 
 def main() -> None:
@@ -63,6 +63,19 @@ def main() -> None:
     repo = DatabaseRepository(settings.database_path)
     repo.init()
     try:
+        # Freeze effective model/endpoint/prompt settings before execution. Only
+        # credentials are reread when resuming an existing frozen training run.
+        if args.resume:
+            original_spec, manifest, plan = load_training_inputs(repo, args.run_id)
+            if canonical_hash(spec.model_dump(mode="json")) != manifest.spec_sha256:
+                raise PreflightError("resume requires the original training spec")
+            spec = original_spec
+        else:
+            manifest = build_run_manifest(spec, root, repo)
+            plan = build_memory_training_plan(spec, manifest, root)
+        if not args.output:
+            output = root / "src/backend/evaluation/memory_artifacts" / f"{spec.experiment_id}-{plan.plan_sha256[:12]}.json"
+        preview.update(plan_sha256=plan.plan_sha256, output=str(output))
         runner = MemoryTrainingRunner(repo, root)
         run_id = args.run_id if args.resume else runner.create_run(spec, manifest, plan)
         artifact = asyncio.run(
