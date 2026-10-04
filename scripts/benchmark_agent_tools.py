@@ -263,7 +263,7 @@ def measure(category, cases):
 
     for case in cases[:2]:
         invoke(case)
-    times, nodes = [], []
+    times, nodes, raw_samples = [], [], []
     outcomes, reasons = Counter(), Counter()
     for case in cases:
         started = perf_counter()
@@ -290,6 +290,17 @@ def measure(category, cases):
             if "rocket_ruled_out" in category and value["status"] != "ruled_out":
                 raise AssertionError("A second rocket cannot exist in the unseen pool")
         nodes.append(stats["nodes"])
+        # Keep unrounded observations so all published percentiles and counts
+        # can be independently rebuilt without rerunning a timed search.
+        raw_samples.append({
+            "index": len(raw_samples), "elapsed_ms": times[-1], "nodes": stats["nodes"],
+            "input_sha256": digest(observable_input(case)), "result_sha256": digest(value),
+            "outcome": ({"exact_candidates": sum(plan["exact"] for plan in plans),
+                         "bounded_candidates": sum(not plan["exact"] for plan in plans),
+                         "stop_reason": stats["stop_reason"] or "completed"}
+                        if category.startswith("compare/")
+                        else {"status": value["status"], "reason": value["reason"]}),
+        })
     inputs = [observable_input(case) for case in cases]
     played_counts = [sum(len(record["cards"]) for record in c.context.play_history)
                      for c in cases]
@@ -299,6 +310,7 @@ def measure(category, cases):
         "outcomes": dict(outcomes), "stop_reasons": dict(reasons),
         "input_sha256": digest(inputs),
         "individual_input_sha256": [digest(value) for value in inputs],
+        "samples": raw_samples,
         "own_hand_size": {"min": min(c.context.hand_size for c in cases),
                           "max": max(c.context.hand_size for c in cases)},
         "public_played_card_count": {"min": min(played_counts), "max": max(played_counts)},
@@ -312,6 +324,8 @@ def main():
     args = parser.parse_args()
     if args.samples < 50:
         parser.error("--samples must be at least 50")
+    if args.output is not None and args.output.exists():
+        parser.error("--output must name a new file; existing measurements are never overwritten")
     source_hashes = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in SOURCES}
     with offline_guard() as network_attempts:
         categories = comparison_cases(args.samples) | threat_cases(args.samples)
@@ -321,10 +335,11 @@ def main():
     if source_hashes != {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in SOURCES}:
         raise RuntimeError("Measured source files changed during this run; rerun for a coherent report")
     report = {
-        "schema_version": 1, "seed": SEED, "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "schema_version": 2, "seed": SEED, "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "measurement": "Direct pure-algorithm wall time; excludes fixture generation, imports, LLM and registry/provider integration.",
         "notes": [
             "P95 uses the nearest-rank definition; two warmups per scenario are excluded.",
+            "Unrounded per-call timings, node counts and outcome summaries are retained in scenarios.*.samples.",
             "Inputs and seed are deterministic; timing and time-limited exactness vary by machine and system load.",
             "Normal budgets are cooperative deadlines, not hard real-time guarantees.",
             "Threat game fixtures use the actual engine and a legal single-card policy; they do not estimate strategic strength.",
@@ -349,7 +364,8 @@ def main():
         print(output, end="")
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(output, encoding="utf-8")
+        with args.output.open("x", encoding="utf-8") as handle:
+            handle.write(output)
         print(f"Wrote {args.output}; {report['total_measured_calls']} measured calls; 0 network attempts")
     return 0
 

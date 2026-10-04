@@ -1,0 +1,3961 @@
+{
+  "reason_retained": "Initial complete run; full-host /proc sampling was costly. Retained as diagnostic, not final performance figures.",
+  "result": {
+    "kind": "local-browser-production-socket-benchmark",
+    "schema_version": 1,
+    "created_at_utc": "2026-10-04T11:57:39.165124+00:00",
+    "viewers": 5,
+    "requested_reconnects": 20,
+    "mock_delay_seconds": 0.12,
+    "chromium_args": [
+      "--js-flags=--jitless"
+    ],
+    "normal_seconds_each_side": 3,
+    "seed": "realtime-20261004-v1",
+    "source_sha256": {
+      "scripts/benchmark_realtime.py": "6a926274104a571e131004104e5aa6fd0aed9ca09d7edd0c8a592ba6e496404f",
+      "src/frontend/src/api/index.js": "ee4ff837a0adc5d3149dbbae36d696e839547ba3e4434fe41499b59bb436cd26",
+      "src/backend/arena/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/backend/arena/agent/__init__.py": "a4cb92fe261fca46bef71a4a848aad13802a44b48640fd5286f3e48277f75b0a",
+      "src/backend/arena/agent/base.py": "c78740bbb2a7710ce29010b9cc7d709f26d67b4605284e27ce2ecaad3ea681c6",
+      "src/backend/arena/agent/context.py": "0e958ab44815c6db1c5b2681742a3372db4d9b48d2f5402a3ed98c3fe6e6aa96",
+      "src/backend/arena/agent/learning.py": "143db68ec23f371abf71fef5f8fcc8d88c63567294777b3803d27bdfb4916067",
+      "src/backend/arena/agent/llm_agent.py": "ad8fdcb8af78bcfe556657785abeb573b6e23f583f9118d0a171090825c875c7",
+      "src/backend/arena/agent/loader.py": "d0f59206ff89a73120e8b1924d92bf0add3afbf9b74998b494dcdcf71a8ba36d",
+      "src/backend/arena/agent/memory.py": "5d5e2fc6c5647fdab6ad70d637df208bcadd3b0bd8e6b219f2a3e5c75d928475",
+      "src/backend/arena/agent/parser.py": "ca221679ef43394307f6ac0bc7929872f2d10184b9bc3852960abdb70fc5f5fc",
+      "src/backend/arena/agent/prompts/__init__.py": "d6f0ad37110b149d46a3bdacc94a637d7a0e407a1b5d8d57c68a74e1c8e2eff1",
+      "src/backend/arena/agent/prompts/bidding.py": "30b5a7fd3b9cab1c4ccc9de019f29e5ceda16f5f004080a854cb2d92166109d5",
+      "src/backend/arena/agent/prompts/playing.py": "10b9a893888b83982bee8fc933032aa814e672a9b586fdeeaf179d770549877f",
+      "src/backend/arena/agent/prompts/reflection.py": "f79a552d7c17ee72dce66e04750d669a0b267a7d95fb2eb7d36f62c0233d2c88",
+      "src/backend/arena/agent/prompts/summary.py": "86ef6bfbb5b7c09e19010940ccbaec606002e177f377495a629c03c417ef01c4",
+      "src/backend/arena/agent/random_agent.py": "5bf4750db2957cc65eb845cde8ab68108f8e354eb1c81721eccfe6175cacb17d",
+      "src/backend/arena/agent/tool_turn.py": "07aee9c0c1f358d4f43f8319fefa67d88ef1564ca1d4afeb17cf064ceb7b2932",
+      "src/backend/arena/agent/tools/__init__.py": "f449b6f9277061d650c9e52b5a93a6127368e1b73e68bf56259b5b007578cd76",
+      "src/backend/arena/agent/tools/plans.py": "b03bbee9f8cfa813ae2a37c137e0d514a03c3121c5213d0f5df898c3059fa8cd",
+      "src/backend/arena/agent/tools/plays.py": "9745d6c8cee4b532988deb945974ef3bba3e170bee9caf9b11625b2da39c64b5",
+      "src/backend/arena/agent/tools/registry.py": "467f6f3df3deac95d543b2c96afdcd7417db8afd5ab663522f09a6e09f63b8c5",
+      "src/backend/arena/agent/tools/threats.py": "78f222681d82bc3b2556d35c73d8477eace667b97365a634541aa2a332cd940e",
+      "src/backend/arena/api/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/backend/arena/api/event_bus.py": "cf59985b63685e49cfb6a3bd6e7b955949ac59391938843bab2524b7bb99c59d",
+      "src/backend/arena/api/match_lifecycle.py": "f1f63ff9f6e7f1312b7082bc6f602c3c623494759eef2b60710ffb045ae11221",
+      "src/backend/arena/api/routes/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/backend/arena/api/routes/agent.py": "b690ef003f36168caa6ad2a2691a865b2c56e134379aa8cc81a9720f9f7cb7cd",
+      "src/backend/arena/api/routes/config.py": "57da8dc8b1d3ba071cea93d66b28edbc7c0d116ec6304d173719d8d27131e3b2",
+      "src/backend/arena/api/routes/evaluation.py": "52b07c64260944219f5b7e235409e3d262afd6fce9e64b9de5e99fdd48aa4abb",
+      "src/backend/arena/api/routes/match.py": "c909784c44b313b8491ed49419119e3a7bfaa16861d767b294101802ba6a3076",
+      "src/backend/arena/api/routes/player.py": "5a3655463f646d4a4472ae4c152b26238b8fedf16aed5838d773cd5ab721887b",
+      "src/backend/arena/api/routes/replay.py": "fd2d91944c905d039bc45e0dfd372dcacbcfd24ac2a85bda3bd5b290d471c45d",
+      "src/backend/arena/api/ws.py": "4562569b31ae2ebe67818fde99a74c9936b183e25ca96d3aa576d5f9eaae7f59",
+      "src/backend/arena/config/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/backend/arena/config/paths.py": "d89e0329300fa17dd868b4abcc5ef364a6fd852fbaa8a6a2c61f53586bb7e0d0",
+      "src/backend/arena/config/settings.py": "4aab9ed0f79768daa1ff2a571d3247fc1256cba6b1394f3646c88118308d1b31",
+      "src/backend/arena/db/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src/backend/arena/db/memory.py": "131ad7fae45e8d00e3fb9a117815634e7462e38941393ea1c325d42426ae16a9",
+      "src/backend/arena/db/models.py": "270feac64e0704d2372f76161c4e97b3631b997e572a8240a877e50ff850f81b",
+      "src/backend/arena/db/reliability.py": "e2c29a8913dabaa464bc7139e8463caf4cf89d5f10de3b8e2a393658dcaea9ed",
+      "src/backend/arena/db/repository.py": "734da146ee4f389159ed72bf320a079604a0ffb002b19fe91f6d598aad12cb9b",
+      "src/backend/arena/engine/__init__.py": "1c0e2b833d61be8564fd9d611729adadc3da12a10e3a7bdc54f49cc903d87cd6",
+      "src/backend/arena/engine/card.py": "8bb6e493b69132c222e0a3745972effdf840401b327a1e314a219c54fe1f6d04",
+      "src/backend/arena/engine/deck.py": "4be19e137ddebce018e9f9fe8892b8e011d78282ecc4c0eb7dc6334340c591bd",
+      "src/backend/arena/engine/hand.py": "d5733e02850493250159a2e0484051f2859b10f430c1fb75d1d0b3979b08f3d4",
+      "src/backend/arena/engine/pause.py": "5d0c611f9df7c30ea70cd427c114e0d7125a166e7200f6ed8e95aefd1c65104d",
+      "src/backend/arena/engine/projection.py": "9eaf6e59369969c837d660ce910c3cd65efe21e00c19b8eadc87964180a010bb",
+      "src/backend/arena/engine/rules.py": "51540294b7db70cf4d5ce316361665c02a1060cb8ab9fe8286a1a25b9e8b5304",
+      "src/backend/arena/engine/scoring.py": "f5c1244164b93216b5f50e42f0873ba0db10b5ab9d071284811403b5fd1a9c86",
+      "src/backend/arena/engine/state.py": "3139178a28f71453ac221c6387289348afe80df9374f7847a6a0fccb0d6bb7d6",
+      "src/backend/arena/engine/timeout.py": "445c10c022435d0bf605ff1512453d7d1c622c060ba0ad6710a7a123dc50ce62",
+      "src/backend/arena/engine/trick.py": "7d720ba90406ebe093acc74b747321c194fc6717c0eae983622c1db62c252d21",
+      "src/backend/arena/evaluation/__init__.py": "da8fcf5f5094b7824bf457e16a566bbdefcee891be87d3e66437efef1a2a1561",
+      "src/backend/arena/evaluation/audit.py": "9eea06516fa858a2236708d32621c7c40fb6c7173b3e0e3a7d6a1443cb0595af",
+      "src/backend/arena/evaluation/budget.py": "ba484a8d6f9f097e55ea3c029ce29e9fafba854f455189b6debe8876333b3e78",
+      "src/backend/arena/evaluation/execution.py": "9706ae29fc4198bf41183b336fc3a1477961fe5bc47845fa6f4f92028337712b",
+      "src/backend/arena/evaluation/fixed_corpus.py": "ff090669bf1f6e12dee2b0160a942584cbbd604d83fa1ee9c5cdb2116cb60a0f",
+      "src/backend/arena/evaluation/fixed_mock.py": "754e8d7b76e4763f7f26b8db20709feda0c9e84d3fcfab0557c0f56376b52fff",
+      "src/backend/arena/evaluation/fixed_report.py": "14bbec282d01e71dfea96e026b4e545dae59d18f3ccd0a2c7369428feb67cd81",
+      "src/backend/arena/evaluation/fixed_study.py": "05cb6166546bae89b1ffe34efec65f3035452f7201cad8bf9308c8b744acdb05",
+      "src/backend/arena/evaluation/memory_match_report.py": "c36017afdb40e1ccdadbb91ca3590ba54fbdd52725ae660d4477d52966ab5add",
+      "src/backend/arena/evaluation/memory_match_study.py": "abe610b35aa6e557efe79e8a1eda143e0348a05b95c68cb7ef2568d1ef7608af",
+      "src/backend/arena/evaluation/memory_study.py": "bde1733b0a0cf2e5ed733d3796b592f3d04ba27158905eb386abdbac7bba77a5",
+      "src/backend/arena/evaluation/memory_study_report.py": "dca316c573180ac74ad683256d29f48e514df393c52130ea3ce07e79a4467bd9",
+      "src/backend/arena/evaluation/memory_training.py": "1c2c440250ca4f715b28378db0749c473a8676ce817fafb60df587e2cc4f6304",
+      "src/backend/arena/evaluation/mock.py": "dd46b3e1f89303f3319de8cddd6fa1188464823abf267f9db3666e67692d6958",
+      "src/backend/arena/evaluation/observations.py": "525a74330e49a9a1d6cdb0a3aa03e7e8d41f017486a2a2535cc742b6d987625d",
+      "src/backend/arena/evaluation/report.py": "38f8f849cb3377fb3d5438058b819924d61fd92ab63a07769a253f514d46584d",
+      "src/backend/arena/evaluation/run.py": "4badccddb23f466e1db5b4fbaccf8c4d43e13634ac749e093bab105f3e81d713",
+      "src/backend/arena/evaluation/runner.py": "59c77012204724a125232974fd4319cbc58150823bc7458638e2c0735b6d3109",
+      "src/backend/arena/evaluation/spec.py": "32a6a4835d1bc855a98370f93a4e87a7736e98d0d938fc403f8e20d017d5728d",
+      "src/backend/arena/evaluation/train_memory.py": "a16aeb98f2236a53f562f221d2847c35325d779983f54d3f6b38e5c4a0112c59",
+      "src/backend/arena/llm/__init__.py": "3ab93a71e332ebdbb996ed4f1d9cdf78d2b321393784e7b413826b1865619354",
+      "src/backend/arena/llm/base.py": "d2739b69a65f897b32e7daf0418eb0e531f470723ace7a8e80d83c3df9203377",
+      "src/backend/arena/llm/claude.py": "d4c2809ef02a7d4ff73c1bf45ec6289b7456cf2c892d61995783200589bf9c64",
+      "src/backend/arena/llm/logging.py": "9125d30ec5f25a934bcefbcef0809b01889e84e2a8a0742c16aef86b9a365027",
+      "src/backend/arena/llm/openai.py": "4dc5f0efa798daa3e62c5f16171d559dcf27f36a62814112c4caaaf93b30d51b",
+      "src/backend/arena/logging_utils.py": "1cccf6c734148536a0c6d4e8f1a6893dfbb88d1edd66abd0bc0d69da53fa7bf6",
+      "src/backend/arena/security/__init__.py": "c811d0258e9f65baa9ef319cd4a133feefc2f10239bf504277de85b5a227fb3b",
+      "src/backend/arena/security/credentials.py": "0b591b5c09b562b370e96c741786bbcda4edb2f1e5bf785472d296aa84b315e8",
+      "src/backend/arena/tournament/__init__.py": "b921d1d23f8f156a8e432ac26d3390e3002a754dae1ba6eabaa0b6379596cd92",
+      "src/backend/arena/tournament/diff_scoring.py": "6b9bf83dcef7f1a98fb7283cf2453fc56222dbc90291079569716d384944d55c",
+      "src/backend/arena/tournament/match.py": "14cb6f4dd5fdcbb9b1109740241e691dd624af44069ee9bbcce4f9727b22dba0",
+      "src/backend/arena/tournament/seating.py": "09012d1136f3a148f17e9fa63d1a8a59e2639fa34655a67f6636083d37946335",
+      "src/backend/arena/tournament/table.py": "fc119a99ccdc6da59cdda730eb84bbc69e75d73cce070653f97f100fde2e4237"
+    },
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:27:41) [GCC 14.3.0]",
+    "python_executable": "/home/guozy/miniconda3/envs/doudizhu-arena/bin/python",
+    "platform": "Linux-6.6.0-45.0.0.54.oe2409.aarch64-aarch64-with-glibc2.38",
+    "machine": "aarch64",
+    "cpu_count": 96,
+    "git_commit": "5543d3b875567f4d1359aed376b58671bf1d7148",
+    "versions": {
+      "fastapi": "0.135.2",
+      "uvicorn": "0.42.0",
+      "playwright": "1.63.0",
+      "httpx": "0.28.1"
+    },
+    "notes": [
+      "Real Chromium pages import the production socket module; Vue DOM/rendering is excluded.",
+      "Publish-to-handler latency includes durable SQLite publication, event-loop scheduling, JSON, loopback WS and browser handler dispatch; mock waiting precedes publication and is excluded.",
+      "Startup events before all five clients and initial clock calibration are ready are reported separately from normal_game.",
+      "P95 is nearest-rank. Raw negative values within clock uncertainty are retained, not clamped.",
+      "Maximum clock uncertainty is reported; latency differences near that bound do not establish an optimization benefit.",
+      "Recovery includes the unchanged production 1-second reconnect timer and authoritative snapshot; every cycle skips natural events while running.",
+      "Pressure phase really overflows one default 10000-event subscription using 10001 persisted artificial probes and an injected server relay suspension; not a slow-network throughput claim.",
+      "The final consistency checkpoint gates mock returns only; the fixture stays running, then its own process is shut down and leaves an interrupted match.",
+      "CPU is sampled from /proc, 100% equals one core. Chromium RSS is a process-tree sum with shared-page double counting; short-lived process CPU may be missed.",
+      "Resource samples and summaries separate normal_game, backpressure, startup, checkpoint and capture/cleanup phases; normal_game includes the intentional reconnect cycles.",
+      "Single local host, one mock match, five normal viewers and one injected slow subscriber; no production capacity, SLA, real-model latency or strategy claim."
+    ],
+    "match_id": "fa8a033b133849b1a82284cd87d484a3",
+    "browser_version": "153.0.8010.12",
+    "stage": "complete",
+    "clock_start": [
+      [
+        {
+          "before": 1791115063017.7,
+          "after": 1791115063021.2998,
+          "server_ms": 1791115063019.1118,
+          "offset_ms": -0.38818359375,
+          "rtt_ms": 3.599853515625
+        },
+        {
+          "before": 1791115063021.2998,
+          "after": 1791115063023.5999,
+          "server_ms": 1791115063021.985,
+          "offset_ms": -0.464599609375,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063023.5999,
+          "after": 1791115063026,
+          "server_ms": 1791115063024.3296,
+          "offset_ms": -0.47021484375,
+          "rtt_ms": 2.400146484375
+        },
+        {
+          "before": 1791115063026,
+          "after": 1791115063028.4,
+          "server_ms": 1791115063026.745,
+          "offset_ms": -0.454833984375,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115063028.4,
+          "after": 1791115063030.7,
+          "server_ms": 1791115063029.1226,
+          "offset_ms": -0.42724609375,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063030.7,
+          "after": 1791115063033,
+          "server_ms": 1791115063031.4834,
+          "offset_ms": -0.36669921875,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063033,
+          "after": 1791115063035.2,
+          "server_ms": 1791115063033.7378,
+          "offset_ms": -0.3623046875,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063035.2,
+          "after": 1791115063037.5999,
+          "server_ms": 1791115063035.944,
+          "offset_ms": -0.455810546875,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115063037.5999,
+          "after": 1791115063039.9,
+          "server_ms": 1791115063038.215,
+          "offset_ms": -0.534912109375,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063039.9,
+          "after": 1791115063042.0999,
+          "server_ms": 1791115063040.547,
+          "offset_ms": -0.452880859375,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063042.0999,
+          "after": 1791115063044.2998,
+          "server_ms": 1791115063042.7573,
+          "offset_ms": -0.4423828125,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063044.2998,
+          "after": 1791115063046.5,
+          "server_ms": 1791115063044.971,
+          "offset_ms": -0.428955078125,
+          "rtt_ms": 2.2001953125
+        }
+      ],
+      [
+        {
+          "before": 1791115063051.0999,
+          "after": 1791115063053.9,
+          "server_ms": 1791115063052.218,
+          "offset_ms": -0.281982421875,
+          "rtt_ms": 2.800048828125
+        },
+        {
+          "before": 1791115063054,
+          "after": 1791115063056.2,
+          "server_ms": 1791115063054.707,
+          "offset_ms": -0.39306640625,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063056.2998,
+          "after": 1791115063058.7,
+          "server_ms": 1791115063056.995,
+          "offset_ms": -0.5048828125,
+          "rtt_ms": 2.400146484375
+        },
+        {
+          "before": 1791115063058.7,
+          "after": 1791115063061.2,
+          "server_ms": 1791115063059.4436,
+          "offset_ms": -0.50634765625,
+          "rtt_ms": 2.5
+        },
+        {
+          "before": 1791115063061.2,
+          "after": 1791115063063.4,
+          "server_ms": 1791115063061.8271,
+          "offset_ms": -0.47265625,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063063.4,
+          "after": 1791115063065.7998,
+          "server_ms": 1791115063064.1003,
+          "offset_ms": -0.49951171875,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115063065.7998,
+          "after": 1791115063068.0999,
+          "server_ms": 1791115063066.4497,
+          "offset_ms": -0.5,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063068.0999,
+          "after": 1791115063070.2998,
+          "server_ms": 1791115063068.782,
+          "offset_ms": -0.417724609375,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063070.2998,
+          "after": 1791115063072.5,
+          "server_ms": 1791115063070.9756,
+          "offset_ms": -0.42431640625,
+          "rtt_ms": 2.2001953125
+        },
+        {
+          "before": 1791115063072.5,
+          "after": 1791115063074.7998,
+          "server_ms": 1791115063073.19,
+          "offset_ms": -0.4599609375,
+          "rtt_ms": 2.2998046875
+        },
+        {
+          "before": 1791115063074.7998,
+          "after": 1791115063077.2,
+          "server_ms": 1791115063075.5479,
+          "offset_ms": -0.4521484375,
+          "rtt_ms": 2.400146484375
+        },
+        {
+          "before": 1791115063077.2998,
+          "after": 1791115063079.5,
+          "server_ms": 1791115063077.8872,
+          "offset_ms": -0.5126953125,
+          "rtt_ms": 2.2001953125
+        }
+      ],
+      [
+        {
+          "before": 1791115063083.5,
+          "after": 1791115063091.7,
+          "server_ms": 1791115063085.2732,
+          "offset_ms": -2.326904296875,
+          "rtt_ms": 8.199951171875
+        },
+        {
+          "before": 1791115063091.7,
+          "after": 1791115063094.4,
+          "server_ms": 1791115063092.5457,
+          "offset_ms": -0.504150390625,
+          "rtt_ms": 2.699951171875
+        },
+        {
+          "before": 1791115063094.4,
+          "after": 1791115063096.8,
+          "server_ms": 1791115063095.1714,
+          "offset_ms": -0.4287109375,
+          "rtt_ms": 2.400146484375
+        },
+        {
+          "before": 1791115063096.8,
+          "after": 1791115063099.0999,
+          "server_ms": 1791115063097.493,
+          "offset_ms": -0.45703125,
+          "rtt_ms": 2.2998046875
+        },
+        {
+          "before": 1791115063099.0999,
+          "after": 1791115063101.4,
+          "server_ms": 1791115063099.8162,
+          "offset_ms": -0.433837890625,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063101.4,
+          "after": 1791115063104,
+          "server_ms": 1791115063102.1123,
+          "offset_ms": -0.587646484375,
+          "rtt_ms": 2.60009765625
+        },
+        {
+          "before": 1791115063104,
+          "after": 1791115063106.3,
+          "server_ms": 1791115063104.6948,
+          "offset_ms": -0.455078125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063106.3,
+          "after": 1791115063108.5,
+          "server_ms": 1791115063106.9773,
+          "offset_ms": -0.422607421875,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063108.5,
+          "after": 1791115063110.8,
+          "server_ms": 1791115063109.2466,
+          "offset_ms": -0.4033203125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063110.8,
+          "after": 1791115063113.3,
+          "server_ms": 1791115063111.5276,
+          "offset_ms": -0.5224609375,
+          "rtt_ms": 2.5
+        },
+        {
+          "before": 1791115063113.3,
+          "after": 1791115063115.5999,
+          "server_ms": 1791115063114.0508,
+          "offset_ms": -0.399169921875,
+          "rtt_ms": 2.2998046875
+        },
+        {
+          "before": 1791115063115.5999,
+          "after": 1791115063117.9,
+          "server_ms": 1791115063116.3108,
+          "offset_ms": -0.439208984375,
+          "rtt_ms": 2.300048828125
+        }
+      ],
+      [
+        {
+          "before": 1791115063121.7,
+          "after": 1791115063124.3,
+          "server_ms": 1791115063122.761,
+          "offset_ms": -0.239013671875,
+          "rtt_ms": 2.60009765625
+        },
+        {
+          "before": 1791115063124.3,
+          "after": 1791115063126.8,
+          "server_ms": 1791115063125.175,
+          "offset_ms": -0.375,
+          "rtt_ms": 2.5
+        },
+        {
+          "before": 1791115063126.8,
+          "after": 1791115063129.2,
+          "server_ms": 1791115063127.5618,
+          "offset_ms": -0.438232421875,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115063129.2,
+          "after": 1791115063131.5,
+          "server_ms": 1791115063129.984,
+          "offset_ms": -0.3662109375,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115063131.5,
+          "after": 1791115063133.7,
+          "server_ms": 1791115063132.2747,
+          "offset_ms": -0.325439453125,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063133.7,
+          "after": 1791115063136.2,
+          "server_ms": 1791115063134.5298,
+          "offset_ms": -0.420166015625,
+          "rtt_ms": 2.5
+        },
+        {
+          "before": 1791115063136.2,
+          "after": 1791115063138.4,
+          "server_ms": 1791115063136.9802,
+          "offset_ms": -0.319580078125,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063138.4,
+          "after": 1791115063140.5999,
+          "server_ms": 1791115063139.1948,
+          "offset_ms": -0.30517578125,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063140.5999,
+          "after": 1791115063142.8,
+          "server_ms": 1791115063141.4036,
+          "offset_ms": -0.29638671875,
+          "rtt_ms": 2.2001953125
+        },
+        {
+          "before": 1791115063142.8,
+          "after": 1791115063145.3,
+          "server_ms": 1791115063143.6228,
+          "offset_ms": -0.42724609375,
+          "rtt_ms": 2.5
+        },
+        {
+          "before": 1791115063145.3,
+          "after": 1791115063147.5999,
+          "server_ms": 1791115063146.0542,
+          "offset_ms": -0.395751953125,
+          "rtt_ms": 2.2998046875
+        },
+        {
+          "before": 1791115063147.5999,
+          "after": 1791115063149.8,
+          "server_ms": 1791115063148.3599,
+          "offset_ms": -0.340087890625,
+          "rtt_ms": 2.2001953125
+        }
+      ],
+      [
+        {
+          "before": 1791115063580.1,
+          "after": 1791115063589.9001,
+          "server_ms": 1791115063587.6255,
+          "offset_ms": 2.62548828125,
+          "rtt_ms": 9.800048828125
+        },
+        {
+          "before": 1791115063589.9001,
+          "after": 1791115063596.2002,
+          "server_ms": 1791115063594.3906,
+          "offset_ms": 1.34033203125,
+          "rtt_ms": 6.300048828125
+        },
+        {
+          "before": 1791115063596.2002,
+          "after": 1791115063598.5,
+          "server_ms": 1791115063596.974,
+          "offset_ms": -0.3759765625,
+          "rtt_ms": 2.2998046875
+        },
+        {
+          "before": 1791115063598.5,
+          "after": 1791115063600.9001,
+          "server_ms": 1791115063599.2212,
+          "offset_ms": -0.47900390625,
+          "rtt_ms": 2.400146484375
+        },
+        {
+          "before": 1791115063601,
+          "after": 1791115063603.2002,
+          "server_ms": 1791115063601.628,
+          "offset_ms": -0.47216796875,
+          "rtt_ms": 2.2001953125
+        },
+        {
+          "before": 1791115063603.2002,
+          "after": 1791115063605.5,
+          "server_ms": 1791115063603.887,
+          "offset_ms": -0.463134765625,
+          "rtt_ms": 2.2998046875
+        },
+        {
+          "before": 1791115063605.5,
+          "after": 1791115063607.7002,
+          "server_ms": 1791115063606.185,
+          "offset_ms": -0.4150390625,
+          "rtt_ms": 2.2001953125
+        },
+        {
+          "before": 1791115063607.7002,
+          "after": 1791115063609.9001,
+          "server_ms": 1791115063608.3728,
+          "offset_ms": -0.427490234375,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063609.9001,
+          "after": 1791115063612.1,
+          "server_ms": 1791115063610.6458,
+          "offset_ms": -0.354248046875,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115063612.1,
+          "after": 1791115063614.5,
+          "server_ms": 1791115063612.8162,
+          "offset_ms": -0.48388671875,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115063614.5,
+          "after": 1791115063616.6,
+          "server_ms": 1791115063615.0842,
+          "offset_ms": -0.4658203125,
+          "rtt_ms": 2.10009765625
+        },
+        {
+          "before": 1791115063616.6,
+          "after": 1791115063618.8,
+          "server_ms": 1791115063617.253,
+          "offset_ms": -0.447265625,
+          "rtt_ms": 2.199951171875
+        }
+      ]
+    ],
+    "reconnects_completed": 20,
+    "recoveries": [
+      {
+        "viewer": 0,
+        "started_ms": 1791115066757.0999,
+        "connection": 1,
+        "before_seq": 251,
+        "snapshot_received_ms": 1791115067768.2,
+        "snapshot_watermark": 293,
+        "snapshot_state_hash": "d32902ac70c89e936b04f5fa3738839e53d88372e4056123099ae3720d31657f",
+        "recovery_ms": 1011.10009765625,
+        "missed_event_count": 42,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 1,
+        "started_ms": 1791115068034.4,
+        "connection": 1,
+        "before_seq": 303,
+        "snapshot_received_ms": 1791115069039.7998,
+        "snapshot_watermark": 339,
+        "snapshot_state_hash": "c6f2189082bd4e716e2f5acdbea5c91e3ae458c12b08e67f802ba5e660b2e6be",
+        "recovery_ms": 1005.39990234375,
+        "missed_event_count": 36,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 2,
+        "started_ms": 1791115069309,
+        "connection": 1,
+        "before_seq": 349,
+        "snapshot_received_ms": 1791115070314.5999,
+        "snapshot_watermark": 387,
+        "snapshot_state_hash": "5d949a384cc772fbe3b251854113901af0907b339f683aa9bfcbcb3ba3cb8112",
+        "recovery_ms": 1005.599853515625,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 3,
+        "started_ms": 1791115070578.8,
+        "connection": 1,
+        "before_seq": 395,
+        "snapshot_received_ms": 1791115071584.7,
+        "snapshot_watermark": 433,
+        "snapshot_state_hash": "5aa5bffbf47cea4ce4694d28e32f56d533a3baab4a88ad872e62dfa22db04fd5",
+        "recovery_ms": 1005.89990234375,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 4,
+        "started_ms": 1791115071869.6,
+        "connection": 1,
+        "before_seq": 443,
+        "snapshot_received_ms": 1791115072876,
+        "snapshot_watermark": 479,
+        "snapshot_state_hash": "1d1d438a8540bf178887dcc3bf778c9c11b8d5e7a6e418121ed5d7c6bc45ec51",
+        "recovery_ms": 1006.39990234375,
+        "missed_event_count": 36,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 0,
+        "started_ms": 1791115073106.5,
+        "connection": 2,
+        "before_seq": 489,
+        "snapshot_received_ms": 1791115074112.7998,
+        "snapshot_watermark": 527,
+        "snapshot_state_hash": "207ff0b2998ede4e19dbb4229096670e120f345e4714ac248cf14e46cf6b8d6d",
+        "recovery_ms": 1006.2998046875,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 1,
+        "started_ms": 1791115074370.5999,
+        "connection": 2,
+        "before_seq": 535,
+        "snapshot_received_ms": 1791115075375.5,
+        "snapshot_watermark": 577,
+        "snapshot_state_hash": "74936e3c5db3ed9988a47608847a6b5f99ca9d9aece4098c8693c720065e02fe",
+        "recovery_ms": 1004.900146484375,
+        "missed_event_count": 42,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 2,
+        "started_ms": 1791115075616,
+        "connection": 2,
+        "before_seq": 587,
+        "snapshot_received_ms": 1791115076621.3,
+        "snapshot_watermark": 625,
+        "snapshot_state_hash": "2530a3b4a64dbc8c32d7e484a5600f41b6f723154180871134bf86eb294e15c8",
+        "recovery_ms": 1005.300048828125,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 3,
+        "started_ms": 1791115076889,
+        "connection": 2,
+        "before_seq": 633,
+        "snapshot_received_ms": 1791115077894.5,
+        "snapshot_watermark": 671,
+        "snapshot_state_hash": "f808fc8ed84ed018bb669441ae8e5415365329df44bdb926b661d9cb80e5515b",
+        "recovery_ms": 1005.5,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 4,
+        "started_ms": 1791115078163.2002,
+        "connection": 2,
+        "before_seq": 681,
+        "snapshot_received_ms": 1791115079170.5,
+        "snapshot_watermark": 717,
+        "snapshot_state_hash": "9d6137450bd674fa2df3a453bb3a41e22b3afb709bfa2f8616f98da4da5f18bd",
+        "recovery_ms": 1007.2998046875,
+        "missed_event_count": 36,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 0,
+        "started_ms": 1791115079428.9,
+        "connection": 3,
+        "before_seq": 727,
+        "snapshot_received_ms": 1791115080434.9,
+        "snapshot_watermark": 765,
+        "snapshot_state_hash": "a5f0017428e8632f78455224defe68752466e06c37cec636c62076c55e5588a7",
+        "recovery_ms": 1006.0,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 1,
+        "started_ms": 1791115080700.2998,
+        "connection": 3,
+        "before_seq": 773,
+        "snapshot_received_ms": 1791115081706.2998,
+        "snapshot_watermark": 811,
+        "snapshot_state_hash": "03b5381d20456d128a1220b83f6c1f5f5a749db69e097fe3fa913ef2c637724e",
+        "recovery_ms": 1006.0,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 2,
+        "started_ms": 1791115081977.8,
+        "connection": 3,
+        "before_seq": 821,
+        "snapshot_received_ms": 1791115082983,
+        "snapshot_watermark": 863,
+        "snapshot_state_hash": "864dc642db1e09f8986f57c5b714864c7b10a3b24004b95b3b67b07cec4df3d2",
+        "recovery_ms": 1005.199951171875,
+        "missed_event_count": 42,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 3,
+        "started_ms": 1791115083212.0999,
+        "connection": 3,
+        "before_seq": 871,
+        "snapshot_received_ms": 1791115084217.5,
+        "snapshot_watermark": 909,
+        "snapshot_state_hash": "d2c2d35c7284b32229f57252b901b481b645369e66a8965107891aeffc103ca6",
+        "recovery_ms": 1005.400146484375,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 4,
+        "started_ms": 1791115084477.4001,
+        "connection": 3,
+        "before_seq": 919,
+        "snapshot_received_ms": 1791115085483.3,
+        "snapshot_watermark": 955,
+        "snapshot_state_hash": "af43869fff5cccc84ca9d29825df3e584dae4751c27902e2868023962d66d9ec",
+        "recovery_ms": 1005.89990234375,
+        "missed_event_count": 36,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 0,
+        "started_ms": 1791115085739.2,
+        "connection": 4,
+        "before_seq": 965,
+        "snapshot_received_ms": 1791115086745.4,
+        "snapshot_watermark": 1003,
+        "snapshot_state_hash": "517bb2596e2eb46d5d8ee808f2e44041190d8eab0f137975aeacc572618211c6",
+        "recovery_ms": 1006.199951171875,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 1,
+        "started_ms": 1791115087004.7,
+        "connection": 4,
+        "before_seq": 1011,
+        "snapshot_received_ms": 1791115088011,
+        "snapshot_watermark": 1049,
+        "snapshot_state_hash": "483c059cd1b33aa68e1fa49946e4d378addcdb808b9c2646fdcec6ff1c762a37",
+        "recovery_ms": 1006.300048828125,
+        "missed_event_count": 38,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 2,
+        "started_ms": 1791115088273.4,
+        "connection": 4,
+        "before_seq": 1059,
+        "snapshot_received_ms": 1791115089280.2,
+        "snapshot_watermark": 1095,
+        "snapshot_state_hash": "27cee2494ec0d65316dabec922f64ab982e78fb4d8ddc36cc84463f1155f9b59",
+        "recovery_ms": 1006.800048828125,
+        "missed_event_count": 36,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 3,
+        "started_ms": 1791115089544.5999,
+        "connection": 4,
+        "before_seq": 1105,
+        "snapshot_received_ms": 1791115090550.4,
+        "snapshot_watermark": 1147,
+        "snapshot_state_hash": "3a52f8f20071457da5a569d258cc09c0cecedc99bc13ec7c635d1e6ee1545a91",
+        "recovery_ms": 1005.800048828125,
+        "missed_event_count": 42,
+        "before_status": "running",
+        "after_status": "running"
+      },
+      {
+        "viewer": 4,
+        "started_ms": 1791115090800.6,
+        "connection": 4,
+        "before_seq": 1157,
+        "snapshot_received_ms": 1791115091808.4001,
+        "snapshot_watermark": 1193,
+        "snapshot_state_hash": "32efa496d570f5a3fa4c8596395574f17b42bf28a451b1165fb535f0f1662ca1",
+        "recovery_ms": 1007.800048828125,
+        "missed_event_count": 36,
+        "before_status": "running",
+        "after_status": "running"
+      }
+    ],
+    "pressure": {
+      "first_seq": 1208,
+      "last_seq": 11522,
+      "probe_count": 10001,
+      "probes_persisted": true,
+      "queued_notification": {
+        "type": "resync_required",
+        "payload": {
+          "reason": "slow_client"
+        }
+      },
+      "release_ms": 1791115102625.5122
+    },
+    "slow_client": [
+      {
+        "connection": 1,
+        "received_ms": 1791115092178.6,
+        "event": {
+          "type": "match_state",
+          "payload": {
+            "match_id": "fa8a033b133849b1a82284cd87d484a3",
+            "status": "running",
+            "current_hand": 5,
+            "score": {
+              "red": 0,
+              "blue": 0
+            },
+            "tables": {
+              "A": {
+                "phase": "playing",
+                "hand_num": 5,
+                "current_seat": "W",
+                "current_pattern": {
+                  "pattern": "单张",
+                  "length": 1,
+                  "max_rank": "12"
+                },
+                "dealer": "S",
+                "landlord": "S",
+                "dizhu_cards": [
+                  "♦3",
+                  "♠9",
+                  "♠J"
+                ],
+                "players": {
+                  "S": {
+                    "agent_name": "fixture-0",
+                    "player_id": "cb050330ec354d0eb6fcecbf9678c896",
+                    "team": "red",
+                    "role": "landlord",
+                    "hand_size": 14,
+                    "hand_cards": [
+                      "♠J",
+                      "♠10",
+                      "♦10",
+                      "♠9",
+                      "♣9",
+                      "♠8",
+                      "♥8",
+                      "♠7",
+                      "♦7",
+                      "♥6",
+                      "♠5",
+                      "♥4",
+                      "♣3",
+                      "♦3"
+                    ]
+                  },
+                  "E": {
+                    "agent_name": "fixture-7",
+                    "player_id": "29a5216bd7474a75a147c554aa7e776d",
+                    "team": "blue",
+                    "role": "farmer",
+                    "hand_size": 17,
+                    "hand_cards": [
+                      "大王",
+                      "小王",
+                      "♠2",
+                      "♥2",
+                      "♥A",
+                      "♣A",
+                      "♦A",
+                      "♥Q",
+                      "♥J",
+                      "♣J",
+                      "♥7",
+                      "♣7",
+                      "♠6",
+                      "♥5",
+                      "♣5",
+                      "♠4",
+                      "♣4"
+                    ]
+                  },
+                  "N": {
+                    "agent_name": "fixture-2",
+                    "player_id": "8e0db18dd9b440ab9a9b8f82594bd223",
+                    "team": "red",
+                    "role": "idle",
+                    "hand_size": 0,
+                    "hand_cards": []
+                  },
+                  "W": {
+                    "agent_name": "fixture-6",
+                    "player_id": "4eb2bfbafedc433f92bad5402309419c",
+                    "team": "blue",
+                    "role": "farmer",
+                    "hand_size": 17,
+                    "hand_cards": [
+                      "♣2",
+                      "♠A",
+                      "♠K",
+                      "♥K",
+                      "♦J",
+                      "♥10",
+                      "♣10",
+                      "♥9",
+                      "♦9",
+                      "♣8",
+                      "♦8",
+                      "♣6",
+                      "♦6",
+                      "♦5",
+                      "♦4",
+                      "♠3",
+                      "♥3"
+                    ]
+                  }
+                },
+                "play_history": [
+                  {
+                    "round": 1,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♦2"
+                      ],
+                      "pattern": "单张",
+                      "display": "♦2"
+                    },
+                    "timestamp_ms": 1791115090117
+                  },
+                  {
+                    "round": 1,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090242
+                  },
+                  {
+                    "round": 1,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090369
+                  },
+                  {
+                    "round": 2,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♣K"
+                      ],
+                      "pattern": "单张",
+                      "display": "♣K"
+                    },
+                    "timestamp_ms": 1791115090495
+                  },
+                  {
+                    "round": 2,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090620
+                  },
+                  {
+                    "round": 2,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090746
+                  },
+                  {
+                    "round": 3,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♦K"
+                      ],
+                      "pattern": "单张",
+                      "display": "♦K"
+                    },
+                    "timestamp_ms": 1791115090873
+                  },
+                  {
+                    "round": 3,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090998
+                  },
+                  {
+                    "round": 3,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091124
+                  },
+                  {
+                    "round": 4,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♠Q"
+                      ],
+                      "pattern": "单张",
+                      "display": "♠Q"
+                    },
+                    "timestamp_ms": 1791115091249
+                  },
+                  {
+                    "round": 4,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091374
+                  },
+                  {
+                    "round": 4,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091498
+                  },
+                  {
+                    "round": 5,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♣Q"
+                      ],
+                      "pattern": "单张",
+                      "display": "♣Q"
+                    },
+                    "timestamp_ms": 1791115091623
+                  },
+                  {
+                    "round": 5,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091748
+                  },
+                  {
+                    "round": 5,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091877
+                  },
+                  {
+                    "round": 6,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♦Q"
+                      ],
+                      "pattern": "单张",
+                      "display": "♦Q"
+                    },
+                    "timestamp_ms": 1791115092004
+                  },
+                  {
+                    "round": 6,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115092131
+                  }
+                ],
+                "bidding_order": [
+                  "S",
+                  "E",
+                  "N"
+                ],
+                "idle_seat": "W",
+                "effective_idle": "N",
+                "bidding_history": [
+                  {
+                    "seat": "S",
+                    "bid": 3
+                  }
+                ],
+                "current_high_bid": 3,
+                "current_high_bidder": "S",
+                "time_remaining": {
+                  "red_team_ms": 0,
+                  "blue_team_ms": 0
+                },
+                "turn_timer": {
+                  "seat": "W",
+                  "timeout_ms": 360000,
+                  "deadline_ms": 1791115452134
+                }
+              },
+              "B": {
+                "phase": "playing",
+                "hand_num": 5,
+                "current_seat": "W",
+                "current_pattern": {
+                  "pattern": "单张",
+                  "length": 1,
+                  "max_rank": "12"
+                },
+                "dealer": "S",
+                "landlord": "S",
+                "dizhu_cards": [
+                  "♦3",
+                  "♠9",
+                  "♠J"
+                ],
+                "players": {
+                  "S": {
+                    "agent_name": "fixture-4",
+                    "player_id": "7188919f97594275bd980a1dcd2a799d",
+                    "team": "blue",
+                    "role": "landlord",
+                    "hand_size": 14,
+                    "hand_cards": [
+                      "♠J",
+                      "♠10",
+                      "♦10",
+                      "♠9",
+                      "♣9",
+                      "♠8",
+                      "♥8",
+                      "♠7",
+                      "♦7",
+                      "♥6",
+                      "♠5",
+                      "♥4",
+                      "♣3",
+                      "♦3"
+                    ]
+                  },
+                  "E": {
+                    "agent_name": "fixture-1",
+                    "player_id": "ee3f4a1c35034cc5bddaf9853d79ec28",
+                    "team": "red",
+                    "role": "farmer",
+                    "hand_size": 17,
+                    "hand_cards": [
+                      "大王",
+                      "小王",
+                      "♠2",
+                      "♥2",
+                      "♥A",
+                      "♣A",
+                      "♦A",
+                      "♥Q",
+                      "♥J",
+                      "♣J",
+                      "♥7",
+                      "♣7",
+                      "♠6",
+                      "♥5",
+                      "♣5",
+                      "♠4",
+                      "♣4"
+                    ]
+                  },
+                  "N": {
+                    "agent_name": "fixture-5",
+                    "player_id": "faa0aeea30414574a6b735268504df5c",
+                    "team": "blue",
+                    "role": "idle",
+                    "hand_size": 0,
+                    "hand_cards": []
+                  },
+                  "W": {
+                    "agent_name": "fixture-3",
+                    "player_id": "05ee52b39295485c82650912c6d6de1d",
+                    "team": "red",
+                    "role": "farmer",
+                    "hand_size": 17,
+                    "hand_cards": [
+                      "♣2",
+                      "♠A",
+                      "♠K",
+                      "♥K",
+                      "♦J",
+                      "♥10",
+                      "♣10",
+                      "♥9",
+                      "♦9",
+                      "♣8",
+                      "♦8",
+                      "♣6",
+                      "♦6",
+                      "♦5",
+                      "♦4",
+                      "♠3",
+                      "♥3"
+                    ]
+                  }
+                },
+                "play_history": [
+                  {
+                    "round": 1,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♦2"
+                      ],
+                      "pattern": "单张",
+                      "display": "♦2"
+                    },
+                    "timestamp_ms": 1791115090126
+                  },
+                  {
+                    "round": 1,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090250
+                  },
+                  {
+                    "round": 1,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090376
+                  },
+                  {
+                    "round": 2,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♣K"
+                      ],
+                      "pattern": "单张",
+                      "display": "♣K"
+                    },
+                    "timestamp_ms": 1791115090501
+                  },
+                  {
+                    "round": 2,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090626
+                  },
+                  {
+                    "round": 2,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115090754
+                  },
+                  {
+                    "round": 3,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♦K"
+                      ],
+                      "pattern": "单张",
+                      "display": "♦K"
+                    },
+                    "timestamp_ms": 1791115090879
+                  },
+                  {
+                    "round": 3,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091005
+                  },
+                  {
+                    "round": 3,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091131
+                  },
+                  {
+                    "round": 4,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♠Q"
+                      ],
+                      "pattern": "单张",
+                      "display": "♠Q"
+                    },
+                    "timestamp_ms": 1791115091255
+                  },
+                  {
+                    "round": 4,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091379
+                  },
+                  {
+                    "round": 4,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091504
+                  },
+                  {
+                    "round": 5,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♣Q"
+                      ],
+                      "pattern": "单张",
+                      "display": "♣Q"
+                    },
+                    "timestamp_ms": 1791115091629
+                  },
+                  {
+                    "round": 5,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091754
+                  },
+                  {
+                    "round": 5,
+                    "sub_round": 3,
+                    "seat": "W",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115091885
+                  },
+                  {
+                    "round": 6,
+                    "sub_round": 1,
+                    "seat": "S",
+                    "action": {
+                      "type": "play",
+                      "cards": [
+                        "♦Q"
+                      ],
+                      "pattern": "单张",
+                      "display": "♦Q"
+                    },
+                    "timestamp_ms": 1791115092012
+                  },
+                  {
+                    "round": 6,
+                    "sub_round": 2,
+                    "seat": "E",
+                    "action": {
+                      "type": "pass",
+                      "cards": null,
+                      "pattern": null,
+                      "display": null
+                    },
+                    "timestamp_ms": 1791115092136
+                  }
+                ],
+                "bidding_order": [
+                  "S",
+                  "E",
+                  "N"
+                ],
+                "idle_seat": "W",
+                "effective_idle": "N",
+                "bidding_history": [
+                  {
+                    "seat": "S",
+                    "bid": 3
+                  }
+                ],
+                "current_high_bid": 3,
+                "current_high_bidder": "S",
+                "time_remaining": {
+                  "red_team_ms": 0,
+                  "blue_team_ms": 0
+                },
+                "turn_timer": {
+                  "seat": "W",
+                  "timeout_ms": 360000,
+                  "deadline_ms": 1791115452139
+                }
+              }
+            },
+            "stream_id": "fa8a033b133849b1a82284cd87d484a3",
+            "watermark": 1207,
+            "state_hash": "a604c38ad97830d2dafa10cfc2ce9844e7357cb822c30c20b1c24edc8baa51f2"
+          }
+        }
+      },
+      {
+        "connection": 1,
+        "received_ms": 1791115102635.8,
+        "event": {
+          "type": "resync_required",
+          "payload": {
+            "reason": "slow_client"
+          }
+        }
+      },
+      {
+        "connection": 1,
+        "received_ms": 1791115102637.9,
+        "close_code": 1013
+      }
+    ],
+    "slow_server": {
+      "capacity": 10000,
+      "initial_watermark": 1207,
+      "injection": "server relay suspended before subscription.get",
+      "max_queue_size": 10000,
+      "detached": true,
+      "detached_at_seq": 11208,
+      "remaining_queue_size": 1
+    },
+    "checkpoint": {
+      "match_id": "fa8a033b133849b1a82284cd87d484a3",
+      "status": "running",
+      "current_hand": 6,
+      "score": {
+        "red": 0,
+        "blue": 0
+      },
+      "tables": {
+        "A": {
+          "phase": "playing",
+          "hand_num": 6,
+          "current_seat": "E",
+          "current_pattern": null,
+          "dealer": "E",
+          "landlord": "E",
+          "dizhu_cards": [
+            "♠5",
+            "♣5",
+            "♠2"
+          ],
+          "players": {
+            "S": {
+              "agent_name": "fixture-0",
+              "player_id": "cb050330ec354d0eb6fcecbf9678c896",
+              "team": "red",
+              "role": "farmer",
+              "hand_size": 17,
+              "hand_cards": [
+                "小王",
+                "♣2",
+                "♠A",
+                "♣A",
+                "♦A",
+                "♠K",
+                "♣Q",
+                "♦Q",
+                "♠9",
+                "♥7",
+                "♥6",
+                "♦6",
+                "♦5",
+                "♠4",
+                "♥4",
+                "♣4",
+                "♠3"
+              ]
+            },
+            "E": {
+              "agent_name": "fixture-7",
+              "player_id": "29a5216bd7474a75a147c554aa7e776d",
+              "team": "blue",
+              "role": "landlord",
+              "hand_size": 3,
+              "hand_cards": [
+                "♥3",
+                "♣3",
+                "♦3"
+              ]
+            },
+            "N": {
+              "agent_name": "fixture-2",
+              "player_id": "8e0db18dd9b440ab9a9b8f82594bd223",
+              "team": "red",
+              "role": "farmer",
+              "hand_size": 17,
+              "hand_cards": [
+                "大王",
+                "♥2",
+                "♥A",
+                "♠Q",
+                "♠J",
+                "♣J",
+                "♦J",
+                "♠10",
+                "♥10",
+                "♣10",
+                "♦9",
+                "♠8",
+                "♥8",
+                "♣8",
+                "♠7",
+                "♦7",
+                "♥5"
+              ]
+            },
+            "W": {
+              "agent_name": "fixture-6",
+              "player_id": "4eb2bfbafedc433f92bad5402309419c",
+              "team": "blue",
+              "role": "idle",
+              "hand_size": 0,
+              "hand_cards": []
+            }
+          },
+          "play_history": [
+            {
+              "round": 1,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♠2"
+                ],
+                "pattern": "单张",
+                "display": "♠2"
+              },
+              "timestamp_ms": 1791115098915
+            },
+            {
+              "round": 1,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099067
+            },
+            {
+              "round": 1,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099221
+            },
+            {
+              "round": 2,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦2"
+                ],
+                "pattern": "单张",
+                "display": "♦2"
+              },
+              "timestamp_ms": 1791115099368
+            },
+            {
+              "round": 2,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099530
+            },
+            {
+              "round": 2,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099683
+            },
+            {
+              "round": 3,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♥K"
+                ],
+                "pattern": "单张",
+                "display": "♥K"
+              },
+              "timestamp_ms": 1791115099826
+            },
+            {
+              "round": 3,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099994
+            },
+            {
+              "round": 3,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100142
+            },
+            {
+              "round": 4,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣K"
+                ],
+                "pattern": "单张",
+                "display": "♣K"
+              },
+              "timestamp_ms": 1791115100292
+            },
+            {
+              "round": 4,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100456
+            },
+            {
+              "round": 4,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100602
+            },
+            {
+              "round": 5,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦K"
+                ],
+                "pattern": "单张",
+                "display": "♦K"
+              },
+              "timestamp_ms": 1791115100763
+            },
+            {
+              "round": 5,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100913
+            },
+            {
+              "round": 5,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115101078
+            },
+            {
+              "round": 6,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♥Q"
+                ],
+                "pattern": "单张",
+                "display": "♥Q"
+              },
+              "timestamp_ms": 1791115101234
+            },
+            {
+              "round": 6,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115101396
+            },
+            {
+              "round": 6,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115101566
+            },
+            {
+              "round": 7,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♥J"
+                ],
+                "pattern": "单张",
+                "display": "♥J"
+              },
+              "timestamp_ms": 1791115101710
+            },
+            {
+              "round": 7,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115101877
+            },
+            {
+              "round": 7,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102022
+            },
+            {
+              "round": 8,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦10"
+                ],
+                "pattern": "单张",
+                "display": "♦10"
+              },
+              "timestamp_ms": 1791115102185
+            },
+            {
+              "round": 8,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102341
+            },
+            {
+              "round": 8,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102489
+            },
+            {
+              "round": 9,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♥9"
+                ],
+                "pattern": "单张",
+                "display": "♥9"
+              },
+              "timestamp_ms": 1791115102628
+            },
+            {
+              "round": 9,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102757
+            },
+            {
+              "round": 9,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102885
+            },
+            {
+              "round": 10,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣9"
+                ],
+                "pattern": "单张",
+                "display": "♣9"
+              },
+              "timestamp_ms": 1791115103013
+            },
+            {
+              "round": 10,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103141
+            },
+            {
+              "round": 10,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103269
+            },
+            {
+              "round": 11,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦8"
+                ],
+                "pattern": "单张",
+                "display": "♦8"
+              },
+              "timestamp_ms": 1791115103397
+            },
+            {
+              "round": 11,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103525
+            },
+            {
+              "round": 11,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103652
+            },
+            {
+              "round": 12,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣7"
+                ],
+                "pattern": "单张",
+                "display": "♣7"
+              },
+              "timestamp_ms": 1791115103779
+            },
+            {
+              "round": 12,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103907
+            },
+            {
+              "round": 12,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104034
+            },
+            {
+              "round": 13,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♠6"
+                ],
+                "pattern": "单张",
+                "display": "♠6"
+              },
+              "timestamp_ms": 1791115104162
+            },
+            {
+              "round": 13,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104291
+            },
+            {
+              "round": 13,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104419
+            },
+            {
+              "round": 14,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣6"
+                ],
+                "pattern": "单张",
+                "display": "♣6"
+              },
+              "timestamp_ms": 1791115104547
+            },
+            {
+              "round": 14,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104676
+            },
+            {
+              "round": 14,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104804
+            },
+            {
+              "round": 15,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♠5"
+                ],
+                "pattern": "单张",
+                "display": "♠5"
+              },
+              "timestamp_ms": 1791115104934
+            },
+            {
+              "round": 15,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105060
+            },
+            {
+              "round": 15,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105188
+            },
+            {
+              "round": 16,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣5"
+                ],
+                "pattern": "单张",
+                "display": "♣5"
+              },
+              "timestamp_ms": 1791115105316
+            },
+            {
+              "round": 16,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105444
+            },
+            {
+              "round": 16,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105572
+            },
+            {
+              "round": 17,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦4"
+                ],
+                "pattern": "单张",
+                "display": "♦4"
+              },
+              "timestamp_ms": 1791115105701
+            },
+            {
+              "round": 17,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105828
+            },
+            {
+              "round": 17,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105962
+            }
+          ],
+          "bidding_order": [
+            "E",
+            "N",
+            "W"
+          ],
+          "idle_seat": "S",
+          "effective_idle": "W",
+          "bidding_history": [
+            {
+              "seat": "E",
+              "bid": 3
+            }
+          ],
+          "current_high_bid": 3,
+          "current_high_bidder": "E",
+          "time_remaining": {
+            "red_team_ms": 0,
+            "blue_team_ms": 0
+          },
+          "turn_timer": {
+            "seat": "E",
+            "timeout_ms": 360000,
+            "deadline_ms": 1791115465968
+          }
+        },
+        "B": {
+          "phase": "playing",
+          "hand_num": 6,
+          "current_seat": "E",
+          "current_pattern": null,
+          "dealer": "E",
+          "landlord": "E",
+          "dizhu_cards": [
+            "♠5",
+            "♣5",
+            "♠2"
+          ],
+          "players": {
+            "S": {
+              "agent_name": "fixture-4",
+              "player_id": "7188919f97594275bd980a1dcd2a799d",
+              "team": "blue",
+              "role": "farmer",
+              "hand_size": 17,
+              "hand_cards": [
+                "小王",
+                "♣2",
+                "♠A",
+                "♣A",
+                "♦A",
+                "♠K",
+                "♣Q",
+                "♦Q",
+                "♠9",
+                "♥7",
+                "♥6",
+                "♦6",
+                "♦5",
+                "♠4",
+                "♥4",
+                "♣4",
+                "♠3"
+              ]
+            },
+            "E": {
+              "agent_name": "fixture-1",
+              "player_id": "ee3f4a1c35034cc5bddaf9853d79ec28",
+              "team": "red",
+              "role": "landlord",
+              "hand_size": 3,
+              "hand_cards": [
+                "♥3",
+                "♣3",
+                "♦3"
+              ]
+            },
+            "N": {
+              "agent_name": "fixture-5",
+              "player_id": "faa0aeea30414574a6b735268504df5c",
+              "team": "blue",
+              "role": "farmer",
+              "hand_size": 17,
+              "hand_cards": [
+                "大王",
+                "♥2",
+                "♥A",
+                "♠Q",
+                "♠J",
+                "♣J",
+                "♦J",
+                "♠10",
+                "♥10",
+                "♣10",
+                "♦9",
+                "♠8",
+                "♥8",
+                "♣8",
+                "♠7",
+                "♦7",
+                "♥5"
+              ]
+            },
+            "W": {
+              "agent_name": "fixture-3",
+              "player_id": "05ee52b39295485c82650912c6d6de1d",
+              "team": "red",
+              "role": "idle",
+              "hand_size": 0,
+              "hand_cards": []
+            }
+          },
+          "play_history": [
+            {
+              "round": 1,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♠2"
+                ],
+                "pattern": "单张",
+                "display": "♠2"
+              },
+              "timestamp_ms": 1791115098941
+            },
+            {
+              "round": 1,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099093
+            },
+            {
+              "round": 1,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099255
+            },
+            {
+              "round": 2,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦2"
+                ],
+                "pattern": "单张",
+                "display": "♦2"
+              },
+              "timestamp_ms": 1791115099407
+            },
+            {
+              "round": 2,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099561
+            },
+            {
+              "round": 2,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115099707
+            },
+            {
+              "round": 3,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♥K"
+                ],
+                "pattern": "单张",
+                "display": "♥K"
+              },
+              "timestamp_ms": 1791115099855
+            },
+            {
+              "round": 3,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100026
+            },
+            {
+              "round": 3,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100183
+            },
+            {
+              "round": 4,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣K"
+                ],
+                "pattern": "单张",
+                "display": "♣K"
+              },
+              "timestamp_ms": 1791115100341
+            },
+            {
+              "round": 4,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100494
+            },
+            {
+              "round": 4,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100652
+            },
+            {
+              "round": 5,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦K"
+                ],
+                "pattern": "单张",
+                "display": "♦K"
+              },
+              "timestamp_ms": 1791115100812
+            },
+            {
+              "round": 5,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115100969
+            },
+            {
+              "round": 5,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115101134
+            },
+            {
+              "round": 6,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♥Q"
+                ],
+                "pattern": "单张",
+                "display": "♥Q"
+              },
+              "timestamp_ms": 1791115101292
+            },
+            {
+              "round": 6,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115101444
+            },
+            {
+              "round": 6,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115101589
+            },
+            {
+              "round": 7,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♥J"
+                ],
+                "pattern": "单张",
+                "display": "♥J"
+              },
+              "timestamp_ms": 1791115101737
+            },
+            {
+              "round": 7,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115101909
+            },
+            {
+              "round": 7,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102063
+            },
+            {
+              "round": 8,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦10"
+                ],
+                "pattern": "单张",
+                "display": "♦10"
+              },
+              "timestamp_ms": 1791115102217
+            },
+            {
+              "round": 8,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102364
+            },
+            {
+              "round": 8,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102524
+            },
+            {
+              "round": 9,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♥9"
+                ],
+                "pattern": "单张",
+                "display": "♥9"
+              },
+              "timestamp_ms": 1791115102654
+            },
+            {
+              "round": 9,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102781
+            },
+            {
+              "round": 9,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115102910
+            },
+            {
+              "round": 10,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣9"
+                ],
+                "pattern": "单张",
+                "display": "♣9"
+              },
+              "timestamp_ms": 1791115103038
+            },
+            {
+              "round": 10,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103165
+            },
+            {
+              "round": 10,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103292
+            },
+            {
+              "round": 11,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦8"
+                ],
+                "pattern": "单张",
+                "display": "♦8"
+              },
+              "timestamp_ms": 1791115103419
+            },
+            {
+              "round": 11,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103546
+            },
+            {
+              "round": 11,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103673
+            },
+            {
+              "round": 12,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣7"
+                ],
+                "pattern": "单张",
+                "display": "♣7"
+              },
+              "timestamp_ms": 1791115103802
+            },
+            {
+              "round": 12,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115103929
+            },
+            {
+              "round": 12,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104061
+            },
+            {
+              "round": 13,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♠6"
+                ],
+                "pattern": "单张",
+                "display": "♠6"
+              },
+              "timestamp_ms": 1791115104192
+            },
+            {
+              "round": 13,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104319
+            },
+            {
+              "round": 13,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104448
+            },
+            {
+              "round": 14,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣6"
+                ],
+                "pattern": "单张",
+                "display": "♣6"
+              },
+              "timestamp_ms": 1791115104577
+            },
+            {
+              "round": 14,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104708
+            },
+            {
+              "round": 14,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115104836
+            },
+            {
+              "round": 15,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♠5"
+                ],
+                "pattern": "单张",
+                "display": "♠5"
+              },
+              "timestamp_ms": 1791115104965
+            },
+            {
+              "round": 15,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105092
+            },
+            {
+              "round": 15,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105220
+            },
+            {
+              "round": 16,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♣5"
+                ],
+                "pattern": "单张",
+                "display": "♣5"
+              },
+              "timestamp_ms": 1791115105347
+            },
+            {
+              "round": 16,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105474
+            },
+            {
+              "round": 16,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105601
+            },
+            {
+              "round": 17,
+              "sub_round": 1,
+              "seat": "E",
+              "action": {
+                "type": "play",
+                "cards": [
+                  "♦4"
+                ],
+                "pattern": "单张",
+                "display": "♦4"
+              },
+              "timestamp_ms": 1791115105730
+            },
+            {
+              "round": 17,
+              "sub_round": 2,
+              "seat": "N",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105857
+            },
+            {
+              "round": 17,
+              "sub_round": 3,
+              "seat": "S",
+              "action": {
+                "type": "pass",
+                "cards": null,
+                "pattern": null,
+                "display": null
+              },
+              "timestamp_ms": 1791115105986
+            }
+          ],
+          "bidding_order": [
+            "E",
+            "N",
+            "W"
+          ],
+          "idle_seat": "S",
+          "effective_idle": "W",
+          "bidding_history": [
+            {
+              "seat": "E",
+              "bid": 3
+            }
+          ],
+          "current_high_bid": 3,
+          "current_high_bidder": "E",
+          "time_remaining": {
+            "red_team_ms": 0,
+            "blue_team_ms": 0
+          },
+          "turn_timer": {
+            "seat": "E",
+            "timeout_ms": 360000,
+            "deadline_ms": 1791115465993
+          }
+        }
+      },
+      "stream_id": "fa8a033b133849b1a82284cd87d484a3",
+      "watermark": 11648,
+      "state_hash": "a485806a794298d2b86e24a4d898a71bf913c14927fbd9e94b891ff163261958"
+    },
+    "clock_end": [
+      [
+        {
+          "before": 1791115107322.2998,
+          "after": 1791115107327.4,
+          "server_ms": 1791115107324.905,
+          "offset_ms": 0.05517578125,
+          "rtt_ms": 5.10009765625
+        },
+        {
+          "before": 1791115107327.4,
+          "after": 1791115107330.2,
+          "server_ms": 1791115107328.1719,
+          "offset_ms": -0.6279296875,
+          "rtt_ms": 2.800048828125
+        },
+        {
+          "before": 1791115107330.2,
+          "after": 1791115107332.5,
+          "server_ms": 1791115107330.9187,
+          "offset_ms": -0.431396484375,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107332.5,
+          "after": 1791115107335.0999,
+          "server_ms": 1791115107333.2097,
+          "offset_ms": -0.590087890625,
+          "rtt_ms": 2.599853515625
+        },
+        {
+          "before": 1791115107335.0999,
+          "after": 1791115107337.7,
+          "server_ms": 1791115107335.811,
+          "offset_ms": -0.5888671875,
+          "rtt_ms": 2.60009765625
+        },
+        {
+          "before": 1791115107337.7,
+          "after": 1791115107340.0999,
+          "server_ms": 1791115107338.368,
+          "offset_ms": -0.531982421875,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115107340.0999,
+          "after": 1791115107342.4,
+          "server_ms": 1791115107340.717,
+          "offset_ms": -0.532958984375,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107342.4,
+          "after": 1791115107344.9,
+          "server_ms": 1791115107343.0317,
+          "offset_ms": -0.6181640625,
+          "rtt_ms": 2.5
+        },
+        {
+          "before": 1791115107344.9,
+          "after": 1791115107347.4,
+          "server_ms": 1791115107345.5981,
+          "offset_ms": -0.5517578125,
+          "rtt_ms": 2.5
+        },
+        {
+          "before": 1791115107347.4,
+          "after": 1791115107349.7998,
+          "server_ms": 1791115107348.1333,
+          "offset_ms": -0.466552734375,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115107349.7998,
+          "after": 1791115107352,
+          "server_ms": 1791115107350.425,
+          "offset_ms": -0.474853515625,
+          "rtt_ms": 2.2001953125
+        },
+        {
+          "before": 1791115107352,
+          "after": 1791115107354.7,
+          "server_ms": 1791115107352.6882,
+          "offset_ms": -0.661865234375,
+          "rtt_ms": 2.699951171875
+        }
+      ],
+      [
+        {
+          "before": 1791115107357.7,
+          "after": 1791115107361.2998,
+          "server_ms": 1791115107359.3948,
+          "offset_ms": -0.105224609375,
+          "rtt_ms": 3.599853515625
+        },
+        {
+          "before": 1791115107361.2998,
+          "after": 1791115107363.5999,
+          "server_ms": 1791115107362.0151,
+          "offset_ms": -0.4345703125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107363.5999,
+          "after": 1791115107365.7,
+          "server_ms": 1791115107364.2332,
+          "offset_ms": -0.416748046875,
+          "rtt_ms": 2.10009765625
+        },
+        {
+          "before": 1791115107365.7,
+          "after": 1791115107368,
+          "server_ms": 1791115107366.3782,
+          "offset_ms": -0.471923828125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107368,
+          "after": 1791115107370.2998,
+          "server_ms": 1791115107368.7107,
+          "offset_ms": -0.439208984375,
+          "rtt_ms": 2.2998046875
+        },
+        {
+          "before": 1791115107370.2998,
+          "after": 1791115107372.4,
+          "server_ms": 1791115107370.93,
+          "offset_ms": -0.419921875,
+          "rtt_ms": 2.10009765625
+        },
+        {
+          "before": 1791115107372.4,
+          "after": 1791115107374.7,
+          "server_ms": 1791115107373.149,
+          "offset_ms": -0.40087890625,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107374.7,
+          "after": 1791115107377,
+          "server_ms": 1791115107375.3694,
+          "offset_ms": -0.480712890625,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107377,
+          "after": 1791115107379.0999,
+          "server_ms": 1791115107377.6077,
+          "offset_ms": -0.442138671875,
+          "rtt_ms": 2.099853515625
+        },
+        {
+          "before": 1791115107379.0999,
+          "after": 1791115107381.4,
+          "server_ms": 1791115107379.7944,
+          "offset_ms": -0.45556640625,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107381.4,
+          "after": 1791115107383.5,
+          "server_ms": 1791115107381.9888,
+          "offset_ms": -0.461181640625,
+          "rtt_ms": 2.10009765625
+        },
+        {
+          "before": 1791115107383.5,
+          "after": 1791115107385.7998,
+          "server_ms": 1791115107384.173,
+          "offset_ms": -0.476806640625,
+          "rtt_ms": 2.2998046875
+        }
+      ],
+      [
+        {
+          "before": 1791115107388.5,
+          "after": 1791115107392.0999,
+          "server_ms": 1791115107390.1082,
+          "offset_ms": -0.191650390625,
+          "rtt_ms": 3.599853515625
+        },
+        {
+          "before": 1791115107392.0999,
+          "after": 1791115107394.5999,
+          "server_ms": 1791115107392.8794,
+          "offset_ms": -0.470458984375,
+          "rtt_ms": 2.5
+        },
+        {
+          "before": 1791115107394.5999,
+          "after": 1791115107396.9,
+          "server_ms": 1791115107395.2998,
+          "offset_ms": -0.4501953125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107396.9,
+          "after": 1791115107399.2,
+          "server_ms": 1791115107397.6228,
+          "offset_ms": -0.427001953125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107399.2,
+          "after": 1791115107401.5999,
+          "server_ms": 1791115107399.9202,
+          "offset_ms": -0.479736328125,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115107401.5999,
+          "after": 1791115107403.8,
+          "server_ms": 1791115107402.2085,
+          "offset_ms": -0.491455078125,
+          "rtt_ms": 2.2001953125
+        },
+        {
+          "before": 1791115107403.8,
+          "after": 1791115107406.2,
+          "server_ms": 1791115107404.534,
+          "offset_ms": -0.466064453125,
+          "rtt_ms": 2.39990234375
+        },
+        {
+          "before": 1791115107406.2,
+          "after": 1791115107408.4,
+          "server_ms": 1791115107406.865,
+          "offset_ms": -0.434814453125,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107408.4,
+          "after": 1791115107410.7,
+          "server_ms": 1791115107409.133,
+          "offset_ms": -0.416748046875,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107410.7,
+          "after": 1791115107413,
+          "server_ms": 1791115107411.3606,
+          "offset_ms": -0.489501953125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107413,
+          "after": 1791115107415.3,
+          "server_ms": 1791115107413.6387,
+          "offset_ms": -0.51123046875,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107415.3,
+          "after": 1791115107417.5,
+          "server_ms": 1791115107415.9429,
+          "offset_ms": -0.45703125,
+          "rtt_ms": 2.199951171875
+        }
+      ],
+      [
+        {
+          "before": 1791115107420.2,
+          "after": 1791115107423.0999,
+          "server_ms": 1791115107421.5032,
+          "offset_ms": -0.146728515625,
+          "rtt_ms": 2.89990234375
+        },
+        {
+          "before": 1791115107423.0999,
+          "after": 1791115107425.4,
+          "server_ms": 1791115107423.9639,
+          "offset_ms": -0.2861328125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107425.4,
+          "after": 1791115107427.8,
+          "server_ms": 1791115107426.2207,
+          "offset_ms": -0.37939453125,
+          "rtt_ms": 2.400146484375
+        },
+        {
+          "before": 1791115107427.8,
+          "after": 1791115107430,
+          "server_ms": 1791115107428.5457,
+          "offset_ms": -0.354248046875,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107430,
+          "after": 1791115107432.3,
+          "server_ms": 1791115107430.859,
+          "offset_ms": -0.291015625,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107432.3,
+          "after": 1791115107434.5,
+          "server_ms": 1791115107433.0896,
+          "offset_ms": -0.310302734375,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107434.5,
+          "after": 1791115107436.8,
+          "server_ms": 1791115107435.3252,
+          "offset_ms": -0.32470703125,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107436.8,
+          "after": 1791115107439,
+          "server_ms": 1791115107437.5925,
+          "offset_ms": -0.307373046875,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107439,
+          "after": 1791115107441.2,
+          "server_ms": 1791115107439.804,
+          "offset_ms": -0.296142578125,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107441.2,
+          "after": 1791115107443.5,
+          "server_ms": 1791115107442.042,
+          "offset_ms": -0.30810546875,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107443.5,
+          "after": 1791115107445.7,
+          "server_ms": 1791115107444.2607,
+          "offset_ms": -0.33935546875,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107445.7,
+          "after": 1791115107448,
+          "server_ms": 1791115107446.546,
+          "offset_ms": -0.30419921875,
+          "rtt_ms": 2.300048828125
+        }
+      ],
+      [
+        {
+          "before": 1791115107450.6,
+          "after": 1791115107453.6,
+          "server_ms": 1791115107451.8774,
+          "offset_ms": -0.22265625,
+          "rtt_ms": 3
+        },
+        {
+          "before": 1791115107453.6,
+          "after": 1791115107455.8,
+          "server_ms": 1791115107454.2764,
+          "offset_ms": -0.423828125,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107455.8,
+          "after": 1791115107458.1,
+          "server_ms": 1791115107456.5215,
+          "offset_ms": -0.4287109375,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107458.1,
+          "after": 1791115107460.4001,
+          "server_ms": 1791115107458.828,
+          "offset_ms": -0.422119140625,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107460.4001,
+          "after": 1791115107462.6,
+          "server_ms": 1791115107461.077,
+          "offset_ms": -0.423095703125,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107462.6,
+          "after": 1791115107464.7002,
+          "server_ms": 1791115107463.2393,
+          "offset_ms": -0.410888671875,
+          "rtt_ms": 2.10009765625
+        },
+        {
+          "before": 1791115107464.7002,
+          "after": 1791115107466.9001,
+          "server_ms": 1791115107465.4263,
+          "offset_ms": -0.3740234375,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107466.9001,
+          "after": 1791115107469.1,
+          "server_ms": 1791115107467.6182,
+          "offset_ms": -0.3818359375,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107469.1,
+          "after": 1791115107471.4001,
+          "server_ms": 1791115107469.861,
+          "offset_ms": -0.388916015625,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107471.4001,
+          "after": 1791115107473.6,
+          "server_ms": 1791115107472.0693,
+          "offset_ms": -0.4306640625,
+          "rtt_ms": 2.199951171875
+        },
+        {
+          "before": 1791115107473.6,
+          "after": 1791115107475.9001,
+          "server_ms": 1791115107474.2627,
+          "offset_ms": -0.4873046875,
+          "rtt_ms": 2.300048828125
+        },
+        {
+          "before": 1791115107475.9001,
+          "after": 1791115107478.1,
+          "server_ms": 1791115107476.553,
+          "offset_ms": -0.447021484375,
+          "rtt_ms": 2.199951171875
+        }
+      ]
+    ],
+    "page_errors": [],
+    "resources_by_phase": {
+      "startup": {
+        "backend": {
+          "cpu_percent_one_core": {
+            "n": 6,
+            "p50": 7.186051872936714,
+            "p95": 45.1076903362781,
+            "min": 4.757227947565141,
+            "max": 45.1076903362781
+          },
+          "rss_sum_mib": {
+            "n": 7,
+            "p50": 62.44140625,
+            "p95": 63.19140625,
+            "min": 43.08203125,
+            "max": 63.19140625
+          }
+        },
+        "chromium": {
+          "cpu_percent_one_core": {
+            "n": 6,
+            "p50": 13.510643988244011,
+            "p95": 42.39784050646666,
+            "min": 0.0,
+            "max": 42.39784050646666
+          },
+          "rss_sum_mib": {
+            "n": 7,
+            "p50": 476.65234375,
+            "p95": 900.35546875,
+            "min": 0.0,
+            "max": 900.35546875
+          }
+        },
+        "controller": {
+          "cpu_percent_one_core": {
+            "n": 6,
+            "p50": 68.89986197901729,
+            "p95": 71.52693876129183,
+            "min": 67.66153550441713,
+            "max": 71.52693876129183
+          },
+          "rss_sum_mib": {
+            "n": 7,
+            "p50": 44.6953125,
+            "p95": 45.4453125,
+            "min": 42.26171875,
+            "max": 45.4453125
+          }
+        },
+        "browser_driver": {
+          "cpu_percent_one_core": {
+            "n": 6,
+            "p50": 7.874630335731951,
+            "p95": 27.248122354779237,
+            "min": 0.0,
+            "max": 27.248122354779237
+          },
+          "rss_sum_mib": {
+            "n": 7,
+            "p50": 123.359375,
+            "p95": 134.41796875,
+            "min": 0.0,
+            "max": 134.41796875
+          }
+        }
+      },
+      "normal_game": {
+        "backend": {
+          "cpu_percent_one_core": {
+            "n": 48,
+            "p50": 7.90448125404966,
+            "p95": 11.020170823280717,
+            "min": 6.278376461873715,
+            "max": 12.635966821458391
+          },
+          "rss_sum_mib": {
+            "n": 50,
+            "p50": 68.44140625,
+            "p95": 80.44140625,
+            "min": 63.19140625,
+            "max": 80.44140625
+          }
+        },
+        "chromium": {
+          "cpu_percent_one_core": {
+            "n": 48,
+            "p50": 6.310263542301337,
+            "p95": 11.020170823280717,
+            "min": 3.1391882309368575,
+            "max": 11.076628924173901
+          },
+          "rss_sum_mib": {
+            "n": 50,
+            "p50": 915.73046875,
+            "p95": 1080.5546875,
+            "min": 902.60546875,
+            "max": 1080.5546875
+          }
+        },
+        "controller": {
+          "cpu_percent_one_core": {
+            "n": 48,
+            "p50": 69.59080615505154,
+            "p95": 72.80620817239146,
+            "min": 66.67646080156274,
+            "max": 73.30085466357178
+          },
+          "rss_sum_mib": {
+            "n": 50,
+            "p50": 46.1953125,
+            "p95": 49.1953125,
+            "min": 45.4453125,
+            "max": 49.1953125
+          }
+        },
+        "browser_driver": {
+          "cpu_percent_one_core": {
+            "n": 48,
+            "p50": 1.5838465315902268,
+            "p95": 4.72779962061073,
+            "min": 0.0,
+            "max": 4.752425931079805
+          },
+          "rss_sum_mib": {
+            "n": 50,
+            "p50": 151.29296875,
+            "p95": 167.41796875,
+            "min": 134.41796875,
+            "max": 167.41796875
+          }
+        }
+      },
+      "backpressure": {
+        "backend": {
+          "cpu_percent_one_core": {
+            "n": 16,
+            "p50": 56.08755704771174,
+            "p95": 58.57052421444025,
+            "min": 46.7921399239519,
+            "max": 58.57052421444025
+          },
+          "rss_sum_mib": {
+            "n": 17,
+            "p50": 77.44140625,
+            "p95": 80.44140625,
+            "min": 71.44140625,
+            "max": 80.44140625
+          }
+        },
+        "chromium": {
+          "cpu_percent_one_core": {
+            "n": 16,
+            "p50": 80.84745932886469,
+            "p95": 94.86936981013105,
+            "min": 75.58220334048194,
+            "max": 94.86936981013105
+          },
+          "rss_sum_mib": {
+            "n": 17,
+            "p50": 1046.81640625,
+            "p95": 1079.8046875,
+            "min": 1015.3515625,
+            "max": 1079.8046875
+          }
+        },
+        "controller": {
+          "cpu_percent_one_core": {
+            "n": 16,
+            "p50": 88.72489814303958,
+            "p95": 91.8132541739874,
+            "min": 84.83551559267362,
+            "max": 91.8132541739874
+          },
+          "rss_sum_mib": {
+            "n": 17,
+            "p50": 49.1953125,
+            "p95": 49.1953125,
+            "min": 48.4453125,
+            "max": 49.1953125
+          }
+        },
+        "browser_driver": {
+          "cpu_percent_one_core": {
+            "n": 16,
+            "p50": 14.204060932926273,
+            "p95": 35.85706452818009,
+            "min": 10.918165982255443,
+            "max": 35.85706452818009
+          },
+          "rss_sum_mib": {
+            "n": 17,
+            "p50": 167.41796875,
+            "p95": 167.41796875,
+            "min": 164.41796875,
+            "max": 167.41796875
+          }
+        }
+      },
+      "checkpoint": {
+        "backend": {
+          "cpu_percent_one_core": {
+            "n": 1,
+            "p50": 1.579246527927083,
+            "p95": 1.579246527927083,
+            "min": 1.579246527927083,
+            "max": 1.579246527927083
+          },
+          "rss_sum_mib": {
+            "n": 2,
+            "p50": 80.44140625,
+            "p95": 80.44140625,
+            "min": 80.44140625,
+            "max": 80.44140625
+          }
+        },
+        "chromium": {
+          "cpu_percent_one_core": {
+            "n": 1,
+            "p50": 25.26794444683333,
+            "p95": 25.26794444683333,
+            "min": 25.26794444683333,
+            "max": 25.26794444683333
+          },
+          "rss_sum_mib": {
+            "n": 2,
+            "p50": 1080.169921875,
+            "p95": 1081.2890625,
+            "min": 1079.05078125,
+            "max": 1081.2890625
+          }
+        },
+        "controller": {
+          "cpu_percent_one_core": {
+            "n": 1,
+            "p50": 80.54157292428124,
+            "p95": 80.54157292428124,
+            "min": 80.54157292428124,
+            "max": 80.54157292428124
+          },
+          "rss_sum_mib": {
+            "n": 2,
+            "p50": 49.5703125,
+            "p95": 49.9453125,
+            "min": 49.1953125,
+            "max": 49.9453125
+          }
+        },
+        "browser_driver": {
+          "cpu_percent_one_core": {
+            "n": 1,
+            "p50": 9.475479167562499,
+            "p95": 9.475479167562499,
+            "min": 9.475479167562499,
+            "max": 9.475479167562499
+          },
+          "rss_sum_mib": {
+            "n": 2,
+            "p50": 168.91796875,
+            "p95": 170.41796875,
+            "min": 167.41796875,
+            "max": 170.41796875
+          }
+        }
+      },
+      "capture_and_cleanup": {
+        "backend": {
+          "cpu_percent_one_core": {
+            "n": 57,
+            "p50": 0.0,
+            "p95": 1.5885760252633077,
+            "min": 0.0,
+            "max": 1.5912070463520638
+          },
+          "rss_sum_mib": {
+            "n": 58,
+            "p50": 80.44140625,
+            "p95": 80.44140625,
+            "min": 80.44140625,
+            "max": 80.44140625
+          }
+        },
+        "chromium": {
+          "cpu_percent_one_core": {
+            "n": 57,
+            "p50": 5.958277624884902,
+            "p95": 127.7387394933146,
+            "min": 0.0,
+            "max": 135.32598170069576
+          },
+          "rss_sum_mib": {
+            "n": 58,
+            "p50": 1152.30078125,
+            "p95": 1315.8203125,
+            "min": 0.0,
+            "max": 1391.80078125
+          }
+        },
+        "controller": {
+          "cpu_percent_one_core": {
+            "n": 57,
+            "p50": 68.42190299313874,
+            "p95": 101.20977163867697,
+            "min": 66.09508189694047,
+            "max": 101.5583945973644
+          },
+          "rss_sum_mib": {
+            "n": 58,
+            "p50": 239.08984375,
+            "p95": 312.94140625,
+            "min": 50.6953125,
+            "max": 322.3828125
+          }
+        },
+        "browser_driver": {
+          "cpu_percent_one_core": {
+            "n": 57,
+            "p50": 0.0,
+            "p95": 160.2746525873633,
+            "min": 0.0,
+            "max": 190.1187607239749
+          },
+          "rss_sum_mib": {
+            "n": 58,
+            "p50": 421.578125,
+            "p95": 454.46484375,
+            "min": 170.41796875,
+            "max": 454.46484375
+          }
+        }
+      }
+    },
+    "source_hashes_unchanged": true,
+    "clock_calibration": [
+      {
+        "viewer": 0,
+        "offset_ms": -0.3623046875,
+        "uncertainty_ms": 1.212646484375,
+        "end_offset_ms": -0.474853515625
+      },
+      {
+        "viewer": 1,
+        "offset_ms": -0.39306640625,
+        "uncertainty_ms": 1.1490478515625,
+        "end_offset_ms": -0.442138671875
+      },
+      {
+        "viewer": 2,
+        "offset_ms": -0.422607421875,
+        "uncertainty_ms": 1.1121826171875,
+        "end_offset_ms": -0.434814453125
+      },
+      {
+        "viewer": 3,
+        "offset_ms": -0.325439453125,
+        "uncertainty_ms": 1.1287841796875,
+        "end_offset_ms": -0.354248046875
+      },
+      {
+        "viewer": 4,
+        "offset_ms": -0.4658203125,
+        "uncertainty_ms": 1.10498046875,
+        "end_offset_ms": -0.410888671875
+      }
+    ],
+    "max_clock_uncertainty_ms": 1.212646484375,
+    "common_natural_events": 772,
+    "common_pressure_probes": 10001,
+    "event_latency_ms": {
+      "normal_game": {
+        "n": 5156,
+        "p50": 4.0980224609375,
+        "p95": 10.80859375,
+        "min": 1.198486328125,
+        "max": 16.103515625
+      },
+      "backpressure_game": {
+        "n": 1640,
+        "p50": 25.923095703125,
+        "p95": 36.457275390625,
+        "min": 2.138671875,
+        "max": 45.307861328125
+      },
+      "pressure_probes": {
+        "n": 50005,
+        "p50": 29.03369140625,
+        "p95": 44.01953125,
+        "min": 9.19482421875,
+        "max": 63.238037109375
+      },
+      "checkpoint_game": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "min": null,
+        "max": null
+      },
+      "startup_game": {
+        "n": 250,
+        "p50": 4.1119384765625,
+        "p95": 10.148681640625,
+        "min": 0.967041015625,
+        "max": 13.082275390625
+      }
+    },
+    "recovery_ms": {
+      "n": 20,
+      "p50": 1005.949951171875,
+      "p95": 1007.800048828125,
+      "min": 1004.900146484375,
+      "max": 1011.10009765625
+    },
+    "mock_wait_ms": {
+      "n": 694,
+      "p50": 120.30276469886303,
+      "p95": 154.97267991304398,
+      "min": 119.11217123270035,
+      "max": 167.46066138148308
+    },
+    "fixture_shutdown_status": "interrupted",
+    "real_provider_attempts": 0
+  }
+}

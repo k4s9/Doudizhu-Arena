@@ -1,0 +1,38 @@
+{
+  "realtime-server-samples.json.gz": {
+    "uncompressed_sha256": "229827d73e6061d1669fce75a13280c34f0fb65dee1c4f0a559d2cde59952f47",
+    "uncompressed_bytes": 2403547
+  },
+  "realtime-resource-samples.json.gz": {
+    "uncompressed_sha256": "a81ab7f4dadff1f4bd14259ccb7d2419d523c21cbb84c022fc974321d056b003",
+    "uncompressed_bytes": 451357
+  },
+  "realtime-latency-samples.json.gz": {
+    "uncompressed_sha256": "57034a89de21bf80dfad05f00c3e081ae0f01b4bcba87ed39d58b0e57d2b0dcb",
+    "uncompressed_bytes": 4829113
+  },
+  "realtime-realtime.db.gz": {
+    "uncompressed_sha256": "ad73efb39e5cbe0c5cd8671a743bf7cf09a2e82ee22e4ada7fe5aa91b2d60e7b",
+    "uncompressed_bytes": 8814592
+  },
+  "realtime-viewer-0.json.gz": {
+    "uncompressed_sha256": "e0dd1a9d798aa3851547910ac8448ec8f3659b1b669805b165acc0199228de5d",
+    "uncompressed_bytes": 11735344
+  },
+  "realtime-viewer-1.json.gz": {
+    "uncompressed_sha256": "21db7ad746f7c0e59b2310f5b888f736d3e0393d790624636094659e8cca98b0",
+    "uncompressed_bytes": 11691112
+  },
+  "realtime-viewer-2.json.gz": {
+    "uncompressed_sha256": "01c81c6fd5de2617094236f3cc22491b41597b7d31b2cd8f07914e20299afa55",
+    "uncompressed_bytes": 11653834
+  },
+  "realtime-viewer-3.json.gz": {
+    "uncompressed_sha256": "ed223fc4bcd0b9da3a851a58f20b416e93ebd3245ce652846c246238427e1ca0",
+    "uncompressed_bytes": 11722612
+  },
+  "realtime-viewer-4.json.gz": {
+    "uncompressed_sha256": "f35c6de64bb3de6a6986dc572f4db152a123a17a26ed677997016e345517bc0c",
+    "uncompressed_bytes": 11643637
+  }
+}

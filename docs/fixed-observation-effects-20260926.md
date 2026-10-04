@@ -40,12 +40,14 @@
 - [Qwen 原始结果](reviews/20260926-fixed-effects/qwen/report/report.md)、[协议异常明细](reviews/20260926-fixed-effects/protocol-deviations.json)。
 - [跨模型汇总](reviews/20260926-fixed-effects/comparison.json)、[验证摘要](reviews/20260926-fixed-effects/validation-summary.json)、[SHA256SUMS](reviews/20260926-fixed-effects/SHA256SUMS.json)。
 
-不需要 API Key，可以直接对公开库复核。输出目录需不存在；Qwen 的同类命令预期返回 1，表示仍检测到同一协议异常：
+不需要 API Key。当前规则已升级为 v3，历史实验使用 v2；以下专用命令验证公开归档和源码哈希，在全新的输出目录恢复历史源码，并由独立、禁网的 Python 进程只读打开两个公开库，重建两模型各 8 份报告，与归档逐字节比较：
 
 ```bash
-conda run -n doudizhu-arena python -I -B scripts/fixed_effect_study.py audit \
-  --run-dir docs/reviews/20260926-fixed-effects/minimax --output data/public-fixed-audit-new
+conda run -n doudizhu-arena python -I -B scripts/reproduce_fixed_effects.py \
+  --output data/public-fixed-reproduction-new
 ```
+
+输出目录必须不存在，不能位于原始归档内。命令固定校验这份 9 月 26 日归档，不接受被替换的校验清单或源码；不会覆盖、清理原文件。`reproduction.json` 记录 16 份报告是否一致、历史源码/规则版本、原库前后哈希和网络连接尝试数，`runtime/` 保留用于重建的历史源码。返回 0 表示**忠实复现成功**：Minimax 审计通过，Qwen 仍为 `complete=false`、`issues=["output allowance"]`，总体 `all_protocols_passed=false`。归档损坏、输出已存在或重建不一致时返回非零，已生成的日志和文件保留。
 
 可采用的简历表述（以实际个人贡献为准）：
 
@@ -97,7 +99,8 @@ conda run -n doudizhu-arena python -I -B scripts/fixed_effect_study.py run \
 conda run -n doudizhu-arena python -I -B scripts/fixed_effect_study.py run \
   --plan data/fixed-plan-new --output data/fixed-real-new --real
 
-# 只读复核，不调用模型；可对 qwen 目录执行同样的命令。
+# 只读复核新运行；必须使用该运行冻结的同一份源码。
+# 2026-09-26 历史公开归档请使用上方 reproduce_fixed_effects.py。
 conda run -n doudizhu-arena python -I -B scripts/fixed_effect_study.py audit \
   --run-dir data/fixed-real-new/minimax --output data/fixed-audit-new
 ```

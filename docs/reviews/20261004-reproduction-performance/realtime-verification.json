@@ -1,0 +1,602 @@
+{
+  "kind": "independent-final-realtime-evidence-recalculation",
+  "generated_at_utc": "2026-10-04T12:11:12.729384+00:00",
+  "passed": true,
+  "method": "Reparsed browser accepted events and SQLite. Recomputed percentiles and resource counter deltas without importing benchmark code. Checked actual skipped natural events against each viewer accepted sequence set.",
+  "source_files_checked": 86,
+  "source_hashes_match": true,
+  "all_event_payloads_match_sqlite": true,
+  "accepted_sequences_contiguous_between_snapshots": true,
+  "five_complete_checkpoint_payloads_equal": true,
+  "twenty_running_reconnects_with_actual_missing_events": true,
+  "actual_skipped_natural_events_per_reconnect": [
+    38,
+    38,
+    40,
+    38,
+    40,
+    38,
+    38,
+    38,
+    38,
+    38,
+    38,
+    38,
+    38,
+    38,
+    38,
+    38,
+    44,
+    38,
+    38,
+    38
+  ],
+  "event_latency_ms": {
+    "normal_game": {
+      "n": 4590,
+      "p50": 3.821044921875,
+      "p95": 7.0390625,
+      "min": 1.172607421875,
+      "max": 26.764892578125
+    },
+    "backpressure_game": {
+      "n": 1490,
+      "p50": 24.6636962890625,
+      "p95": 34.2080078125,
+      "min": 2.103271484375,
+      "max": 40.2021484375
+    },
+    "pressure_probes": {
+      "n": 50005,
+      "p50": 26.732666015625,
+      "p95": 40.103759765625,
+      "min": 9.8193359375,
+      "max": 55.5732421875
+    },
+    "checkpoint_game": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "min": null,
+      "max": null
+    },
+    "startup_game": {
+      "n": 90,
+      "p50": 4.6790771484375,
+      "p95": 10.86865234375,
+      "min": 1.381591796875,
+      "max": 12.099853515625
+    }
+  },
+  "recovery_ms": {
+    "n": 20,
+    "p50": 1006.39990234375,
+    "p95": 1011.5,
+    "min": 1005.10009765625,
+    "max": 1022.400146484375
+  },
+  "five_viewer_common_natural_events": 608,
+  "five_viewer_common_pressure_probes": 10001,
+  "viewer_event_counts": [
+    11247,
+    11235,
+    11235,
+    11233,
+    11225
+  ],
+  "queue_capacity_reached": 10000,
+  "slow_subscriber_detached": true,
+  "resync_received_then_close_code": 1013,
+  "max_clock_uncertainty_ms": 1.318359375,
+  "resource_summaries": {
+    "startup": {
+      "backend": {
+        "cpu_percent_one_core": {
+          "n": 4,
+          "p50": 16.778365739012393,
+          "p95": 99.903248816796,
+          "min": 3.8011329250109616,
+          "max": 99.903248816796
+        },
+        "rss_sum_mib": {
+          "n": 5,
+          "p50": 61.77734375,
+          "p95": 63.27734375,
+          "min": 31.890625,
+          "max": 63.27734375
+        }
+      },
+      "chromium": {
+        "cpu_percent_one_core": {
+          "n": 4,
+          "p50": 0.0,
+          "p95": 66.738318136021,
+          "min": 0.0,
+          "max": 66.738318136021
+        },
+        "rss_sum_mib": {
+          "n": 5,
+          "p50": 0.0,
+          "p95": 904.29296875,
+          "min": 0.0,
+          "max": 904.29296875
+        }
+      },
+      "controller": {
+        "cpu_percent_one_core": {
+          "n": 4,
+          "p50": 2.8995989506734405,
+          "p95": 11.77735025929782,
+          "min": 1.9785227440508284,
+          "max": 11.77735025929782
+        },
+        "rss_sum_mib": {
+          "n": 5,
+          "p50": 41.69140625,
+          "p95": 44.69140625,
+          "min": 41.58203125,
+          "max": 44.69140625
+        }
+      },
+      "browser_driver": {
+        "cpu_percent_one_core": {
+          "n": 4,
+          "p50": 22.573254663654158,
+          "p95": 53.21586095015347,
+          "min": 0.0,
+          "max": 53.21586095015347
+        },
+        "rss_sum_mib": {
+          "n": 5,
+          "p50": 89.8046875,
+          "p95": 134.79296875,
+          "min": 0.0,
+          "max": 134.79296875
+        }
+      }
+    },
+    "normal_game": {
+      "backend": {
+        "cpu_percent_one_core": {
+          "n": 54,
+          "p50": 7.983573414913062,
+          "p95": 9.990064548133738,
+          "min": 4.000618016823834,
+          "max": 9.995680902049584
+        },
+        "rss_sum_mib": {
+          "n": 56,
+          "p50": 68.52734375,
+          "p95": 80.52734375,
+          "min": 64.02734375,
+          "max": 80.52734375
+        }
+      },
+      "chromium": {
+        "cpu_percent_one_core": {
+          "n": 54,
+          "p50": 6.003319164852881,
+          "p95": 13.971745512766306,
+          "min": 0.0,
+          "max": 79.01003472367046
+        },
+        "rss_sum_mib": {
+          "n": 56,
+          "p50": 920.79296875,
+          "p95": 1110.7109375,
+          "min": 905.79296875,
+          "max": 1110.7109375
+        }
+      },
+      "controller": {
+        "cpu_percent_one_core": {
+          "n": 54,
+          "p50": 9.980087081626966,
+          "p95": 11.99685629134906,
+          "min": 5.994343730473689,
+          "max": 13.979234933341592
+        },
+        "rss_sum_mib": {
+          "n": 56,
+          "p50": 47.69140625,
+          "p95": 47.69140625,
+          "min": 45.44140625,
+          "max": 47.69140625
+        }
+      },
+      "browser_driver": {
+        "cpu_percent_one_core": {
+          "n": 54,
+          "p50": 1.996645501004926,
+          "p95": 3.998952097116354,
+          "min": 0.0,
+          "max": 5.993618487891602
+        },
+        "rss_sum_mib": {
+          "n": 56,
+          "p50": 154.29296875,
+          "p95": 165.54296875,
+          "min": 135.54296875,
+          "max": 165.54296875
+        }
+      }
+    },
+    "pressure_setup": {
+      "backend": {
+        "cpu_percent_one_core": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "min": null,
+          "max": null
+        },
+        "rss_sum_mib": {
+          "n": 1,
+          "p50": 70.77734375,
+          "p95": 70.77734375,
+          "min": 70.77734375,
+          "max": 70.77734375
+        }
+      },
+      "chromium": {
+        "cpu_percent_one_core": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "min": null,
+          "max": null
+        },
+        "rss_sum_mib": {
+          "n": 1,
+          "p50": 1006.0859375,
+          "p95": 1006.0859375,
+          "min": 1006.0859375,
+          "max": 1006.0859375
+        }
+      },
+      "controller": {
+        "cpu_percent_one_core": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "min": null,
+          "max": null
+        },
+        "rss_sum_mib": {
+          "n": 1,
+          "p50": 47.69140625,
+          "p95": 47.69140625,
+          "min": 47.69140625,
+          "max": 47.69140625
+        }
+      },
+      "browser_driver": {
+        "cpu_percent_one_core": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "min": null,
+          "max": null
+        },
+        "rss_sum_mib": {
+          "n": 1,
+          "p50": 164.04296875,
+          "p95": 164.04296875,
+          "min": 164.04296875,
+          "max": 164.04296875
+        }
+      }
+    },
+    "backpressure": {
+      "backend": {
+        "cpu_percent_one_core": {
+          "n": 18,
+          "p50": 55.94308167492818,
+          "p95": 57.99140959079947,
+          "min": 51.87603073027343,
+          "max": 57.99140959079947
+        },
+        "rss_sum_mib": {
+          "n": 19,
+          "p50": 76.77734375,
+          "p95": 80.52734375,
+          "min": 71.52734375,
+          "max": 80.52734375
+        }
+      },
+      "chromium": {
+        "cpu_percent_one_core": {
+          "n": 18,
+          "p50": 90.05976344240622,
+          "p95": 107.4269505180945,
+          "min": 81.95767341486793,
+          "max": 107.4269505180945
+        },
+        "rss_sum_mib": {
+          "n": 19,
+          "p50": 1058.9609375,
+          "p95": 1109.2109375,
+          "min": 1024.4609375,
+          "max": 1109.2109375
+        }
+      },
+      "controller": {
+        "cpu_percent_one_core": {
+          "n": 18,
+          "p50": 34.022577300464576,
+          "p95": 37.96598985152082,
+          "min": 31.9237112186298,
+          "max": 37.96598985152082
+        },
+        "rss_sum_mib": {
+          "n": 19,
+          "p50": 47.69140625,
+          "p95": 47.69140625,
+          "min": 47.69140625,
+          "max": 47.69140625
+        }
+      },
+      "browser_driver": {
+        "cpu_percent_one_core": {
+          "n": 18,
+          "p50": 16.00424501692251,
+          "p95": 35.98141759677129,
+          "min": 13.925715807901137,
+          "max": 35.98141759677129
+        },
+        "rss_sum_mib": {
+          "n": 19,
+          "p50": 165.54296875,
+          "p95": 165.54296875,
+          "min": 164.79296875,
+          "max": 165.54296875
+        }
+      }
+    },
+    "checkpoint": {
+      "backend": {
+        "cpu_percent_one_core": {
+          "n": 1,
+          "p50": 5.993772614022695,
+          "p95": 5.993772614022695,
+          "min": 5.993772614022695,
+          "max": 5.993772614022695
+        },
+        "rss_sum_mib": {
+          "n": 2,
+          "p50": 80.52734375,
+          "p95": 80.52734375,
+          "min": 80.52734375,
+          "max": 80.52734375
+        }
+      },
+      "chromium": {
+        "cpu_percent_one_core": {
+          "n": 1,
+          "p50": 53.94395352620427,
+          "p95": 53.94395352620427,
+          "min": 53.94395352620427,
+          "max": 53.94395352620427
+        },
+        "rss_sum_mib": {
+          "n": 2,
+          "p50": 1055.70703125,
+          "p95": 1056.08203125,
+          "min": 1055.33203125,
+          "max": 1056.08203125
+        }
+      },
+      "controller": {
+        "cpu_percent_one_core": {
+          "n": 1,
+          "p50": 15.983393637393856,
+          "p95": 15.983393637393856,
+          "min": 15.983393637393856,
+          "max": 15.983393637393856
+        },
+        "rss_sum_mib": {
+          "n": 2,
+          "p50": 47.69140625,
+          "p95": 47.69140625,
+          "min": 47.69140625,
+          "max": 47.69140625
+        }
+      },
+      "browser_driver": {
+        "cpu_percent_one_core": {
+          "n": 1,
+          "p50": 9.98962102337116,
+          "p95": 9.98962102337116,
+          "min": 9.98962102337116,
+          "max": 9.98962102337116
+        },
+        "rss_sum_mib": {
+          "n": 2,
+          "p50": 165.54296875,
+          "p95": 165.54296875,
+          "min": 165.54296875,
+          "max": 165.54296875
+        }
+      }
+    },
+    "capture_and_cleanup": {
+      "backend": {
+        "cpu_percent_one_core": {
+          "n": 65,
+          "p50": 0.0,
+          "p95": 0.18092658316511884,
+          "min": 0.0,
+          "max": 1.9990285885140295
+        },
+        "rss_sum_mib": {
+          "n": 66,
+          "p50": 80.52734375,
+          "p95": 80.52734375,
+          "min": 80.52734375,
+          "max": 80.52734375
+        }
+      },
+      "chromium": {
+        "cpu_percent_one_core": {
+          "n": 65,
+          "p50": 105.7362363282031,
+          "p95": 165.7506227195347,
+          "min": 0.0,
+          "max": 177.86012526004336
+        },
+        "rss_sum_mib": {
+          "n": 66,
+          "p50": 1256.69140625,
+          "p95": 1510.5390625,
+          "min": 741.77734375,
+          "max": 1618.19921875
+        }
+      },
+      "controller": {
+        "cpu_percent_one_core": {
+          "n": 65,
+          "p50": 13.969788961305325,
+          "p95": 99.84104116219096,
+          "min": 9.976397118762984,
+          "max": 100.4644264423985
+        },
+        "rss_sum_mib": {
+          "n": 66,
+          "p50": 231.07421875,
+          "p95": 300.64453125,
+          "min": 47.69140625,
+          "max": 307.94140625
+        }
+      },
+      "browser_driver": {
+        "cpu_percent_one_core": {
+          "n": 65,
+          "p50": 0.0,
+          "p95": 163.27168307853725,
+          "min": 0.0,
+          "max": 203.26959977069637
+        },
+        "rss_sum_mib": {
+          "n": 66,
+          "p50": 428.34765625,
+          "p95": 554.12109375,
+          "min": 165.54296875,
+          "max": 558.9765625
+        }
+      }
+    }
+  },
+  "actual_resource_interval_ms": {
+    "startup": {
+      "n": 4,
+      "p50": 507.4400268495083,
+      "p95": 526.1589214205742,
+      "min": 500.484224408865,
+      "max": 526.1589214205742
+    },
+    "normal_game": {
+      "n": 54,
+      "p50": 500.66160038113594,
+      "p95": 501.83118879795074,
+      "min": 499.39335882663727,
+      "max": 518.9214274287224
+    },
+    "pressure_setup": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "min": null,
+      "max": null
+    },
+    "backpressure": {
+      "n": 18,
+      "p50": 500.5087237805128,
+      "p95": 502.6671588420868,
+      "min": 499.44111332297325,
+      "max": 502.6671588420868
+    },
+    "checkpoint": {
+      "n": 1,
+      "p50": 500.5194880068302,
+      "p95": 500.5194880068302,
+      "min": 500.5194880068302,
+      "max": 500.5194880068302
+    },
+    "capture_and_cleanup": {
+      "n": 65,
+      "p50": 501.17773190140724,
+      "p95": 5544.251032173634,
+      "min": 498.75277280807495,
+      "max": 5809.234291315079
+    }
+  },
+  "resource_scan_ms": {
+    "startup": {
+      "n": 5,
+      "p50": 5.923911929130554,
+      "p95": 39.750855416059494,
+      "min": 1.0736137628555298,
+      "max": 39.750855416059494
+    },
+    "normal_game": {
+      "n": 56,
+      "p50": 37.14495897293091,
+      "p95": 42.55657643079758,
+      "min": 36.097440868616104,
+      "max": 60.277536511421204
+    },
+    "pressure_setup": {
+      "n": 1,
+      "p50": 40.56227207183838,
+      "p95": 40.56227207183838,
+      "min": 40.56227207183838,
+      "max": 40.56227207183838
+    },
+    "backpressure": {
+      "n": 19,
+      "p50": 40.3476320207119,
+      "p95": 43.047212064266205,
+      "min": 39.991073310375214,
+      "max": 43.047212064266205
+    },
+    "checkpoint": {
+      "n": 2,
+      "p50": 60.8142614364624,
+      "p95": 61.016783118247986,
+      "min": 60.61173975467682,
+      "max": 61.016783118247986
+    },
+    "capture_and_cleanup": {
+      "n": 66,
+      "p50": 70.05572691559792,
+      "p95": 71.76369428634644,
+      "min": 40.9373976290226,
+      "max": 72.75043055415154
+    }
+  },
+  "v1_vs_v2_normal_controller_cpu_percent_one_core": {
+    "v1": {
+      "n": 48,
+      "p50": 69.59080615505154,
+      "p95": 72.80620817239146,
+      "min": 66.67646080156274,
+      "max": 73.30085466357178
+    },
+    "v2": {
+      "n": 54,
+      "p50": 9.980087081626966,
+      "p95": 11.99685629134906,
+      "min": 5.994343730473689,
+      "max": 13.979234933341592
+    }
+  },
+  "raw_bytes_before_verification": 75174412,
+  "limitations": [
+    "Instrumentation versions are sequential local runs, not a controlled product optimization experiment.",
+    "Event latency includes publication persistence and browser handler dispatch; Vue rendering and real-model latency are excluded.",
+    "Recovery includes the production 1-second backoff.",
+    "Slow relay is a controlled server-side fault injection, not a measured slow network.",
+    "RSS sums can double-count shared pages; CPU 100% equals one core; actual intervals and scan cost are recorded.",
+    "The fixed-seed mock fixture is stopped after running-state convergence and persists interrupted status."
+  ]
+}

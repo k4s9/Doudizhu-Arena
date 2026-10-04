@@ -1,0 +1,52 @@
+{
+  "reproduction_complete": true,
+  "all_protocols_passed": false,
+  "archive": "/home/guozy/Doudizhu-Arena/docs/reviews/20260926-fixed-effects",
+  "archive_checksums_sha256": "8b137f708480ea23113d0dce40fcfdb03aab98951bfe17f0c1e5dbda1ef3fa2f",
+  "verified_archive_files": 41,
+  "verified_source_files": 72,
+  "runtime_source_sha256": "b21ed455aaa8453e55920c8a012cc18c6ba00866d1f7a3426b7b814e699427b4",
+  "rules_version": "duplicate-four-seat-v2-leader-must-play",
+  "python_executable": "/home/guozy/miniconda3/envs/doudizhu-arena/bin/python",
+  "python_version": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:27:41) [GCC 14.3.0]",
+  "archive_unchanged": true,
+  "network_connection_attempts": 0,
+  "models": {
+    "minimax": {
+      "byte_identical_reports": {
+        "calls.jsonl": true,
+        "decisions.jsonl": true,
+        "integrity.json": true,
+        "manifest.json": true,
+        "metrics.csv": true,
+        "report.md": true,
+        "seed_level.csv": true,
+        "summary.json": true
+      },
+      "protocol_audit_passed": true,
+      "issues": [],
+      "physical_calls": 292,
+      "source_database_sha256_before": "442978ecc03240bdc9d89c472604693e1f10aa6884594a505e6d71c55ddff02d",
+      "source_database_sha256_after": "442978ecc03240bdc9d89c472604693e1f10aa6884594a505e6d71c55ddff02d"
+    },
+    "qwen": {
+      "byte_identical_reports": {
+        "calls.jsonl": true,
+        "decisions.jsonl": true,
+        "integrity.json": true,
+        "manifest.json": true,
+        "metrics.csv": true,
+        "report.md": true,
+        "seed_level.csv": true,
+        "summary.json": true
+      },
+      "protocol_audit_passed": false,
+      "issues": [
+        "output allowance"
+      ],
+      "physical_calls": 198,
+      "source_database_sha256_before": "dc7a507815e6a67d0210d962261a36a4b0d76fc6b9f3b6dc5e03fac05a726e57",
+      "source_database_sha256_after": "dc7a507815e6a67d0210d962261a36a4b0d76fc6b9f3b6dc5e03fac05a726e57"
+    }
+  }
+}
