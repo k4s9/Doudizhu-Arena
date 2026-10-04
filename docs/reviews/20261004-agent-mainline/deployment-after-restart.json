@@ -1,0 +1,29 @@
+{
+  "kind": "deployment-mock-acceptance",
+  "base_url": "http://127.0.0.1:38080",
+  "restart_check": true,
+  "chromium_args": [
+    "--js-flags=--jitless"
+  ],
+  "page_errors": [],
+  "run_id": "cf9fb868fa094705ad7f1c20f7e44ab2",
+  "manifest_sha256": "70eabe64fcd90a72d7cb8f9092100ac65041a0f9cbd3598f1b1f1626e71d5760",
+  "task_counts": {
+    "planned": 0,
+    "running": 0,
+    "finished": 6,
+    "failed": 0,
+    "cancelled": 0
+  },
+  "integrity_complete": true,
+  "terminal_snapshot": {
+    "status": "finished",
+    "score": {
+      "red": 0,
+      "blue": 0
+    },
+    "watermark": 281
+  },
+  "match_id": "c7e84f7de81447b78037b6879784d5ce",
+  "complete": true
+}

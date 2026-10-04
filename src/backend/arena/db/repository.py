@@ -72,6 +72,21 @@ class DatabaseRepository:
         from .reliability import begin_decision
         return begin_decision(self, **data)
 
+    def add_agent_tool_call(self, **data):
+        import uuid
+        allowed = {"decision_id", "player_id", "model_attempt", "call_index", "tool_call_id",
+                   "tool_name", "tool_version", "state_hash", "arguments_sha256", "response_sha256",
+                   "elapsed_ms", "output_chars", "status", "metadata_json"}
+        if set(data) != allowed:
+            raise ValueError("invalid agent tool evidence fields")
+        data = {"id": uuid.uuid4().hex, **data}
+        columns = list(data)
+        self.conn.execute(
+            f"INSERT INTO agent_tool_calls ({','.join(columns)}) VALUES ({','.join('?' for _ in columns)})",
+            list(data.values()),
+        )
+        self.conn.commit()
+
     def resolve_decision(self, decision_id, **data):
         from .reliability import resolve_decision
         return resolve_decision(self, decision_id, **data)

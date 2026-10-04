@@ -30,7 +30,7 @@ def _match_config_from_dict(d: dict) -> MatchConfig:
 
     if not isinstance(d, dict):
         raise HTTPException(400, detail={"error": {"code": "INVALID_REQUEST", "message": "config must be an object"}})
-    for key in ("enable_reflection", "enable_summary", "persist_long_term_memory"):
+    for key in ("enable_reflection", "enable_summary", "persist_long_term_memory", "enable_tools"):
         if key in d and not isinstance(d[key], bool):
             raise HTTPException(400, detail={"error": {"code": "INVALID_REQUEST", "message": f"{key} must be boolean"}})
     import math
@@ -47,6 +47,7 @@ def _match_config_from_dict(d: dict) -> MatchConfig:
         seed=d.get("seed", ""),
         enable_reflection=d.get("enable_reflection", True),
         enable_summary=d.get("enable_summary", True),
+        enable_tools=d.get("enable_tools", False),
         persist_long_term_memory=d.get("persist_long_term_memory", True),
         reflection_timeout_seconds=d.get("reflection_timeout_seconds", 30.0),
         summary_timeout_seconds=d.get("summary_timeout_seconds", 45.0),

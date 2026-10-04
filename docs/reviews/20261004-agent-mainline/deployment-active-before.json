@@ -1,0 +1,21 @@
+{
+  "kind": "active-match-restart",
+  "prepared": true,
+  "match_id": "be7d3c3427fa4b6a800a48d87763075b",
+  "players": [
+    "66af3eaceeeb4b4db4ca77ef58007ca2",
+    "804ea60005564223b163591831b7232c",
+    "7af48b2dfce846fbbb3fb704181542a6",
+    "24a63b69e5e34bc09943f2ba4359d998",
+    "11c44ba077504acb8333879cd8fd7d2b",
+    "06b1ea0e14094979ac435ba4c9ba2572",
+    "809b73b7671a4328b3d273d3a8d36059",
+    "0e95e8ae57304c58bca22ceb04cc94e6"
+  ],
+  "memory": "重启前保存的经验；随机基线不使用模型记忆。",
+  "score": {
+    "red": 1,
+    "blue": 0
+  },
+  "current_hand": 1
+}

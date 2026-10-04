@@ -400,12 +400,16 @@ class TestFullMatchWithDB:
             total_hands=5,
             ko_enabled=False,
             seed="test-match-db",
+            # Identical mock policies tie on both duplicate tables. Keep this
+            # persistence test at five hands instead of 101 extra tie-breaks.
+            max_tiebreaker_hands=0,
         )
         runner = MatchRunner(config, seating, agents, db_repo=db_repo, match_name="M4 Test Match")
 
         result = asyncio.run(runner.run())
 
-        assert result.total_hands_played >= 5
+        assert result.total_hands_played == 5
+        assert result.tiebreaker_hands == 0
         assert result.red_score >= 0
         assert result.blue_score >= 0
 
@@ -420,7 +424,7 @@ class TestFullMatchWithDB:
         assert len(participants) == 0
 
         hands = db_repo.get_hands_for_match(runner.match_id)
-        assert len(hands) >= 5
+        assert len(hands) == 5
         for h in hands:
             assert h["status"] == "finished"
 
@@ -439,11 +443,15 @@ class TestReflectionFlow:
         agents = make_agents(red_ids + blue_ids)
         seating = assign_seating(red_ids, blue_ids, seed=99)
 
-        config = MatchConfig(total_hands=2, ko_enabled=False, seed="reflection-test")
+        config = MatchConfig(
+            total_hands=2, ko_enabled=False, seed="reflection-test",
+            max_tiebreaker_hands=0,
+        )
         runner = MatchRunner(config, seating, agents, db_repo=db_repo, match_name="Reflection Test")
 
         result = asyncio.run(runner.run())
-        assert result.total_hands_played >= 2
+        assert result.total_hands_played == 2
+        assert result.tiebreaker_hands == 0
 
         for aid in red_ids + blue_ids:
             memories = db_repo.get_agent_memories(aid, memory_type="short_term")
@@ -460,10 +468,15 @@ class TestSummaryFlow:
         agents = make_agents(red_ids + blue_ids)
         seating = assign_seating(red_ids, blue_ids, seed=77)
 
-        config = MatchConfig(total_hands=2, ko_enabled=False, seed="summary-test")
+        config = MatchConfig(
+            total_hands=2, ko_enabled=False, seed="summary-test",
+            max_tiebreaker_hands=0,
+        )
         runner = MatchRunner(config, seating, agents, db_repo=db_repo, match_name="Summary Test")
 
         result = asyncio.run(runner.run())
+        assert result.total_hands_played == 2
+        assert result.tiebreaker_hands == 0
 
         for aid in red_ids[:1] + blue_ids[:1]:
             memories = db_repo.get_agent_memories(aid, memory_type="long_term")

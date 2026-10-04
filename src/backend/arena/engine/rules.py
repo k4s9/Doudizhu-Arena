@@ -191,7 +191,7 @@ def recognize(cards: list[Card] | tuple[Card, ...]) -> Trick:
 
     # ── Airplane + Singles ─────────────────────────────────────────────
     trio_count = sig.get(3, 0)
-    if trio_count >= 2 and sig.get(1, 0) == trio_count:
+    if trio_count >= 2 and sig.get(1, 0) == trio_count and n == 4 * trio_count:
         trio_ranks = _ranks_by_count(groups, 3)
         if _is_consecutive(trio_ranks):
             single_ranks = _ranks_by_count(groups, 1)
@@ -219,7 +219,7 @@ def recognize(cards: list[Card] | tuple[Card, ...]) -> Trick:
             )
 
     # ── Airplane + Pairs ───────────────────────────────────────────────
-    if trio_count >= 2 and sig.get(2, 0) == trio_count:
+    if trio_count >= 2 and sig.get(2, 0) == trio_count and n == 5 * trio_count:
         trio_ranks = _ranks_by_count(groups, 3)
         pair_ranks = _ranks_by_count(groups, 2)
         if _is_consecutive(trio_ranks):

@@ -1,0 +1,24 @@
+{
+  "kind": "preregistered-fixed-effect-study",
+  "corpus_sha256": "0bde4470cd9c094043aa1c0a3da33ed6639413f00983fbe00d847887475b255c",
+  "primary_model": "minimax",
+  "replication_model": "qwen",
+  "primary_phase": "playing",
+  "primary_contrast": "rule_feedback minus generic_retry success rate",
+  "selection": "all frozen test observations, no selection by model errors, no optional stopping or prompt tuning on test",
+  "development_use": "offline protocol development; development/test seed IDs are disjoint",
+  "seed_namespace": "agent-mainline-20261004",
+  "test_split_status": "declared split only; generation does not certify absence of prior development use",
+  "max_calls_per_model": 40,
+  "max_inflight_across_two_models": 4,
+  "pricing_basis": "existing user-confirmed free Uni API account from 2026-09-24; retained price source/effective date",
+  "inference": "95% paired source-seed cluster bootstrap; Minimax primary, Qwen descriptive replication; no joint significance claim",
+  "shared_first": "one common generation, then up to two retries per branch on failures; provider failures receive generic feedback in both arms",
+  "interpretation": "legality/availability on this fixed rule-policy corpus, not win rate or representative player skill",
+  "verification": {
+    "complete": true,
+    "sources": 2,
+    "observations": 16,
+    "test_observations": 8
+  }
+}

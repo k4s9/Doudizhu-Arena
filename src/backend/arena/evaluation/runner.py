@@ -63,14 +63,26 @@ class EvaluationRunner:
     def _recover(self, run_id):
         # Only called after acquiring an expired/unowned lease. Never claim an
         # interrupted table as finished; recovery means a new whole-task attempt.
-        attempts = self.repo.conn.execute("SELECT a.* FROM task_attempts a JOIN evaluation_tasks t ON t.id=a.task_id WHERE t.run_id=? AND a.status='running'", (run_id,)).fetchall()
-        for a in attempts:
-            reliability.finish_attempt(self.repo, a["id"], "interrupted", reason="executor lease lost")
-            self.repo.update_evaluation_task(a["task_id"], "failed", failure_reason="interrupted; rerun whole task")
-            if a["match_id"]:
-                self.repo.update_match_status(a["match_id"], "interrupted")
-        self.repo.conn.execute("UPDATE decisions SET resolution='failed_no_action',reason='executor_lost',finished_at=? WHERE run_id=? AND resolution IS NULL", (time.time(), run_id))
-        self.repo.conn.commit()
+        with self.repo.atomic():
+            attempts = self.repo.conn.execute("SELECT a.* FROM task_attempts a JOIN evaluation_tasks t ON t.id=a.task_id WHERE t.run_id=? AND a.status='running'", (run_id,)).fetchall()
+            for a in attempts:
+                reliability.finish_attempt(self.repo, a["id"], "interrupted", reason="executor lease lost")
+                self.repo.update_evaluation_task(a["task_id"], "failed", failure_reason="interrupted; rerun whole task")
+                if a["match_id"]:
+                    self.repo.update_match_status(a["match_id"], "interrupted")
+                    self.repo.conn.execute("UPDATE table_hands SET status='interrupted' WHERE hand_id IN (SELECT id FROM hands WHERE match_id=?) AND status NOT IN ('finished','void')", (a["match_id"],))
+            pending = self.repo.conn.execute(
+                "SELECT c.id FROM llm_call_logs c JOIN call_evidence e ON e.call_id=c.id WHERE c.run_id=? AND e.provider_status='pending'",
+                (run_id,),
+            ).fetchall()
+            for call in pending:
+                # Dispatch was recorded before the crash. Neither a response nor
+                # usage can be inferred; preserve its full budget reservation.
+                self.repo.conn.execute("UPDATE llm_call_logs SET error_message='executor lost before provider outcome was persisted' WHERE id=?", (call["id"],))
+                self.repo.conn.execute("UPDATE call_evidence SET provider_status='interrupted' WHERE call_id=?", (call["id"],))
+                self.repo.conn.execute("UPDATE budget_ledger SET status='unknown' WHERE call_id=? AND actual_usd IS NULL", (call["id"],))
+            now = time.time()
+            self.repo.conn.execute("UPDATE decisions SET resolution='failed_no_action',reason='executor_lost',finished_at=?,latency_ms=MAX(0,(?-started_at)*1000) WHERE run_id=? AND resolution IS NULL", (now, now, run_id))
 
     async def run(self, run_id, spec, manifest, *, real_models=False, mock=False):
         if not real_models and not mock:

@@ -16,6 +16,7 @@ const form = ref({
   name: '',
   total_hands: 20,
   ko_enabled: true,
+  enable_tools: false,
   timeout_bidding_seconds: 60,
   timeout_individual_seconds: 360,
   timeout_team_seconds: 3600,
@@ -111,6 +112,7 @@ async function submit() {
       config: {
         total_hands: form.value.total_hands,
         ko_enabled: form.value.ko_enabled,
+        enable_tools: form.value.enable_tools,
         timeout_bidding_seconds: form.value.timeout_bidding_seconds,
         timeout_individual_seconds: form.value.timeout_individual_seconds,
         timeout_team_seconds: form.value.timeout_team_seconds,
@@ -156,6 +158,14 @@ async function submit() {
           <input v-model="form.ko_enabled" type="checkbox" class="rounded" />
           启用 KO</label>
       </div>
+    </div>
+
+    <div class="mb-4">
+      <label class="flex items-center gap-2 text-sm text-slate-300">
+        <input v-model="form.enable_tools" type="checkbox" class="rounded" />
+        启用出牌分析工具
+      </label>
+      <p class="mt-1 text-xs text-slate-400">允许牌手按需比较拆牌方案、检查对手威胁。需要模型支持工具调用，可能增加决策等待时间。</p>
     </div>
 
     <!-- Create new player -->

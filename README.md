@@ -8,7 +8,9 @@
 
 [固定局面效果实验](docs/fixed-observation-effects-20260926.md)另完成两模型、24 个测试种子、490 次真实调用。Minimax 的规则反馈相对通用重试观察到 +2.98 个百分点的出牌成功率差（95% 区间 −1.19～6.55），尚不足以确认稳定增益；Qwen 发现输出 token 超过请求上限，保留为协议审计未通过。公开证据包含无凭据数据库，可离线复核。
 
-本轮 [P0–P2 修复与验收](docs/memory-reliability-delivery-20261002.md)包括结算、记忆版本、独立评测及异常恢复；下一步工具候选见 [P3 方案](docs/agent-tool-roadmap.md)。
+本轮 [P0–P2 修复与验收](docs/memory-reliability-delivery-20261002.md)包括结算、记忆版本、独立评测及异常恢复。[P3 工具](docs/agent-tool-roadmap.md)已加入纯算法拆牌比较和威胁检验，可在创建比赛时开启；[设计、性能与面试说明](docs/agent-tools-design-and-interview.md)包含使用方式及 1,900 次离线基准。
+
+[10 月 4 日 Agent 主线复核与补强](docs/agent-mainline-review-20261004.md)修正旧计划中的过时缺口，补齐调用中断的预算/证据恢复、免费计价下的 token 超限停止、语料验证和响应版本诊断；当前工作区通过 651 项后端、11 项前端及隔离 Compose/浏览器/重启验收。
 
 在项目根目录安装开发环境：
 

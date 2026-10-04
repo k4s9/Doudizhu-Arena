@@ -27,8 +27,12 @@ def audit_fixed(repo, run_id, corpus, *, root=None):
     base = manifest["run_manifest"]
     check(base["manifest_sha256"] == canonical_hash({k: v for k, v in base.items() if k != "manifest_sha256"}), "base manifest hash")
     check(base["spec_sha256"] == canonical_hash(base["frozen_spec"]), "frozen specification hash")
+    runtime_source = source_sha256(root) if root is not None else None
+    source_version_check = "not_checked" if runtime_source is None else (
+        "matched" if runtime_source == base["source_sha256"] else "mismatch"
+    )
     if root is not None:
-        check(source_sha256(root) == base["source_sha256"], "runtime source differs from frozen source")
+        check(source_version_check == "matched", "runtime source differs from frozen source")
     try:
         verify_corpus(corpus)
     except ValueError as exc:
@@ -160,6 +164,8 @@ def audit_fixed(repo, run_id, corpus, *, root=None):
             "manifest_sha256": manifest["sha256"], "planned_observations": len(items),
             "finished_observations": sum(r["status"] == "finished" for r in item_rows),
             "physical_calls": len(calls), "usage_known_calls": sum(c["prompt_tokens"] is not None and c["completion_tokens"] is not None for c in calls.values()),
+            "source_version_check": source_version_check,
+            "frozen_source_sha256": base["source_sha256"], "runtime_source_sha256": runtime_source,
             "source_replay": True}, results, list(calls.values()), manifest
 
 
@@ -184,8 +190,30 @@ def paired_interval(seed_values, seed, resamples):
             "method": "paired source-seed cluster percentile bootstrap; equal seed weights"}
 
 
+def pair_response_identity(generic, feedback, calls_by_id):
+    """Classify complete paired chains, counting their shared first call once.
+
+    A returned name is only a provider label. Matching names/fingerprints do
+    not prove an immutable weight version, and missing metadata is not a match.
+    """
+    physical = [calls_by_id[cid] for cid in set(generic["call_ids"] + feedback["call_ids"])]
+    names = {c["response_model"] for c in physical if c["response_model"]}
+    if not physical or any(not c["response_model"] for c in physical):
+        return False, None, "missing_response_model"
+    if len(names) != 1:
+        return False, None, "mixed_response_models"
+    fingerprints = {c["system_fingerprint"] for c in physical if c["system_fingerprint"]}
+    known_fingerprints = sum(bool(c["system_fingerprint"]) for c in physical)
+    if len(fingerprints) > 1:
+        return True, None, "mixed_fingerprints"
+    if 0 < known_fingerprints < len(physical):
+        return True, None, "partial_fingerprint_coverage"
+    return True, (next(iter(names)), next(iter(fingerprints), None)), None
+
+
 def summarize(results, manifest, integrity, calls):
     protocol = FixedProtocol.model_validate(manifest["protocol"])
+    calls_by_id = {c["id"]: c for c in calls}
     metrics = []
     for phase in ("all", "bidding", "playing"):
         for arm in ("single_generation", *ARMS):
@@ -220,8 +248,29 @@ def summarize(results, manifest, integrity, calls):
                                   "successes": sum(r["success"] for r in rows), "calls": sum(r["calls"] for r in rows)})
         differences = [mean(int(f["success"]) - int(g["success"]) for g, f in pairs) * 100 for pairs in by_seed.values()]
         all_pairs = [pair for pairs in by_seed.values() for pair in pairs]
-        stable_pairs = [(g, f) for g, f in all_pairs if len(set(g["response_models"] + f["response_models"])) == 1]
+        stable_pairs, version_groups, excluded = [], defaultdict(list), Counter()
+        for generic, feedback in all_pairs:
+            single_name, identity, reason = pair_response_identity(generic, feedback, calls_by_id)
+            if single_name:
+                stable_pairs.append((generic, feedback))
+            if identity is None:
+                excluded[reason] += 1
+            else:
+                version_groups[identity].append((generic, feedback))
+        grouped = []
+        for (name, fingerprint), pairs in sorted(version_groups.items(), key=lambda entry: (entry[0][0], entry[0][1] or "")):
+            grouped.append({
+                "response_model": name, "system_fingerprint": fingerprint,
+                "metadata_scope": "name_and_fingerprint" if fingerprint else "name_only_fingerprint_unavailable",
+                "pairs": len(pairs), "source_seeds": len({f["source_seed"] for _, f in pairs}),
+                "feedback_only_success": sum(f["success"] and not g["success"] for g, f in pairs),
+                "generic_only_success": sum(g["success"] and not f["success"] for g, f in pairs),
+                "both_success": sum(g["success"] and f["success"] for g, f in pairs),
+                "both_failed": sum(not g["success"] and not f["success"] for g, f in pairs),
+                "success_difference_pp_descriptive": mean(int(f["success"]) - int(g["success"]) for g, f in pairs) * 100,
+            })
         paired[phase] = {
+            "comparison_target": "requested model alias/endpoint across all recorded response identities",
             "success_difference_percentage_points": paired_interval(differences, protocol.bootstrap_seed + phase, protocol.bootstrap_resamples) if integrity["complete"] else None,
             "feedback_only_success": sum(f["success"] and not g["success"] for g, f in all_pairs),
             "generic_only_success": sum(g["success"] and not f["success"] for g, f in all_pairs),
@@ -236,6 +285,8 @@ def summarize(results, manifest, integrity, calls):
                 if any(g["complete_usage"] and f["complete_usage"] for g, f in all_pairs) else None,
             "single_returned_name_pairs": len(stable_pairs),
             "single_returned_name_difference_pp_descriptive": mean(int(f["success"]) - int(g["success"]) for g, f in stable_pairs) * 100 if stable_pairs else None,
+            "response_identity_groups_descriptive": grouped,
+            "response_identity_excluded_pairs": dict(sorted(excluded.items())),
         }
     limitations = [
         "Frozen deterministic rule-policy states with fixed category quotas; not representative human play or competitive strength.",
@@ -243,14 +294,24 @@ def summarize(results, manifest, integrity, calls):
         "One response realization per state/model; inference clusters by source seed. It does not cover all provider-time/version variability.",
         "Call-time estimates exclude queue/branch scheduling; they are not measured live-game end-to-end latency.",
         "Requested aliases may resolve to different returned names; names/fingerprints cannot prove weight-version identity.",
+        "The overall interval describes the requested alias/endpoint's observed response mixture, not a fixed model revision. Metadata groups are post-observation descriptive subsets, not separate causal estimates.",
+        "Single-returned-name pairs require a name on every physical call. Identity groups also exclude changed or partially missing fingerprints; all fingerprints absent is explicitly name-only evidence.",
         "Zero prices follow the previously user-confirmed free account, not an audited provider bill; unknown usage remains unknown.",
         "A degenerate zero bootstrap interval does not establish equivalence or absence of rare failures.",
         "The validator and source replay reuse the project engine; this is not an independent third-party rules audit.",
     ]
     return {"kind": "fixed-observation-effect-study", "complete": integrity["complete"],
             "run_id": integrity["run_id"], "model": manifest["run_manifest"]["models"][0]["model"],
+            "source_version_check": integrity["source_version_check"],
             "split": protocol.split, "metrics": metrics, "paired": paired,
             "physical_calls": len(calls), "known_usage_calls": integrity["usage_known_calls"],
+            "response_identity_coverage": {
+                "physical_calls": len(calls),
+                "response_model_known_calls": sum(bool(c["response_model"]) for c in calls),
+                "response_model_unknown_calls": sum(not c["response_model"] for c in calls),
+                "fingerprint_known_calls": sum(bool(c["system_fingerprint"]) for c in calls),
+                "fingerprint_unknown_calls": sum(not c["system_fingerprint"] for c in calls),
+            },
             "returned_models": dict(Counter(c["response_model"] for c in calls if c["response_model"])),
             "system_fingerprints": dict(Counter(c["system_fingerprint"] for c in calls if c["system_fingerprint"])),
             "known_physical_input_tokens": sum(c["prompt_tokens"] or 0 for c in calls),
@@ -275,6 +336,10 @@ def export_fixed_report(repo, run_id, corpus, output, *, root=None):
                 writer.writerows(values)
     lines = [f"# 固定局面规则反馈效果实验：{summary['model']}", "",
              f"完整性审计：{'通过' if integrity['complete'] else '未通过；不能据此作完整效果结论'}。",
+             "审计源码与冻结版本：" + {
+                 "matched": "一致。", "mismatch": "不一致；已将报告标为不完整。",
+                 "not_checked": "未检查；不能据此声称在原冻结源码下复算。",
+             }[summary["source_version_check"]],
              f"实际调用 {len(calls)} 次；usage 已知 {summary['known_usage_calls']}/{len(calls)}。", "",
              "三协议共享首答；仅失败时分别执行最多两次通用重试和规则反馈重试。", "",
              "| 阶段 | 协议 | 成功/样本 | 首答非法后恢复 | 逻辑调用 | 平均调用耗时合计 ms |",
@@ -288,6 +353,14 @@ def export_fixed_report(repo, run_id, corpus, output, *, root=None):
         lines += [f"主指标（出牌）：规则反馈减通用重试为 **{effect['estimate']:.3f} 个百分点**，",
                   f"按 {effect['independent_seeds']} 个独立来源种子配对 bootstrap 的 95% 区间为 **[{lo:.3f}, {hi:.3f}]**。",
                   "区间跨过零时，本次样本不足以确认稳定的增益或劣化。", ""]
+    lines += ["总体区间描述本次请求模型别名/端点的实际返回组合，不能当作某个固定权重版本的效果。", "",
+              "返回身份分组只描述元数据一致的配对子样本；这些分组是在观察响应之后形成的，不另作因果或显著性结论。", "",
+              "| 返回模型名（出牌） | 指纹 | 元数据范围 | 配对数 | 来源 seed 数 | 成功率差 pp（描述性） |",
+              "| --- | --- | --- | ---: | ---: | ---: |"]
+    for group in summary["paired"]["playing"]["response_identity_groups_descriptive"]:
+        lines.append(f"| {group['response_model']} | {group['system_fingerprint'] or '未提供'} | {group['metadata_scope']} | {group['pairs']} | {group['source_seeds']} | {group['success_difference_pp_descriptive']:.3f} |")
+    excluded = summary["paired"]["playing"]["response_identity_excluded_pairs"]
+    lines += ["", f"因返回名称/指纹缺失或变化而未进入上述分组的出牌配对：{json.dumps(excluded, ensure_ascii=False)}。", ""]
     lines += ["## 解释边界", "", *[f"- {v}" for v in summary["limitations"]], ""]
     (output / "report.md").write_text("\n".join(lines), encoding="utf-8")
     return summary

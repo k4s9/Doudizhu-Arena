@@ -58,6 +58,7 @@ class LLMAgent:
         retry_limit: int = MAX_RETRIES,
         rule_feedback: bool = True,
         prompt_name: str | None = None,
+        enable_tools: bool = False,
     ) -> None:
         self._agent_id = agent_id
         self._prompt_name = prompt_name or agent_id
@@ -73,6 +74,7 @@ class LLMAgent:
         self._repo: Any | None = None
         self._decision_context: dict[str, str] = {}
         self._last_decision_meta: dict[str, int] = {"retry_count": 0, "latency_ms": 0}
+        self.set_tools_enabled(enable_tools)
 
     # ── Agent Protocol ──────────────────────────────────────────────────────
 
@@ -148,8 +150,18 @@ class LLMAgent:
     async def decide_play(self, ctx: AgentContext) -> list[Card]:
         system, user = build_playing_prompt(ctx, self._memory, self._prompt_name,
             seat_teams=self._seat_teams, system_prompt_override=self._system_prompt_override)
+        if self._tools_enabled:
+            from .tool_turn import decide_with_tools
+            return await decide_with_tools(self, ctx, system, user)
         return await self._decide("playing", system, user,
             lambda raw: parse_play_response(raw, list(ctx.hand_cards), ctx.current_trick), [])
+
+    def set_tools_enabled(self, enabled: bool) -> None:
+        if type(enabled) is not bool:
+            raise ValueError("enable_tools must be boolean")
+        if enabled and not getattr(self._provider, "supports_tools", False):
+            raise ValueError("provider does not support native tool calls")
+        self._tools_enabled = enabled
 
     async def _decide(self, phase, system, user, parse, fallback):
         import asyncio

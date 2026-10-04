@@ -45,8 +45,11 @@ class MatchConfig:
     persist_long_term_memory: bool = True
     reflection_timeout_seconds: float = 30.0
     summary_timeout_seconds: float = 45.0
+    enable_tools: bool = False
 
     def __post_init__(self):
+        if type(self.enable_tools) is not bool:
+            raise ValueError("enable_tools must be boolean")
         for value in (self.reflection_timeout_seconds, self.summary_timeout_seconds):
             if not math.isfinite(value) or value <= 0:
                 raise ValueError("learning timeouts must be finite and positive")
@@ -103,6 +106,9 @@ class MatchRunner:
         match_name: str = "",
     ) -> None:
         self.config = config
+        for agent in agents.values():
+            if hasattr(agent, "set_tools_enabled"):
+                agent.set_tools_enabled(config.enable_tools)
         self.seating = seating
         self.agents = agents
         self.db_repo = db_repo
@@ -183,6 +189,7 @@ class MatchRunner:
                     "total_hands": self.config.total_hands,
                     "ko_enabled": self.config.ko_enabled,
                     "seed": match_seed,
+                    "enable_tools": self.config.enable_tools,
                 },
                 seed=match_seed,
             )

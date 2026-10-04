@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-04",
+  "timezone": "Asia/Shanghai",
+  "git_head": "8e384a89e707d1149ec1ca1bfccc96f4f1f8a5d4",
+  "source_dirty": true,
+  "backend_source_sha256": "e88cd0f2a1cbc0923638e544adf4e3c060f6871b49455cdc3c9af0031f1e2378",
+  "source_bundle_sha256": "6acebe8ddfe7e57b7dca2a212e76d4c01503f8cdf23bd8a744006cc014a57610",
+  "source_files_unchanged_during_acceptance": true,
+  "acceptance_scope": "frozen current workspace, including pre-existing uncommitted tools; not a clean Git checkout or remote CI result",
+  "python_executable": "/home/guozy/miniconda3/envs/doudizhu-arena/bin/python",
+  "node_version": "v22.23.2",
+  "backend": {
+    "tests": 651,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0,
+    "seconds": 254.801,
+    "network_connection_attempts": 0
+  },
+  "frontend": {
+    "files_passed": 5,
+    "tests_passed": 11,
+    "build_passed": true,
+    "modules": 71
+  },
+  "browser": {
+    "page_errors": [],
+    "identical_live_events": 7,
+    "terminal_reconnect": true,
+    "terminal_reload": true,
+    "memory_reload_persisted": true
+  },
+  "deployment": {
+    "compose_nginx": true,
+    "project": "doudizhu-agent-mainline-20261004",
+    "frontend_port": 38080,
+    "backend_port": 38000,
+    "backend_source_matches_snapshot": true,
+    "completed_run_unchanged_after_restart": true,
+    "active_match_interrupted": true,
+    "player_claims_released": true,
+    "next_match_finished": true,
+    "temporary_containers_stopped": true
+  },
+  "fixed_observation": {
+    "mode": "mock",
+    "split": "development",
+    "observations": 8,
+    "physical_calls": 29,
+    "protocol": "shared-first-response-v1",
+    "audit_complete": true,
+    "offline_rebuild_byte_equal": {
+      "calls.jsonl": true,
+      "decisions.jsonl": true,
+      "integrity.json": true,
+      "manifest.json": true,
+      "metrics.csv": true,
+      "report.md": true,
+      "seed_level.csv": true,
+      "summary.json": true
+    }
+  },
+  "fault_tests": {
+    "new_cases": 7,
+    "included_in_backend_total": true,
+    "real_child_process_terminate": true,
+    "real_lease_expiry_seconds": 30,
+    "completed_tasks_preserved": true,
+    "interrupted_usage_remains_unknown": true
+  },
+  "real_model_calls_this_round": 0,
+  "limitations": [
+    "Historical v2 corpora remain unchanged; current v3 code is not the historical replay runtime.",
+    "ARM Chromium used --js-flags=--jitless; browser timings are not a performance benchmark.",
+    "SDK MockTransport hung inside sandbox; full regression ran outside with offline socket guard enabled.",
+    "Interrupted dispatch intent cannot prove the provider received or billed the request; full reservation is retained conservatively."
+  ]
+}

@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
+import re
 import signal
 import sqlite3
 import sys
@@ -23,22 +24,43 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def seed_namespace(value):
+    # Leave room for "fixed-effect-minimax-" and run_one's "-development";
+    # the full experiment_id must fit its 64-character specification limit.
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,30}", value):
+        raise argparse.ArgumentTypeError("seed namespace must be 1-31 lowercase ASCII letters, digits, '_' or '-'")
+    return value
+
+
+def planned_seeds(split, count, namespace=None):
+    if split not in ("development", "test") or count <= 0:
+        raise ValueError("a valid split and positive seed count are required")
+    if namespace is None:
+        # Preserve the exact original seed IDs for archived-study reproduction.
+        prefix = "effect-dev-20260926" if split == "development" else "effect-test-20260926"
+    else:
+        prefix = f"{seed_namespace(namespace)}-{split}"
+    return [f"{prefix}-{i:02d}" for i in range(count)]
+
+
 def prepare(args):
     import yaml
     from arena.evaluation.fixed_corpus import build_corpus, verify_corpus
     from arena.evaluation.fixed_study import FixedProtocol
-    args.output.mkdir(parents=True, exist_ok=False)
-    dev = [f"effect-dev-20260926-{i:02d}" for i in range(args.development_seeds)]
-    test = [f"effect-test-20260926-{i:02d}" for i in range(args.test_seeds)]
+    namespace = getattr(args, "seed_namespace", None)
+    dev = planned_seeds("development", args.development_seeds, namespace)
+    test = planned_seeds("test", args.test_seeds, namespace)
     corpus = build_corpus(dev, test)
     verification = verify_corpus(corpus)
+    args.output.mkdir(parents=True, exist_ok=False)
     write_json(args.output / "corpus.json", corpus)
     for split, seeds in (("development", dev), ("test", test)):
-        write_json(args.output / f"seeds-{split}.json", {"seed_set_id": f"effect-{split}-20260926", "seeds": seeds})
+        seed_set_id = f"{namespace}-{split}" if namespace else f"effect-{split}-20260926"
+        write_json(args.output / f"seeds-{split}.json", {"seed_set_id": seed_set_id, "seeds": seeds})
     for name in ("minimax", "qwen"):
         path = ROOT / f"src/backend/evaluation/experiments/uni-api-{name}-smoke-20260924.yaml"
         spec = yaml.safe_load(path.read_text())
-        spec["experiment_id"] = f"fixed-effect-{name}-20260926"
+        spec["experiment_id"] = f"fixed-effect-{name}-{namespace or '20260926'}"
         spec["seed_set_path"] = str((args.output / "seeds-test.json").resolve())
         spec["max_calls"] = len(test) * 8 * 5
         spec["models"][0]["system_prompt"] = ""  # Identical corpus prompts across models.
@@ -48,7 +70,9 @@ def prepare(args):
             "primary_model": "minimax", "replication_model": "qwen", "primary_phase": "playing",
             "primary_contrast": "rule_feedback minus generic_retry success rate",
             "selection": "all frozen test observations, no selection by model errors, no optional stopping or prompt tuning on test",
-            "development_use": "offline protocol development; held-out seeds are distinct",
+            "development_use": "offline protocol development; development/test seed IDs are disjoint",
+            "seed_namespace": namespace,
+            "test_split_status": "declared split only; generation does not certify absence of prior development use",
             "max_calls_per_model": len(test) * 8 * 5, "max_inflight_across_two_models": 4,
             "pricing_basis": "existing user-confirmed free Uni API account from 2026-09-24; retained price source/effective date",
             "inference": "95% paired source-seed cluster bootstrap; Minimax primary, Qwen descriptive replication; no joint significance claim",
@@ -166,6 +190,8 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--development-seeds", type=int, default=4)
     p.add_argument("--test-seeds", type=int, default=24)
+    p.add_argument("--seed-namespace", type=seed_namespace,
+                   help="optional prefix for new seed IDs; omit to reproduce 2026-09-26 IDs; does not certify unseen test data")
     r = sub.add_parser("run")
     r.add_argument("--plan", type=Path, required=True)
     r.add_argument("--output", type=Path, required=True)

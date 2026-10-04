@@ -2,7 +2,7 @@
 import hashlib
 import json
 
-RULES_VERSION = "duplicate-four-seat-v2-leader-must-play"
+RULES_VERSION = "duplicate-four-seat-v3-complete-airplane"
 
 
 def canonical_json(value):

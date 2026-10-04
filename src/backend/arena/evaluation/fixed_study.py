@@ -21,11 +21,11 @@ from ..agent.parser import ParseError
 from ..llm.logging import LoggingLLMProvider
 from ..llm.openai import OpenAIProvider
 from ..llm.claude import ClaudeProvider
-from .budget import BudgetLedger
+from .budget import BudgetExceeded, BudgetLedger
 from .execution import ExecutionScope
 from .fixed_corpus import verify_corpus
 from .observations import validate_output
-from .spec import canonical_hash, validate_execution
+from .spec import PreflightError, canonical_hash, validate_execution
 
 ARMS = ("generic_retry", "rule_feedback")
 GENERIC = "\n\n请重新独立生成一个完整 JSON 回复。"
@@ -60,6 +60,23 @@ class FixedProtocol(BaseModel):
     provider_errors: str = "same generic retry in both branches"
     latency_estimand: str = "sum of own provider call durations, including shared first; excludes queue and branch scheduling"
     model_version_policy: str = "freeze requested model; record all returned names/fingerprints; mixed names limit version-specific conclusions"
+
+
+class FixedStudyBudget(BudgetLedger):
+    """Enforce the frozen token limits even when token prices are zero."""
+
+    def settle(self, reservation, call_id, usage):
+        # Preserve the response and its actual cost before stopping the run.
+        super().settle(reservation, call_id, usage)
+        if usage is not None and any(
+            count is not None and not 0 <= count <= limit
+            for count, limit in (
+                (usage.prompt_tokens, self.input_limit),
+                (usage.completion_tokens, self.output_limit),
+            )
+        ):
+            self.stopped = True
+            raise BudgetExceeded("fixed-study provider usage exceeds declared token allowance")
 
 
 def assess(item, call):
@@ -253,6 +270,8 @@ class FixedStudyRunner:
     async def run(self, *, real_models=False, mock=False):
         if real_models == mock:
             raise ValueError("select exactly one explicit real/mock execution mode")
+        if real_models and self.provider_factory is not None:
+            raise PreflightError("real fixed studies cannot use an injected provider_factory")
         validate_execution(self.spec, self.base_manifest, self.root, self.repo, mock=mock)
         verify_corpus(self.corpus)
         if self.manifest != make_manifest(self.spec, self.base_manifest, self.corpus, self.protocol):
@@ -268,8 +287,8 @@ class FixedStudyRunner:
         else:
             cid = config["id"]
         self.player_id = self.repo.create_player(cid, "fixed-observation benchmark")
-        self.budget = BudgetLedger(self.repo, self.run_id, self.spec.budget_limit_usd, self.spec.max_calls,
-                                   self.spec.max_input_tokens, model.parameters["max_tokens"], model.pricing)
+        self.budget = FixedStudyBudget(self.repo, self.run_id, self.spec.budget_limit_usd, self.spec.max_calls,
+                                      self.spec.max_input_tokens, model.parameters["max_tokens"], model.pricing)
         items = [item for item in self.corpus["observations"] if item["split"] == self.protocol.split]
         self.repo.conn.executemany("INSERT INTO fixed_items VALUES(?,?,'planned',NULL)",
                                   [(self.run_id, item["observation_id"]) for item in items])

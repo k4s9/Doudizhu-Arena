@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .base import AbstractLLMProvider, LLMError, LLMUsage
+from .base import AbstractLLMProvider, LLMError, LLMResponse, LLMUsage, ToolCall
 
 
 class OpenAIProvider(AbstractLLMProvider):
@@ -31,6 +31,10 @@ class OpenAIProvider(AbstractLLMProvider):
     @property
     def model(self) -> str:
         return self._model
+
+    @property
+    def supports_tools(self) -> bool:
+        return True
 
     def _get_client(self):
         if self._client is None:
@@ -88,3 +92,64 @@ class OpenAIProvider(AbstractLLMProvider):
             if isinstance(e, LLMError):
                 raise
             raise LLMError(f"OpenAI API call failed: {e}") from e
+
+    async def generate_turn(
+        self,
+        messages: list[dict],
+        system_prompt: str = "",
+        tools: list[dict] | None = None,
+        *,
+        allow_tools: bool = True,
+    ) -> LLMResponse:
+        self.last_usage = None
+        self.last_response_model = None
+        self.last_system_fingerprint = None
+        try:
+            request_messages = list(messages)
+            if system_prompt:
+                request_messages.insert(0, {"role": "system", "content": system_prompt})
+            request = {
+                "model": self._model,
+                "messages": request_messages,
+                "max_tokens": self._max_tokens,
+                "timeout": 1800.0,
+            }
+            if tools:
+                request["tools"] = [
+                    {"type": "function", "function": definition}
+                    for definition in tools
+                ]
+            if not tools or not allow_tools:
+                request["tool_choice"] = "none"
+            if self._temperature is not None:
+                request["temperature"] = self._temperature
+            if self._top_p is not None:
+                request["top_p"] = self._top_p
+            if self._seed is not None:
+                request["seed"] = self._seed
+            response = await self._get_client().chat.completions.create(**request)
+            self.last_response_model = getattr(response, "model", None)
+            self.last_system_fingerprint = getattr(response, "system_fingerprint", None)
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                self.last_usage = LLMUsage.from_counts(
+                    getattr(usage, "prompt_tokens", None),
+                    getattr(usage, "completion_tokens", None),
+                    getattr(usage, "total_tokens", None),
+                )
+            message = response.choices[0].message
+            calls = []
+            for call in getattr(message, "tool_calls", None) or ():
+                if getattr(call, "type", "function") != "function":
+                    raise LLMError("Unsupported OpenAI tool call type")
+                function = call.function
+                if not all(isinstance(value, str) for value in (
+                    call.id, function.name, function.arguments,
+                )) or not call.id or not function.name:
+                    raise LLMError("Malformed OpenAI tool call")
+                calls.append(ToolCall(call.id, function.name, function.arguments))
+            return LLMResponse(message.content or "", tuple(calls))
+        except Exception as exc:
+            if isinstance(exc, LLMError):
+                raise
+            raise LLMError(f"OpenAI API call failed: {exc}") from exc

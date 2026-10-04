@@ -40,6 +40,16 @@ CREATE TABLE IF NOT EXISTS match_events (
 CREATE TABLE IF NOT EXISTS evaluation_leases (
  run_id TEXT PRIMARY KEY, owner TEXT NOT NULL, expires_at REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS agent_tool_calls (
+ id TEXT PRIMARY KEY, decision_id TEXT NOT NULL, player_id TEXT NOT NULL,
+ model_attempt INTEGER NOT NULL, call_index INTEGER NOT NULL, tool_call_id TEXT NOT NULL,
+ tool_name TEXT NOT NULL, tool_version TEXT NOT NULL, state_hash TEXT NOT NULL,
+ arguments_sha256 TEXT NOT NULL, response_sha256 TEXT NOT NULL,
+ elapsed_ms REAL NOT NULL, output_chars INTEGER NOT NULL, status TEXT NOT NULL,
+ metadata_json TEXT NOT NULL,
+ UNIQUE(decision_id, call_index)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_decision ON agent_tool_calls(decision_id);
 """
 
 

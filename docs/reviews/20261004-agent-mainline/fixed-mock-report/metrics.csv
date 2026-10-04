@@ -1,0 +1,10 @@
+phase,arm,n,successes,success_rate,initial_invalid,invalid_recovered,initial_provider_errors,provider_recovered,logical_calls,known_usage_calls,known_input_tokens,known_output_tokens,mean_call_time_ms,call_time_p50_ms,call_time_p95_ms
+all,single_generation,8,1,0.125,7,0,0,0,8,8,160,80,0.875,1.0,1.0
+all,generic_retry,8,1,0.125,7,0,0,0,22,22,440,220,2.625,3.0,3.0
+all,rule_feedback,8,8,1,7,7,0,0,15,15,300,150,1.75,2.0,2.0
+bidding,single_generation,1,1,1,0,0,0,0,1,1,20,10,0,0.0,0.0
+bidding,generic_retry,1,1,1,0,0,0,0,1,1,20,10,0,0.0,0.0
+bidding,rule_feedback,1,1,1,0,0,0,0,1,1,20,10,0,0.0,0.0
+playing,single_generation,7,0,0,7,0,0,0,7,7,140,70,1,1.0,1.0
+playing,generic_retry,7,0,0,7,0,0,0,21,21,420,210,3,3.0,3.0
+playing,rule_feedback,7,7,1,7,7,0,0,14,14,280,140,2,2.0,2.0

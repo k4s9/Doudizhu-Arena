@@ -24,6 +24,85 @@ from .observations import validate_output
 VERSION = "independent-rule-trajectories-v1"
 TEAMS = {"S": "red", "N": "red", "E": "blue", "W": "blue"}
 QUOTAS = {"bidding": 1, "lead": 3, "follow": 4}
+OBSERVATION_FIELDS = {
+    "seat", "role", "hand_cards", "hand_size", "dizhu_cards", "bidding_history", "play_history",
+    "current_trick", "trick_leader", "landlord", "active_players", "player_hand_sizes",
+    "current_high_bid", "current_high_bidder", "hand_score", "winner_team", "winner_role",
+    "hand_num", "match_id", "initial_hand", "remaining_hands", "agent_role", "is_idle_observer",
+    "match_summary",
+}
+POST_GAME_DEFAULTS = {
+    "hand_score": None, "winner_team": "", "winner_role": "", "hand_num": 0, "match_id": "",
+    "initial_hand": None, "remaining_hands": None, "agent_role": "", "is_idle_observer": False,
+    "match_summary": None,
+}
+
+
+def _validate_seeds(development_seeds, test_seeds):
+    if any(not isinstance(seeds, list) or not seeds or
+           any(not isinstance(seed, str) or not seed for seed in seeds)
+           for seeds in (development_seeds, test_seeds)):
+        raise ValueError("nonempty development/test seed lists required")
+    if set(development_seeds) & set(test_seeds):
+        raise ValueError("source leakage: development/test seeds overlap")
+    if len(set(development_seeds + test_seeds)) != len(development_seeds + test_seeds):
+        raise ValueError("duplicate seed")
+
+
+def _verify_observation(item):
+    """Reject hidden/future fields even when callers skip expensive source replay.
+
+    The v1 archive contains engine card identities for already played cards.
+    These are replay evidence; providers receive only the frozen prompt strings.
+    This check does not silently change that historical visibility convention.
+    """
+    obs = item["observation"]
+    if set(obs) != OBSERVATION_FIELDS:
+        raise ValueError("unexpected/missing observation fields")
+    if any(obs[key] != default or type(obs[key]) is not type(default)
+           for key, default in POST_GAME_DEFAULTS.items()):
+        raise ValueError("private/post-game state in observation")
+    if obs["seat"] not in SEATS or type(obs["hand_size"]) is not int:
+        raise ValueError("invalid observation seat/hand size")
+    cards = [Card.from_string(card) for card in obs["hand_cards"]]
+    if len(cards) != obs["hand_size"] or not 1 <= len(cards) <= 20 or len(set(cards)) != len(cards):
+        raise ValueError("invalid observation hand")
+    phase, index = item["phase"], item["source_index"]
+    if phase not in ("bidding", "playing") or type(index) is not int or index < 0:
+        raise ValueError("invalid observation phase/source index")
+    category = "bidding" if phase == "bidding" else ("lead" if obs["current_trick"] is None else "follow")
+    if item["category"] != category:
+        raise ValueError("category does not match observation")
+    expected_id = digest({"seed": item["source_seed"], "phase": phase, "index": index})
+    if item["observation_id"] != expected_id:
+        raise ValueError("observation/source identity mismatch")
+    if any(not isinstance(item[key], str) or not item[key] for key in ("system_prompt", "user_prompt")):
+        raise ValueError("missing frozen prompt")
+    bids, plays = obs["bidding_history"], obs["play_history"]
+    if not isinstance(bids, list) or not isinstance(plays, list):
+        raise ValueError("invalid public history")
+    high_bid = 0
+    for bid in bids:
+        if set(bid) != {"seat", "bid"} or bid["seat"] not in SEATS or type(bid["bid"]) is not int:
+            raise ValueError("unexpected/invalid bidding history fields")
+        if bid["bid"] not in range(4) or (bid["bid"] and bid["bid"] <= high_bid):
+            raise ValueError("invalid public bid history")
+        high_bid = max(high_bid, bid["bid"])
+    for seq, play in enumerate(plays, 1):
+        if set(play) != {"round", "sub_round", "seq", "seat", "action_type", "cards", "trick_display"}:
+            raise ValueError("unexpected/missing play history fields")
+        if play["seq"] != seq or play["seat"] not in SEATS or play["action_type"] not in ("play", "pass"):
+            raise ValueError("invalid public play history")
+    if phase == "bidding":
+        if (index != len(bids) or index >= 3 or plays or obs["dizhu_cards"] is not None
+                or obs["current_trick"] is not None or obs["landlord"] or obs["role"] != "bidding"
+                or obs["current_high_bid"] != high_bid):
+            raise ValueError("future/invalid state in bidding observation")
+    elif index != len(plays) or obs["role"] not in ("landlord", "farmer"):
+        raise ValueError("future/invalid state in playing observation")
+    pattern = obs["current_trick"]["pattern"] if obs["current_trick"] else None
+    if item["target_pattern"] != pattern:
+        raise ValueError("target pattern mismatch")
 
 
 def candidates(cards, target=None):
@@ -123,10 +202,7 @@ def trajectory(seed):
 
 
 def build_corpus(development_seeds, test_seeds):
-    if not development_seeds or not test_seeds or set(development_seeds) & set(test_seeds):
-        raise ValueError("nonempty disjoint development/test seeds required")
-    if len(set(development_seeds + test_seeds)) != len(development_seeds + test_seeds):
-        raise ValueError("duplicate seed")
+    _validate_seeds(development_seeds, test_seeds)
     items, sources = [], []
     for split, seeds in (("development", development_seeds), ("test", test_seeds)):
         for seed in seeds:
@@ -158,6 +234,14 @@ def build_corpus(development_seeds, test_seeds):
 
 
 def verify_corpus(corpus, *, replay=True):
+    """Check membership/visibility before optional deterministic source replay."""
+    try:
+        return _verify_corpus(corpus, replay=replay)
+    except (KeyError, TypeError, AttributeError, IndexError) as exc:
+        raise ValueError(f"malformed fixed corpus: {exc}") from exc
+
+
+def _verify_corpus(corpus, *, replay):
     if corpus.get("sha256") != digest({k: v for k, v in corpus.items() if k != "sha256"}):
         raise ValueError("corpus hash mismatch")
     if corpus.get("version") != VERSION or corpus.get("rules_version") != RULES_VERSION:
@@ -166,8 +250,20 @@ def verify_corpus(corpus, *, replay=True):
     if len(ids) != len(set(ids)):
         raise ValueError("duplicate observation")
     dev, test = corpus["development_seeds"], corpus["test_seeds"]
-    if set(dev) & set(test):
-        raise ValueError("source leakage")
+    _validate_seeds(dev, test)
+    expected_splits = {seed: split for split, seeds in (("development", dev), ("test", test)) for seed in seeds}
+    if Counter(source["source_seed"] for source in corpus["sources"]) != Counter(expected_splits.keys()):
+        raise ValueError("source trajectory coverage mismatch")
+    for source in corpus["sources"]:
+        if source["split"] != expected_splits[source["source_seed"]]:
+            raise ValueError("source trajectory split mismatch")
+    for item in corpus["observations"]:
+        seed = item["source_seed"]
+        if seed not in expected_splits or item["split"] != expected_splits[seed]:
+            raise ValueError("unexpected source/split in observation")
+        if item["source_match"] != f"rule-policy/{seed}":
+            raise ValueError("source match identity/leakage mismatch")
+        _verify_observation(item)
     for seed in dev + test:
         items = [item for item in corpus["observations"] if item["source_seed"] == seed]
         if Counter(item["category"] for item in items) != Counter(QUOTAS):
@@ -175,9 +271,10 @@ def verify_corpus(corpus, *, replay=True):
         expected = "development" if seed in dev else "test"
         if any(item["split"] != expected for item in items):
             raise ValueError("source split mismatch")
-        if any(item["observation"][key] is not None for item in items
-               for key in ("remaining_hands", "initial_hand", "match_summary")):
-            raise ValueError("private/post-game state in observation")
+        for category, count in QUOTAS.items():
+            bins = [item["temporal_bin"] for item in items if item["category"] == category]
+            if any(type(index) is not int for index in bins) or sorted(bins) != list(range(count)):
+                raise ValueError("temporal bin coverage mismatch")
     if replay:
         rebuilt = build_corpus(dev, test)
         if rebuilt != corpus:

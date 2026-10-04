@@ -42,6 +42,16 @@ class BudgetLedger:
             self.repo.conn.execute("INSERT INTO budget_ledger VALUES(?,?,NULL,?,NULL,'reserved',?)", (reservation, self.run_id, float(amount), time.time()))
         return reservation
 
+    def bind_call(self, reservation, call_id):
+        """Link a dispatch intent before invoking a provider; keep its full reserve."""
+        cursor = self.repo.conn.execute(
+            "UPDATE budget_ledger SET call_id=? WHERE reservation_id=? AND call_id IS NULL AND status='reserved'",
+            (call_id, reservation),
+        )
+        if cursor.rowcount != 1:
+            raise ValueError("reservation missing or already bound to a call")
+        self.repo.conn.commit()
+
     def settle(self, reservation, call_id, usage):
         cost = None if usage is None or usage.prompt_tokens is None or usage.completion_tokens is None else self.cost(usage.prompt_tokens, usage.completion_tokens)
         reserved = self.repo.conn.execute("SELECT reserved_usd FROM budget_ledger WHERE reservation_id=?", (reservation,)).fetchone()[0]
