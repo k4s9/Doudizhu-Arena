@@ -504,6 +504,8 @@ async def measure(args, backend_pid, result):
                     for phase in dict.fromkeys(s["phase"] for s in samples)}
                 result["resource_sampling"] = {
                     "method": "controller descendants via /proc/PID/task/*/children",
+                    "clock_ticks_per_second": os.sysconf("SC_CLK_TCK"),
+                    "page_size_bytes": os.sysconf("SC_PAGE_SIZE"),
                     "target_interval_ms": args.resource_interval * 1000,
                     "scan_ms_by_phase": {
                         phase: distribution([s["scan_ms"] for s in samples if s["phase"] == phase])

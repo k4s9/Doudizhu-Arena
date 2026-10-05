@@ -65,6 +65,8 @@ conda run --no-capture-output -n doudizhu-arena python -I -B \
 
 采样器目标间隔为 500 ms，正常阶段实际间隔 P50/P95 为 500.662/501.831 ms，单次采样开销 P50/P95 为 37.145/42.557 ms。控制器自身正常阶段 CPU P50/P95 为 9.98%/12.00%，单独列出，不计为后端 CPU，也不隐去测量开销。
 
+本机原始计数换算单位为 `SC_CLK_TCK=100`、`SC_PAGE_SIZE=4096` 字节，已在同一主机补录至 `resource-units.json` 并复核内存统计；原始样本和运行报告保持不变。脚本后续新增了直接保存这两个单位的元数据字段，测量逻辑未改。跨机器复算必须使用记录主机的单位，不能使用复算主机的 `sysconf` 值。
+
 这是单机、单场 mock 比赛和五个正常观众的工程测量，不代表生产容量、硬实时 SLA 或真实模型性能。基准在完成运行中一致性检查后关闭自身进程，隔离比赛保留为 `interrupted`，不将其报告为完成了 100 副终局。
 
 ## 证据
@@ -72,3 +74,18 @@ conda run --no-capture-output -n doudizhu-arena python -I -B \
 可提交产物位于 [reviews/20261004-reproduction-performance](reviews/20261004-reproduction-performance/)；包括算法逐次样本、历史复现结论、实时汇总、压缩原始浏览器／服务器／资源／延迟样本和隔离数据库。最终实时原始运行保留在 `data/reproduction-performance-20261004/realtime-final/`，历史复现的恢复源码和完整报告位于 `data/fixed-reproduction-20261004/`。
 
 短冒烟先执行 2 次重连并验证完整队列压力。第一轮 20 次完整运行发现全机 `/proc` 扫描的控制器 CPU P50 约 69.6%，因此保留该轮数据为诊断，改为仅采样测试进程树后重新冻结脚本执行最终 20 次场景。两轮不混算，也不将测量方法改变写成产品性能优化。原始第一轮位于同级 `realtime-formal/`，汇总另归档为 `realtime-initial-instrumentation.json`。沙箱禁止创建 socket，实时基准获准在沙箱外运行；真实 Provider 仍禁用。
+
+## 干净检出回归
+
+实现与性能证据提交为 `15e73c9` 后，从本地 Git 建立独立检出 `/tmp/doudizhu-clean-15e73c9`，核对 211 个源码／测试／构建输入摘要一致，并显式确认后端导入来自该检出。检出在验证前后均无 Git 改动。
+
+| 检查 | 结果 |
+| --- | --- |
+| 后端全量离线回归 | 663 passed，0 失败／错误／跳过，263.25 秒，连接尝试 0 |
+| 前端测试 | 5 个文件、11 项通过 |
+| 前端生产构建 | 通过，71 个模块 |
+| 历史复现 CLI | 在独立检出中再次成功，16 份报告逐字节一致，Qwen 原审计失败保留 |
+
+使用现有 `doudizhu-arena` conda 环境；前端链接已安装的本地 `node_modules`，没有进行全新依赖安装。完整后端回归因已知 SDK 沙箱异步限制在沙箱外运行，离线连接拦截始终开启。这是本地干净检出验证，不是远端 CI 结果。
+
+验证后仅补充了基准输出的两个资源换算元数据字段及文档／归档；后端、前端和测试源码与受测版本一致。受测源码摘要保持冻结，避免用后续文件冒充测量版本。原始 JUnit、构建日志及版本说明见 `clean-validation.json` 与 `clean-checkout-environment.json`。

@@ -11,7 +11,9 @@
 - `realtime-realtime.db.gz`：本轮独立 mock 数据库；SQLite 完整性检查通过，凭据为空。所有采样文件都是合成对局的真实运行观测。
 - `raw-files.json`：压缩文件解压后的字节数与 SHA-256，支持验证无损归档。
 - `realtime-initial-instrumentation.json`：旧采样器完整运行的诊断记录；因全机采样开销过高而替换，不纳入最终性能统计。
-- `source-file-sha256.json`：本轮源码、测试、脚本及构建输入的文件摘要。
+- `resource-units.json`：同一测量主机补录的 tick 频率（100/s）与页大小（4096 字节），用于跨机器复算原始资源计数。
+- `source-file-sha256.json`：受测版本 `15e73c9` 的 211 个源码、测试、脚本及构建输入摘要；后续仅给基准输出补充了资源换算元数据字段，原测量摘要保持冻结。
+- `clean-validation.json`、`clean-checkout-environment.json` 与 `clean-*` 日志：独立干净检出的 663 项后端、11 项前端、生产构建与历史 CLI 复现通过，检出前后无 Git 改动。
 - `SHA256SUMS.json`：本目录归档文件摘要，不包含其自身。
 
 正常发布至回调 P95 为 7.039 ms；恢复 P95 为 1,011.500 ms，其中含默认的 1 秒重连等待。20 次恢复全部发生在 running 状态且确有遗漏自然事件；5 页最终完整快照一致。慢订阅真实触发 10,000 容量边界，5 个正常观众完整收到全部 10,001 个持久化探针。

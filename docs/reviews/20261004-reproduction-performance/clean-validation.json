@@ -1,0 +1,19 @@
+{
+  "tested_commit": "15e73c9b0a46fc1b91779b67b50b22287a038eab",
+  "checkout": "/tmp/doudizhu-clean-15e73c9",
+  "checkout_clean_before_and_after": true,
+  "verified_source_files": 211,
+  "backend": {
+    "tests": 663,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0
+  },
+  "backend_seconds": 263.2,
+  "backend_network_attempts": 0,
+  "frontend_tests": 11,
+  "frontend_build_passed": true,
+  "historical_reports_byte_identical": 16,
+  "runtime_and_tests_unchanged_since_full_regression": true,
+  "post_validation_code_change": "The benchmark output now includes SC_CLK_TCK and SC_PAGE_SIZE metadata; measurement logic is unchanged. The measured source hashes remain frozen at the tested revision, and resource-units.json records the original host units."
+}

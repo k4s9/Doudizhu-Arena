@@ -1,0 +1,13 @@
+
+> frontend@0.0.0 test
+> vitest run --environment happy-dom
+
+
+ RUN  v4.1.7 /tmp/doudizhu-clean-15e73c9/src/frontend
+
+
+ Test Files  5 passed (5)
+      Tests  11 passed (11)
+   Start at  20:15:43
+   Duration  1.84s (transform 1.35s, setup 0ms, import 2.67s, tests 455ms, environment 2.63s)
+

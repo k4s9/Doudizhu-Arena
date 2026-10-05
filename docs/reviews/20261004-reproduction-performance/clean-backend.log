@@ -1,0 +1,24 @@
+Verified test import: /tmp/doudizhu-clean-15e73c9/src/backend/arena/__init__.py
+........................................................................ [ 10%]
+........................................................................ [ 21%]
+........................................................................ [ 32%]
+........................................................................ [ 43%]
+........................................................................ [ 54%]
+........................................................................ [ 65%]
+........................................................................ [ 76%]
+........................................................................ [ 86%]
+........................................................................ [ 97%]
+...............                                                          [100%]
+============================= slowest 10 durations =============================
+32.87s call     tests/test_execution_fault_boundaries.py::test_terminated_process_recovers_expired_lease_without_replaying_finished_task
+16.35s call     tests/test_deployment_paths.py::test_relocated_deployment_api_cli_and_restart
+15.18s call     tests/test_smoke.py::test_full_pipeline
+15.10s call     tests/test_smoke.py::TestSmokeMatchWithLLM::test_2_hand_match_with_llm_agents
+8.19s call     tests/test_fixed_effects_reproduction.py::test_public_archive_rebuilds_all_reports_and_preserves_failed_audit
+8.11s call     tests/test_memory_match_study.py::test_full_match_mock_cli_prepare_run_audit_without_key
+6.62s call     tests/test_reliability_round2.py::test_mock_covers_playing_for_all_variants[play_error]
+6.40s call     tests/test_reliability_round2.py::test_mock_covers_playing_for_all_variants[valid_first]
+6.02s call     tests/test_reliability_v2.py::test_full_mock_report_replay_resume_and_missing_call
+5.69s call     tests/test_memory_effect_study.py::test_mock_cli_prepare_run_and_read_only_audit_without_key
+663 passed in 263.25s (0:04:23)
+Offline guard: 0 attempted network connections

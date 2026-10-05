@@ -1,0 +1,24 @@
+{
+  "tested_commit": "15e73c9b0a46fc1b91779b67b50b22287a038eab",
+  "checkout": "/tmp/doudizhu-clean-15e73c9",
+  "tracked_worktree_clean": true,
+  "source_files_verified": 211,
+  "python_executable": "/home/guozy/miniconda3/envs/doudizhu-arena/bin/python",
+  "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:27:41) [GCC 14.3.0]",
+  "platform": "Linux-6.6.0-45.0.0.54.oe2409.aarch64-aarch64-with-glibc2.38",
+  "package_versions": {
+    "pytest": "9.1.1",
+    "fastapi": "0.135.2",
+    "uvicorn": "0.42.0",
+    "httpx": "0.28.1",
+    "openai": "3.5.0",
+    "anthropic": "0.66.0",
+    "playwright": "1.63.0"
+  },
+  "frontend_versions": {
+    "vite": "8.0.14",
+    "vitest": "4.1.7",
+    "vue": "3.5.35"
+  },
+  "dependencies": "Existing doudizhu-arena conda environment; frontend node_modules linked from installed workspace dependencies; no fresh dependency installation."
+}

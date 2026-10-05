@@ -1,0 +1,6 @@
+{
+  "clock_ticks_per_second": 100,
+  "page_size_bytes": 4096,
+  "platform": "Linux-6.6.0-45.0.0.54.oe2409.aarch64-aarch64-with-glibc2.38",
+  "provenance": "Recorded after the completed run on the same host and kernel; original result and raw counters remain unchanged. Future benchmark output records these units directly."
+}
